@@ -4,11 +4,11 @@ import ChartTab from "../common/ChartTab";
 export default function StatisticsChart() {
   const options = {
     legend: {
-      show: false, // Hide legend
+      show: true, // Show legend
       position: "top",
       horizontalAlign: "left",
     },
-    colors: ["#465FFF", "#9CB9FF"], // Define line colors
+    colors: ["#fd853a", "#c4320a"], // Colores naranja (claro para ingresos, oscuro para gastos)
     chart: {
       fontFamily: "Outfit, sans-serif",
       height: 310,
@@ -61,18 +61,18 @@ export default function StatisticsChart() {
     xaxis: {
       type: "category", // Category-based x-axis
       categories: [
-        "Jan",
+        "Ene",
         "Feb",
         "Mar",
-        "Apr",
+        "Abr",
         "May",
         "Jun",
         "Jul",
-        "Aug",
+        "Ago",
         "Sep",
         "Oct",
         "Nov",
-        "Dec",
+        "Dic",
       ],
       axisBorder: {
         show: false, // Hide x-axis border
@@ -102,12 +102,12 @@ export default function StatisticsChart() {
 
   const series = [
     {
-      name: "Sales",
-      data: [180, 190, 170, 160, 175, 165, 170, 205, 230, 210, 240, 235],
+      name: "Ingresos",
+      data: [35200, 42300, 38500, 45280, 39700, 41500, 47200, 38800, 43500, 48900, 45600, 42100],
     },
     {
-      name: "Revenue",
-      data: [40, 30, 50, 40, 55, 40, 70, 100, 110, 120, 150, 140],
+      name: "Gastos",
+      data: [22000, 25000, 23500, 28000, 24500, 26000, 29500, 24000, 27000, 30500, 28000, 26500],
     },
   ];
   return (
@@ -115,10 +115,10 @@ export default function StatisticsChart() {
       <div className="flex flex-col gap-5 mb-6 sm:flex-row sm:justify-between">
         <div className="w-full">
           <h3 className="text-lg font-semibold text-gray-800 dark:text-white/90">
-            Statistics
+            Ingresos vs Gastos
           </h3>
           <p className="mt-1 text-gray-500 text-theme-sm dark:text-gray-400">
-            Target you’ve set for each month
+            Comparación mensual de ingresos y gastos operativos
           </p>
         </div>
         <div className="flex items-start w-full gap-3 sm:justify-end">

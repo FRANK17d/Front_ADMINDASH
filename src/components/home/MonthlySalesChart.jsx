@@ -6,7 +6,7 @@ import { useState } from "react";
 
 export default function MonthlySalesChart() {
   const options = {
-    colors: ["#465fff"],
+    colors: ["#fb6514"],
     chart: {
       fontFamily: "Outfit, sans-serif",
       type: "bar",
@@ -33,18 +33,18 @@ export default function MonthlySalesChart() {
     },
     xaxis: {
       categories: [
-        "Jan",
+        "Ene",
         "Feb",
         "Mar",
-        "Apr",
+        "Abr",
         "May",
         "Jun",
         "Jul",
-        "Aug",
+        "Ago",
         "Sep",
         "Oct",
         "Nov",
-        "Dec",
+        "Dic",
       ],
       axisBorder: {
         show: false,
@@ -80,14 +80,14 @@ export default function MonthlySalesChart() {
         show: false,
       },
       y: {
-        formatter: (val) => `${val}`,
+        formatter: (val) => `S/ ${val.toLocaleString()}`,
       },
     },
   };
   const series = [
     {
-      name: "Sales",
-      data: [168, 385, 201, 298, 187, 195, 291, 110, 215, 390, 280, 112],
+      name: "Ingresos",
+      data: [35200, 42300, 38500, 45280, 39700, 41500, 47200, 38800, 43500, 48900, 45600, 42100],
     },
   ];
   const [isOpen, setIsOpen] = useState(false);
@@ -103,7 +103,7 @@ export default function MonthlySalesChart() {
     <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white px-5 pt-5 dark:border-gray-800 dark:bg-black sm:px-6 sm:pt-6">
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold text-gray-800 dark:text-white/90">
-          Monthly Sales
+          Ingresos Mensuales
         </h3>
         <div className="relative inline-block">
           <button className="dropdown-toggle" onClick={toggleDropdown}>
@@ -118,13 +118,13 @@ export default function MonthlySalesChart() {
               onItemClick={closeDropdown}
               className="flex w-full font-normal text-left text-gray-500 rounded-lg hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-gray-300"
             >
-              View More
+              Ver Más
             </DropdownItem>
             <DropdownItem
               onItemClick={closeDropdown}
               className="flex w-full font-normal text-left text-gray-500 rounded-lg hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-gray-300"
             >
-              Delete
+              Eliminar
             </DropdownItem>
           </Dropdown>
         </div>

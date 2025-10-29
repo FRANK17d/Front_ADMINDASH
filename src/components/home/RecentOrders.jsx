@@ -11,48 +11,53 @@ import Badge from "../ui/badge/Badge";
 const tableData = [
   {
     id: 1,
-    name: "MacBook Pro 13”",
-    variants: "2 Variants",
-    category: "Laptop",
-    price: "$2399.00",
-    status: "Delivered",
-    image: "/images/product/product-01.jpg", // Replace with actual image URL
+    guestName: "Carlos Mendoza",
+    room: "Suite 201",
+    checkIn: "2025-10-29",
+    checkOut: "2025-11-01",
+    guests: "2 Adultos",
+    total: "S/ 735.00",
+    status: "Confirmada",
   },
   {
     id: 2,
-    name: "Apple Watch Ultra",
-    variants: "1 Variant",
-    category: "Watch",
-    price: "$879.00",
-    status: "Pending",
-    image: "/images/product/product-02.jpg", // Replace with actual image URL
+    guestName: "Ana García López",
+    room: "Hab. 105",
+    checkIn: "2025-10-29",
+    checkOut: "2025-10-31",
+    guests: "1 Adulto",
+    total: "S/ 490.00",
+    status: "Check-in",
   },
   {
     id: 3,
-    name: "iPhone 15 Pro Max",
-    variants: "2 Variants",
-    category: "SmartPhone",
-    price: "$1869.00",
-    status: "Delivered",
-    image: "/images/product/product-03.jpg", // Replace with actual image URL
+    guestName: "Roberto Silva",
+    room: "Suite 302",
+    checkIn: "2025-10-30",
+    checkOut: "2025-11-03",
+    guests: "2 Adultos, 1 Niño",
+    total: "S/ 1,225.00",
+    status: "Confirmada",
   },
   {
     id: 4,
-    name: "iPad Pro 3rd Gen",
-    variants: "2 Variants",
-    category: "Electronics",
-    price: "$1699.00",
-    status: "Canceled",
-    image: "/images/product/product-04.jpg", // Replace with actual image URL
+    guestName: "María Torres",
+    room: "Hab. 208",
+    checkIn: "2025-10-28",
+    checkOut: "2025-10-30",
+    guests: "2 Adultos",
+    total: "S/ 490.00",
+    status: "Check-out",
   },
   {
     id: 5,
-    name: "AirPods Pro 2nd Gen",
-    variants: "1 Variant",
-    category: "Accessories",
-    price: "$240.00",
-    status: "Delivered",
-    image: "/images/product/product-05.jpg", // Replace with actual image URL
+    guestName: "Luis Ramírez",
+    room: "Hab. 110",
+    checkIn: "2025-10-31",
+    checkOut: "2025-11-02",
+    guests: "1 Adulto",
+    total: "S/ 490.00",
+    status: "Confirmada",
   },
 ];
 
@@ -62,8 +67,11 @@ export default function RecentOrders() {
       <div className="flex flex-col gap-2 mb-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h3 className="text-lg font-semibold text-gray-800 dark:text-white/90">
-            Recent Orders
+            Reservas Recientes
           </h3>
+          <p className="mt-1 text-gray-500 text-theme-sm dark:text-gray-400">
+            Últimas reservas registradas en el sistema
+          </p>
         </div>
 
         <div className="flex items-center gap-3">
@@ -103,10 +111,10 @@ export default function RecentOrders() {
                 strokeWidth="1.5"
               />
             </svg>
-            Filter
+            Filtrar
           </button>
           <button className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-theme-sm font-medium text-gray-700 shadow-theme-xs hover:bg-gray-50 hover:text-gray-800 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-white/[0.03] dark:hover:text-gray-200">
-            See all
+            Ver todo
           </button>
         </div>
       </div>
@@ -119,25 +127,31 @@ export default function RecentOrders() {
                 isHeader
                 className="py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
               >
-                Products
+                Huésped
               </TableCell>
               <TableCell
                 isHeader
                 className="py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
               >
-                Category
+                Habitación
               </TableCell>
               <TableCell
                 isHeader
                 className="py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
               >
-                Price
+                Check-in / Check-out
               </TableCell>
               <TableCell
                 isHeader
                 className="py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
               >
-                Status
+                Total
+              </TableCell>
+              <TableCell
+                isHeader
+                className="py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
+              >
+                Estado
               </TableCell>
             </TableRow>
           </TableHeader>
@@ -145,45 +159,59 @@ export default function RecentOrders() {
           {/* Table Body */}
 
           <TableBody className="divide-y divide-gray-100 dark:divide-gray-800">
-            {tableData.map((product) => (
-              <TableRow key={product.id} className="">
+            {tableData.map((reservation) => (
+              <TableRow key={reservation.id} className="">
                 <TableCell className="py-3">
                   <div className="flex items-center gap-3">
-                    <div className="h-[50px] w-[50px] overflow-hidden rounded-md">
-                      <img
-                        src={product.image}
-                        className="h-[50px] w-[50px]"
-                        alt={product.name}
-                      />
+                    <div className="flex items-center justify-center w-10 h-10 bg-blue-100 rounded-full dark:bg-blue-900/30">
+                      <svg className="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                      </svg>
                     </div>
                     <div>
                       <p className="font-medium text-gray-800 text-theme-sm dark:text-white/90">
-                        {product.name}
+                        {reservation.guestName}
                       </p>
                       <span className="text-gray-500 text-theme-xs dark:text-gray-400">
-                        {product.variants}
+                        {reservation.guests}
                       </span>
                     </div>
                   </div>
                 </TableCell>
                 <TableCell className="py-3 text-gray-500 text-theme-sm dark:text-gray-400">
-                  {product.price}
+                  {reservation.room}
                 </TableCell>
-                <TableCell className="py-3 text-gray-500 text-theme-sm dark:text-gray-400">
-                  {product.category}
+                <TableCell className="py-3">
+                  <div className="text-gray-800 text-theme-sm dark:text-gray-300">
+                    <div className="flex items-center gap-1">
+                      <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+                      </svg>
+                      <span className="text-theme-xs">{reservation.checkIn}</span>
+                    </div>
+                    <div className="flex items-center gap-1 mt-1">
+                      <svg className="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                      </svg>
+                      <span className="text-theme-xs">{reservation.checkOut}</span>
+                    </div>
+                  </div>
+                </TableCell>
+                <TableCell className="py-3 font-semibold text-gray-800 text-theme-sm dark:text-white/90">
+                  {reservation.total}
                 </TableCell>
                 <TableCell className="py-3 text-gray-500 text-theme-sm dark:text-gray-400">
                   <Badge
                     size="sm"
                     color={
-                      product.status === "Delivered"
+                      reservation.status === "Confirmada"
                         ? "success"
-                        : product.status === "Pending"
+                        : reservation.status === "Check-in"
                         ? "warning"
                         : "error"
                     }
                   >
-                    {product.status}
+                    {reservation.status}
                   </Badge>
                 </TableCell>
               </TableRow>
