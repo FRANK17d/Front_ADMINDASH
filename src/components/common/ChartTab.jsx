@@ -16,7 +16,7 @@ const ChartTab = () => {
           "optionOne"
         )}`}
       >
-        Monthly
+        Mensual
       </button>
 
       <button
@@ -25,7 +25,7 @@ const ChartTab = () => {
           "optionTwo"
         )}`}
       >
-        Quarterly
+        Quincenal
       </button>
 
       <button
@@ -34,7 +34,7 @@ const ChartTab = () => {
           "optionThree"
         )}`}
       >
-        Annually
+        Anual
       </button>
     </div>
   );

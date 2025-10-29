@@ -7,19 +7,19 @@ export default function PaymentMethodChart() {
     chart: {
       fontFamily: "Outfit, sans-serif",
       type: "donut",
-      height: 300,
+      height: 220,
     },
     colors: ["#fb6514", "#fd853a", "#ec4a0a", "#c4320a"], // Paleta de colores naranja
     labels: ["Efectivo", "Tarjeta de Crédito", "Tarjeta de Débito", "Transferencia"],
     legend: {
       position: "bottom",
       horizontalAlign: "center",
-      fontSize: "14px",
+      fontSize: "12px",
       fontFamily: "Outfit, sans-serif",
       markers: {
-        width: 12,
-        height: 12,
-        radius: 12,
+        width: 10,
+        height: 10,
+        radius: 10,
       },
       itemMargin: {
         horizontal: 8,
@@ -71,7 +71,7 @@ export default function PaymentMethodChart() {
         breakpoint: 480,
         options: {
           chart: {
-            height: 280,
+            height: 200,
           },
           legend: {
             position: "bottom",
@@ -100,37 +100,37 @@ export default function PaymentMethodChart() {
       </div>
 
       <div className="max-w-full overflow-x-auto">
-        <Chart options={options} series={series} type="donut" height={300} />
+        <Chart options={options} series={series} type="donut" height={220} />
       </div>
 
-      <div className="mt-6 space-y-3">
-        <div className="flex items-center justify-between p-3 rounded-lg bg-gray-50 dark:bg-gray-800/50">
+      <div className="mt-4 space-y-2">
+        <div className="flex items-center justify-between p-2 rounded-lg bg-gray-50 dark:bg-gray-800/50">
           <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: "#fb6514" }}></div>
-            <span className="text-sm text-gray-600 dark:text-gray-400">Efectivo</span>
+            <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: "#fb6514" }}></div>
+            <span className="text-xs text-gray-600 dark:text-gray-400">Efectivo</span>
           </div>
-          <span className="text-sm font-semibold text-gray-800 dark:text-white/90">S/ 20,376</span>
+          <span className="text-xs font-semibold text-gray-800 dark:text-white/90">S/ 20,376</span>
         </div>
-        <div className="flex items-center justify-between p-3 rounded-lg bg-gray-50 dark:bg-gray-800/50">
+        <div className="flex items-center justify-between p-2 rounded-lg bg-gray-50 dark:bg-gray-800/50">
           <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: "#fd853a" }}></div>
-            <span className="text-sm text-gray-600 dark:text-gray-400">Tarjeta de Crédito</span>
+            <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: "#fd853a" }}></div>
+            <span className="text-xs text-gray-600 dark:text-gray-400">Tarjeta de Crédito</span>
           </div>
-          <span className="text-sm font-semibold text-gray-800 dark:text-white/90">S/ 13,584</span>
+          <span className="text-xs font-semibold text-gray-800 dark:text-white/90">S/ 13,584</span>
         </div>
-        <div className="flex items-center justify-between p-3 rounded-lg bg-gray-50 dark:bg-gray-800/50">
+        <div className="flex items-center justify-between p-2 rounded-lg bg-gray-50 dark:bg-gray-800/50">
           <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: "#ec4a0a" }}></div>
-            <span className="text-sm text-gray-600 dark:text-gray-400">Tarjeta de Débito</span>
+            <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: "#ec4a0a" }}></div>
+            <span className="text-xs text-gray-600 dark:text-gray-400">Tarjeta de Débito</span>
           </div>
-          <span className="text-sm font-semibold text-gray-800 dark:text-white/90">S/ 6,792</span>
+          <span className="text-xs font-semibold text-gray-800 dark:text-white/90">S/ 6,792</span>
         </div>
-        <div className="flex items-center justify-between p-3 rounded-lg bg-gray-50 dark:bg-gray-800/50">
+        <div className="flex items-center justify-between p-2 rounded-lg bg-gray-50 dark:bg-gray-800/50">
           <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: "#c4320a" }}></div>
-            <span className="text-sm text-gray-600 dark:text-gray-400">Transferencia</span>
+            <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: "#c4320a" }}></div>
+            <span className="text-xs text-gray-600 dark:text-gray-400">Transferencia</span>
           </div>
-          <span className="text-sm font-semibold text-gray-800 dark:text-white/90">S/ 4,528</span>
+          <span className="text-xs font-semibold text-gray-800 dark:text-white/90">S/ 4,528</span>
         </div>
       </div>
     </div>

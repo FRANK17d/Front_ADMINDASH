@@ -17,29 +17,21 @@ export default function Home() {
       {/* 4 Tarjetas principales de métricas */}
       <EcommerceMetrics />
 
-      {/* Sección de gráficos principales */}
-      <div className="grid grid-cols-12 gap-4 md:gap-6">
-        {/* Ingresos Mensuales */}
-        <div className="col-span-12 lg:col-span-8">
-          <MonthlySalesChart />
-        </div>
+      {/* Ingresos Mensuales - Ancho completo */}
+      <MonthlySalesChart />
 
-        {/* Ingresos por Método de Pago */}
+      {/* Ingresos por Método de Pago y Tasa de Ocupación Semanal */}
+      <div className="grid grid-cols-12 gap-4 md:gap-6">
         <div className="col-span-12 lg:col-span-4">
           <PaymentMethodChart />
         </div>
-      </div>
-
-      {/* Tasa de Ocupación Semanal e Ingresos vs Gastos */}
-      <div className="grid grid-cols-12 gap-4 md:gap-6">
-        <div className="col-span-12 lg:col-span-6">
+        <div className="col-span-12 lg:col-span-8">
           <OccupancyRateChart />
         </div>
-
-        <div className="col-span-12 lg:col-span-6">
-          <StatisticsChart />
-        </div>
       </div>
+
+      {/* Ingresos vs Gastos - Ancho completo */}
+      <StatisticsChart />
 
       {/* Check-in y Check-out del día */}
       <CheckInOutCards />

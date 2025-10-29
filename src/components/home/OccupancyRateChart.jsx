@@ -6,7 +6,7 @@ export default function OccupancyRateChart() {
     chart: {
       fontFamily: "Outfit, sans-serif",
       type: "bar",
-      height: 280,
+      height: 320,
       toolbar: {
         show: false,
       },
