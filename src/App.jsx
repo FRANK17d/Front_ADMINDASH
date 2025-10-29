@@ -10,6 +10,10 @@ import SignIn from './pages/AuthPages/SignIn'
 import Users from './pages/Users/Users'
 import ForgotPass from './pages/AuthPages/ForgotPass'
 import Chatbot from './pages/ChatBot/Chatbot'
+import Reservas from './pages/Reservas/Reservas'
+import CajaCobros from './pages/Caja-cobros/CajaCobros'
+import Lavanderia from './pages/Lavanderia/Lavanderia'
+import Mantenimiento from './pages/Mantenimiento/Mantenimiento'
 
 function App() {
   return (
@@ -33,7 +37,13 @@ function App() {
             <Route path="/dashboard-admin" element={<Home />} />
             <Route path="/calendar" element={<Calendar />} />
             <Route path="/usuarios" element={<Users />} />
+            <Route path='/reservas' element={<Reservas/>}/>
+            <Route path='/caja-cobros' element={<CajaCobros/>}/>
+            <Route path='/lavanderia' element={<Lavanderia/>}/>
+            <Route path='/mantenimiento' element={<Mantenimiento/>}/>
             <Route path="/chatbot" element={<Chatbot />} />
+
+
           </Route>
         </Routes>
       </Router>
