@@ -1,4 +1,5 @@
 import Chart from "react-apexcharts";
+import { YapeIcon, DollarLineIcon, BoxIcon, PaperPlaneIcon } from "../../icons";
 
 export default function PaymentMethodChart() {
   const series = [45, 30, 15, 10]; // Porcentajes para cada método de pago
@@ -9,8 +10,8 @@ export default function PaymentMethodChart() {
       type: "donut",
       height: 220,
     },
-    colors: ["#fb6514", "#fd853a", "#ec4a0a", "#c4320a"], // Paleta de colores naranja
-    labels: ["Efectivo", "Tarjeta de Crédito", "Tarjeta de Débito", "Transferencia"],
+    colors: ["#22C55E", "#3B82F6", "#5E0B72", "#FB6514"], // Verde, Azul, Morado, Naranja
+    labels: ["Efectivo", "Tarjeta", "Yape", "Transferencia"],
     legend: {
       position: "bottom",
       horizontalAlign: "center",
@@ -106,28 +107,28 @@ export default function PaymentMethodChart() {
       <div className="mt-4 space-y-2">
         <div className="flex items-center justify-between p-2 rounded-lg bg-gray-50 dark:bg-gray-800/50">
           <div className="flex items-center gap-2">
-            <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: "#fb6514" }}></div>
+            <DollarLineIcon className="w-5 h-5" style={{ color: "#22C55E" }} />
             <span className="text-xs text-gray-600 dark:text-gray-400">Efectivo</span>
           </div>
           <span className="text-xs font-semibold text-gray-800 dark:text-white/90">S/ 20,376</span>
         </div>
         <div className="flex items-center justify-between p-2 rounded-lg bg-gray-50 dark:bg-gray-800/50">
           <div className="flex items-center gap-2">
-            <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: "#fd853a" }}></div>
-            <span className="text-xs text-gray-600 dark:text-gray-400">Tarjeta de Crédito</span>
+            <BoxIcon className="w-5 h-5" style={{ color: "#3B82F6" }} />
+            <span className="text-xs text-gray-600 dark:text-gray-400">Tarjeta</span>
           </div>
           <span className="text-xs font-semibold text-gray-800 dark:text-white/90">S/ 13,584</span>
         </div>
         <div className="flex items-center justify-between p-2 rounded-lg bg-gray-50 dark:bg-gray-800/50">
           <div className="flex items-center gap-2">
-            <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: "#ec4a0a" }}></div>
-            <span className="text-xs text-gray-600 dark:text-gray-400">Tarjeta de Débito</span>
+            <YapeIcon className="w-5 h-5" style={{ color: "#5E0B72" }} />
+            <span className="text-xs text-gray-600 dark:text-gray-400">Yape</span>
           </div>
           <span className="text-xs font-semibold text-gray-800 dark:text-white/90">S/ 6,792</span>
         </div>
         <div className="flex items-center justify-between p-2 rounded-lg bg-gray-50 dark:bg-gray-800/50">
           <div className="flex items-center gap-2">
-            <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: "#c4320a" }}></div>
+            <PaperPlaneIcon className="w-5 h-5" style={{ color: "#FB6514" }} />
             <span className="text-xs text-gray-600 dark:text-gray-400">Transferencia</span>
           </div>
           <span className="text-xs font-semibold text-gray-800 dark:text-white/90">S/ 4,528</span>

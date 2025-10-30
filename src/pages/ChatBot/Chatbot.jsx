@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { PaperPlaneIcon } from "../../icons";
+import { ChatBotIcon } from "../../icons";
 
 export default function Chatbot() {
   const [messages, setMessages] = useState([
@@ -104,9 +105,7 @@ export default function Chatbot() {
       <div className="mb-6">
         <div className="flex items-center gap-3">
           <div className="flex items-center justify-center w-12 h-12 bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl">
-            <svg className="text-white size-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-            </svg>
+            <ChatBotIcon className="text-white size-9" />
           </div>
           <div>
             <h1 className="text-2xl font-bold text-gray-800 dark:text-white">
@@ -144,7 +143,15 @@ export default function Chatbot() {
         {/* Chat Messages */}
         <div className="lg:col-span-2 flex flex-col rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-black overflow-hidden">
           {/* Messages Area */}
-          <div className="flex-1 overflow-y-auto p-5 space-y-4">
+          <div
+            className="flex-1 overflow-y-auto p-5 space-y-4 pr-2 custom-scroll scroll-smooth"
+            style={{
+              WebkitMaskImage:
+                "linear-gradient(to bottom, transparent 0, black 16px, black calc(100% - 16px), transparent 100%)",
+              maskImage:
+                "linear-gradient(to bottom, transparent 0, black 16px, black calc(100% - 16px), transparent 100%)",
+            }}
+          >
             {messages.map((message) => (
               <div
                 key={message.id}
@@ -254,6 +261,25 @@ export default function Chatbot() {
           </div>
         </div>
       </div>
+      <style>{`
+        .custom-scroll { 
+          scrollbar-width: thin; 
+          scrollbar-color: rgba(234, 88, 12, 0.6) transparent; 
+        }
+        .custom-scroll::-webkit-scrollbar { 
+          width: 8px; 
+        }
+        .custom-scroll::-webkit-scrollbar-track { 
+          background: transparent; 
+        }
+        .custom-scroll::-webkit-scrollbar-thumb { 
+          background: linear-gradient(180deg, #fb923c, #ea580c); 
+          border-radius: 9999px; 
+        }
+        .custom-scroll::-webkit-scrollbar-thumb:hover { 
+          background: linear-gradient(180deg, #f97316, #c2410c); 
+        }
+      `}</style>
     </div>
   );
 }

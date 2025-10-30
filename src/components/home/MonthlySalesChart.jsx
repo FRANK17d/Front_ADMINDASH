@@ -130,8 +130,10 @@ export default function MonthlySalesChart() {
         </div>
       </div>
 
-      <div className="w-full pb-2">
-        <Chart options={options} series={series} type="bar" height={350} />
+      <div className="w-full pb-2 overflow-x-auto">
+        <div className="min-w-[720px] sm:min-w-0">
+          <Chart options={options} series={series} type="bar" height={350} />
+        </div>
       </div>
     </div>
   );

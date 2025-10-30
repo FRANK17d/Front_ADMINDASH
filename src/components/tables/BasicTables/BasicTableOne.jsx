@@ -10,6 +10,9 @@ import Badge from "../../ui/badge/Badge";
 import Input from "../../form/input/InputField";
 import Button from "../../ui/button/Button";
 import { PencilIcon, TrashBinIcon, PlusIcon, UserIcon, ChevronLeftIcon, AngleRightIcon } from "../../../icons";
+import { useModal } from "../../../hooks/useModal";
+import { Modal } from "../../ui/modal";
+import Label from "../../form/Label";
 
 // Define the table data
 const tableData = [
@@ -109,12 +112,40 @@ const tableData = [
     status: "Activo",
     image: "/images/user/user-24.jpg",
   },
+  {
+    id: 9,
+    name: "Juan Pérez",
+    role: "Recepcionista",
+    email: "juan.perez@hotelplaza.com",
+    age: 27,
+    salary: "S/2,800",
+    entryDate: "2023-06-01",
+    attendance: "91%",
+    status: "Activo",
+    image: "/images/user/user-25.jpg",
+  },
+  {
+    id: 10,
+    name: "Ana Martínez",
+    role: "Housekeeping",
+    email: "ana.martinez@hotelplaza.com",
+    age: 31,
+    salary: "S/2,200",
+    entryDate: "2023-01-30",
+    attendance: "89%",
+    status: "Activo",
+    image: "/images/user/user-26.jpg",
+  },
+  
 ];
 
 export default function BasicTableOne() {
+  const { isOpen: isCreateModalOpen, openModal: openCreateModal, closeModal: closeCreateModal } = useModal();
+  const { isOpen: isEditModalOpen, openModal: openEditModal, closeModal: closeEditModal } = useModal();
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 5;
+  const [editingUser, setEditingUser] = useState(null);
+  const itemsPerPage = 7;
 
   // Filtrar datos basado en la búsqueda
   const filteredData = useMemo(() => {
@@ -143,11 +174,19 @@ export default function BasicTableOne() {
   const handleCreateUser = () => {
     console.log("Crear nuevo usuario");
     // Aquí iría la lógica para crear usuario
+    closeCreateModal();
   };
 
-  const handleEditUser = (userId) => {
-    console.log("Editar usuario:", userId);
-    // Aquí iría la lógica para editar usuario
+  const handleEditUserClick = (user) => {
+    setEditingUser(user);
+    openEditModal();
+  };
+
+  const handleSaveEdit = () => {
+    console.log("Guardar edición de usuario:", editingUser);
+    // Aquí iría la lógica para guardar la edición
+    setEditingUser(null);
+    closeEditModal();
   };
 
   const handleDeleteUser = (userId) => {
@@ -173,7 +212,7 @@ export default function BasicTableOne() {
           />
         </div>
         <Button
-          onClick={handleCreateUser}
+          onClick={openCreateModal}
           className="bg-orange-500 hover:bg-orange-600 text-white flex items-center gap-2"
           size="sm"
         >
@@ -181,6 +220,130 @@ export default function BasicTableOne() {
           Crear Usuario
         </Button>
       </div>
+      <Modal isOpen={isCreateModalOpen} onClose={closeCreateModal} className="max-w-[700px] m-4">
+        <div className="no-scrollbar relative w-full max-w-[700px] overflow-y-auto rounded-3xl bg-white p-4 dark:bg-gray-900 lg:p-11">
+          <div className="px-2 pr-14">
+            <h4 className="mb-2 text-2xl font-semibold text-gray-800 dark:text-white/90">
+              Crear Usuario
+            </h4>
+            <p className="mb-6 text-sm text-gray-500 dark:text-gray-400 lg:mb-7">
+              Complete la información para crear un nuevo usuario.
+            </p>
+          </div>
+          <form className="flex flex-col">
+            <div className="custom-scrollbar h-[450px] overflow-y-auto px-2 pb-3">
+              <div>
+                <h5 className="mb-5 text-lg font-medium text-gray-800 dark:text-white/90 lg:mb-6">
+                  Información del Usuario
+                </h5>
+
+                <div className="grid grid-cols-1 gap-x-6 gap-y-5 lg:grid-cols-2">
+                  <div className="col-span-2 lg:col-span-1">
+                    <Label>Nombre</Label>
+                    <Input type="text" placeholder="Ingrese el nombre completo" />
+                  </div>
+
+                  <div className="col-span-2 lg:col-span-1">
+                    <Label>Email</Label>
+                    <Input type="email" placeholder="usuario@hotelplaza.com" />
+                  </div>
+
+                  <div className="col-span-2 lg:col-span-1">
+                    <Label>Rol</Label>
+                    <Input type="text" placeholder="Administrador, Recepcionista, etc." />
+                  </div>
+
+                  <div className="col-span-2 lg:col-span-1">
+                    <Label>Salario</Label>
+                    <Input type="text" placeholder="S/2,500" />
+                  </div>
+
+                  <div className="col-span-2 lg:col-span-1">
+                    <Label>Fecha de Entrada</Label>
+                    <Input type="date" />
+                  </div>
+
+                  <div className="col-span-2 lg:col-span-1">
+                    <Label>Asistencia (%)</Label>
+                    <Input type="text" placeholder="95%" />
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 px-2 mt-6 lg:justify-end">
+              <Button size="sm" variant="outline" onClick={closeCreateModal}>
+                Cancelar
+              </Button>
+              <Button size="sm" onClick={handleCreateUser} className="bg-orange-500 hover:bg-orange-600">
+                Crear Usuario
+              </Button>
+            </div>
+          </form>
+        </div>
+      </Modal>
+
+      {/* Modal de Edición */}
+      <Modal isOpen={isEditModalOpen} onClose={closeEditModal} className="max-w-[700px] m-4">
+        <div className="no-scrollbar relative w-full max-w-[700px] overflow-y-auto rounded-3xl bg-white p-4 dark:bg-gray-900 lg:p-11">
+          <div className="px-2 pr-14">
+            <h4 className="mb-2 text-2xl font-semibold text-gray-800 dark:text-white/90">
+              Editar Usuario
+            </h4>
+            <p className="mb-6 text-sm text-gray-500 dark:text-gray-400 lg:mb-7">
+              Modifique la información del usuario según sea necesario.
+            </p>
+          </div>
+          <form className="flex flex-col">
+            <div className="custom-scrollbar h-[450px] overflow-y-auto px-2 pb-3">
+              <div>
+                <h5 className="mb-5 text-lg font-medium text-gray-800 dark:text-white/90 lg:mb-6">
+                  Información del Usuario
+                </h5>
+
+                <div className="grid grid-cols-1 gap-x-6 gap-y-5 lg:grid-cols-2">
+                  <div className="col-span-2 lg:col-span-1">
+                    <Label>Nombre</Label>
+                    <Input type="text" defaultValue={editingUser?.name || ""} placeholder="Ingrese el nombre completo" />
+                  </div>
+
+                  <div className="col-span-2 lg:col-span-1">
+                    <Label>Email</Label>
+                    <Input type="email" defaultValue={editingUser?.email || ""} placeholder="usuario@hotelplaza.com" />
+                  </div>
+
+                  <div className="col-span-2 lg:col-span-1">
+                    <Label>Rol</Label>
+                    <Input type="text" defaultValue={editingUser?.role || ""} placeholder="Administrador, Recepcionista, etc." />
+                  </div>
+
+                  <div className="col-span-2 lg:col-span-1">
+                    <Label>Salario</Label>
+                    <Input type="text" defaultValue={editingUser?.salary || ""} placeholder="S/2,500" />
+                  </div>
+
+                  <div className="col-span-2 lg:col-span-1">
+                    <Label>Fecha de Entrada</Label>
+                    <Input type="date" defaultValue={editingUser?.entryDate || ""} />
+                  </div>
+
+                  <div className="col-span-2 lg:col-span-1">
+                    <Label>Asistencia (%)</Label>
+                    <Input type="text" defaultValue={editingUser?.attendance || ""} placeholder="95%" />
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 px-2 mt-6 lg:justify-end">
+              <Button size="sm" variant="outline" onClick={closeEditModal}>
+                Cancelar
+              </Button>
+              <Button size="sm" onClick={handleSaveEdit} className="bg-orange-500 hover:bg-orange-600">
+                Guardar Cambios
+              </Button>
+            </div>
+          </form>
+        </div>
+      </Modal>
 
       {/* Tabla */}
       <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/5 dark:bg-white/3">
@@ -201,13 +364,13 @@ export default function BasicTableOne() {
                 <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
                   Salario
                 </TableCell>
-                <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
+                <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-center text-theme-xs dark:text-gray-400">
                   Fecha Entrada
                 </TableCell>
-                <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
+                <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-center text-theme-xs dark:text-gray-400">
                   Asistencia
                 </TableCell>
-                <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
+                <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-center text-theme-xs dark:text-gray-400">
                   Estado
                 </TableCell>
                 <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-center text-theme-xs dark:text-gray-400">
@@ -264,7 +427,7 @@ export default function BasicTableOne() {
                   <TableCell className="px-4 py-3 text-center">
                     <div className="flex items-center justify-center gap-2">
                       <button
-                        onClick={() => handleEditUser(user.id)}
+                        onClick={() => handleEditUserClick(user)}
                         className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-colors"
                         title="Editar usuario"
                       >

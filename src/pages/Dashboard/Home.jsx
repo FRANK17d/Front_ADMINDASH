@@ -17,9 +17,19 @@ export default function Home() {
       {/* 4 Tarjetas principales de métricas */}
       <EcommerceMetrics />
 
-      {/* Ingresos Mensuales - Ancho completo */}
-      <MonthlySalesChart />
+      <div className="grid grid-cols-12 gap-4 md:gap-6">
+        <div className="col-span-12">
+        {/* Ingresos Mensuales - Ancho completo */}
+          <MonthlySalesChart />
+        </div>
 
+        <div className="col-span-12">
+          {/* Ingresos vs Gastos - Ancho completo */}
+          <StatisticsChart />
+        </div>
+
+      </div>
+      
       {/* Ingresos por Método de Pago y Tasa de Ocupación Semanal */}
       <div className="grid grid-cols-12 gap-4 md:gap-6">
         <div className="col-span-12 lg:col-span-4">
@@ -30,8 +40,6 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Ingresos vs Gastos - Ancho completo */}
-      <StatisticsChart />
 
       {/* Check-in y Check-out del día */}
       <CheckInOutCards />

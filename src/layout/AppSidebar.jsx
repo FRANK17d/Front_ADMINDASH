@@ -56,7 +56,7 @@ const navItems = [
 
 
 const AppSidebar = () => {
-  const { isExpanded, isMobileOpen, isHovered, setIsHovered } = useSidebar();
+  const { isExpanded, isMobileOpen, isHovered, setIsHovered, toggleMobileSidebar } = useSidebar();
   const location = useLocation();
 
   const [openSubmenu, setOpenSubmenu] = useState(null);
@@ -162,6 +162,9 @@ const AppSidebar = () => {
                 className={`menu-item group ${
                   isActive(nav.path) ? "menu-item-active" : "menu-item-inactive"
                 }`}
+                onClick={() => {
+                  if (isMobileOpen) toggleMobileSidebar();
+                }}
               >
                 <span
                   className={`menu-item-icon-size ${
@@ -201,6 +204,9 @@ const AppSidebar = () => {
                           ? "menu-dropdown-item-active"
                           : "menu-dropdown-item-inactive"
                       }`}
+                      onClick={() => {
+                        if (isMobileOpen) toggleMobileSidebar();
+                      }}
                     >
                       {subItem.name}
                       <span className="flex items-center gap-1 ml-auto">
@@ -258,7 +264,7 @@ const AppSidebar = () => {
           !isExpanded && !isHovered ? "lg:justify-center" : "justify-start"
         }`}
       >
-        <Link to="/" className="hidden lg:block">
+        <Link to="/" className="hidden lg:block" onClick={() => { if (isMobileOpen) toggleMobileSidebar(); }}>
           {isExpanded || isHovered || isMobileOpen ? (
             <>
               <img

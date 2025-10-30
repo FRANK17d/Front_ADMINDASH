@@ -14,6 +14,7 @@ import Reservas from './pages/Reservas/Reservas'
 import CajaCobros from './pages/Caja-cobros/CajaCobros'
 import Lavanderia from './pages/Lavanderia/Lavanderia'
 import Mantenimiento from './pages/Mantenimiento/Mantenimiento'
+import Perfil from './pages/Perfil'
 
 function App() {
   return (
@@ -42,6 +43,7 @@ function App() {
             <Route path='/lavanderia' element={<Lavanderia/>}/>
             <Route path='/mantenimiento' element={<Mantenimiento/>}/>
             <Route path="/chatbot" element={<Chatbot />} />
+            <Route path="/perfil" element={<Perfil />} />
 
 
           </Route>

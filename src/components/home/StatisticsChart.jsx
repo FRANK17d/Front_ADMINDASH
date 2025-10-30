@@ -126,8 +126,10 @@ export default function StatisticsChart() {
         </div>
       </div>
 
-      <div className="w-full">
-        <Chart options={options} series={series} type="area" height={310} />
+      <div className="w-full overflow-x-auto">
+        <div className="min-w-[720px] sm:min-w-0">
+          <Chart options={options} series={series} type="area" height={310} />
+        </div>
       </div>
     </div>
   );
