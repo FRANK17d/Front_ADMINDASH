@@ -136,6 +136,12 @@ layer(base);
   --color-theme-pink-500: #ee46bc;
 
   --color-theme-purple-500: #7a5af8;
+  --color-purple-50: #f5f0ff;
+  --color-purple-100: #ede9fe;
+  --color-purple-500: #7a5af8;
+
+  --color-green-50: #ecfdf3;
+  --color-green-500: #12b76a;
 
   --shadow-theme-md: 0px 4px 8px -2px rgba(16, 24, 40, 0.1),
     0px 2px 4px -2px rgba(16, 24, 40, 0.06);
@@ -656,6 +662,23 @@ span.flatpickr-weekday,
 .event-fc-color.fc-bg-warning {
   @apply border-orange-50 bg-orange-50;
 }
+.event-fc-color.fc-bg-info {
+  @apply border-blue-light-50 bg-blue-light-50;
+}
+.event-fc-color.fc-bg-maintenance {
+  @apply border-gray-100 bg-gray-100;
+}
+.event-fc-color.fc-bg-booking {
+  border-color: var(--color-purple-50);
+  background-color: var(--color-purple-50);
+}
+.event-fc-color.fc-bg-whatsapp {
+  border-color: var(--color-green-50);
+  background-color: var(--color-green-50);
+}
+.event-fc-color.fc-bg-direct-sale {
+  @apply border-orange-50 bg-orange-50;
+}
 .event-fc-color.fc-bg-success .fc-daygrid-event-dot {
   @apply bg-success-500;
 }
@@ -666,6 +689,21 @@ span.flatpickr-weekday,
   @apply bg-brand-500;
 }
 .event-fc-color.fc-bg-warning .fc-daygrid-event-dot {
+  @apply bg-orange-500;
+}
+.event-fc-color.fc-bg-info .fc-daygrid-event-dot {
+  @apply bg-blue-light-500;
+}
+.event-fc-color.fc-bg-maintenance .fc-daygrid-event-dot {
+  @apply bg-gray-500;
+}
+.event-fc-color.fc-bg-booking .fc-daygrid-event-dot {
+  background-color: var(--color-purple-500);
+}
+.event-fc-color.fc-bg-whatsapp .fc-daygrid-event-dot {
+  @apply bg-success-500;
+}
+.event-fc-color.fc-bg-direct-sale .fc-daygrid-event-dot {
   @apply bg-orange-500;
 }
 .fc-direction-ltr .fc-timegrid-slot-label-frame {
