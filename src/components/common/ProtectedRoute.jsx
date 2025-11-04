@@ -18,8 +18,8 @@ export default function ProtectedRoute({ children }) {
     return <Navigate to="/iniciar-sesion" replace />;
   }
 
-  // Solo permitir acceso a ADMIN
-  if (userRole === ROLES.ADMIN) {
+  // Solo permitir acceso a ADMIN o SUPERADMIN
+  if (userRole === ROLES.ADMIN || userRole === ROLES.SUPERADMIN) {
     return children;
   }
 

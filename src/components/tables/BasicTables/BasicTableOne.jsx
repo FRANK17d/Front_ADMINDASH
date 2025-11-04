@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Table,
   TableBody,
@@ -13,148 +13,76 @@ import { PencilIcon, TrashBinIcon, PlusIcon, UserIcon, ChevronLeftIcon, AngleRig
 import { useModal } from "../../../hooks/useModal";
 import { Modal } from "../../ui/modal";
 import Label from "../../form/Label";
-
-// Define the table data
-const tableData = [
-  {
-    id: 1,
-    name: "Lindsey Curtis",
-    role: "Administrador",
-    email: "lindsey.curtis@hotelplaza.com",
-    age: 28,
-    salary: "S/3,500",
-    entryDate: "2023-01-15",
-    attendance: "95%",
-    status: "Activo",
-    image: "/images/user/user-17.jpg",
-  },
-  {
-    id: 2,
-    name: "Kaiya George",
-    role: "Recepcionista",
-    email: "kaiya.george@hotelplaza.com",
-    age: 25,
-    salary: "S/2,800",
-    entryDate: "2023-03-20",
-    attendance: "92%",
-    status: "Activo",
-    image: "/images/user/user-18.jpg",
-  },
-  {
-    id: 3,
-    name: "Zain Geidt",
-    role: "Housekeeping",
-    email: "zain.geidt@hotelplaza.com",
-    age: 30,
-    salary: "S/2,200",
-    entryDate: "2023-02-10",
-    attendance: "88%",
-    status: "Activo",
-    image: "/images/user/user-17.jpg",
-  },
-  {
-    id: 4,
-    name: "Abram Schleifer",
-    role: "Recepcionista",
-    email: "abram.schleifer@hotelplaza.com",
-    age: 26,
-    salary: "S/2,800",
-    entryDate: "2023-04-05",
-    attendance: "90%",
-    status: "Inactivo",
-    image: "/images/user/user-20.jpg",
-  },
-  {
-    id: 5,
-    name: "Carla George",
-    role: "Administrador",
-    email: "carla.george@hotelplaza.com",
-    age: 32,
-    salary: "S/3,500",
-    entryDate: "2022-11-15",
-    attendance: "97%",
-    status: "Activo",
-    image: "/images/user/user-21.jpg",
-  },
-  {
-    id: 6,
-    name: "María González",
-    role: "Housekeeping",
-    email: "maria.gonzalez@hotelplaza.com",
-    age: 29,
-    salary: "S/2,200",
-    entryDate: "2023-05-12",
-    attendance: "94%",
-    status: "Activo",
-    image: "/images/user/user-22.jpg",
-  },
-  {
-    id: 7,
-    name: "Carlos Rodríguez",
-    role: "Recepcionista",
-    email: "carlos.rodriguez@hotelplaza.com",
-    age: 27,
-    salary: "S/2,800",
-    entryDate: "2023-06-01",
-    attendance: "91%",
-    status: "Activo",
-    image: "/images/user/user-23.jpg",
-  },
-  {
-    id: 8,
-    name: "Ana Martínez",
-    role: "Housekeeping",
-    email: "ana.martinez@hotelplaza.com",
-    age: 31,
-    salary: "S/2,200",
-    entryDate: "2023-01-30",
-    attendance: "89%",
-    status: "Activo",
-    image: "/images/user/user-24.jpg",
-  },
-  {
-    id: 9,
-    name: "Juan Pérez",
-    role: "Recepcionista",
-    email: "juan.perez@hotelplaza.com",
-    age: 27,
-    salary: "S/2,800",
-    entryDate: "2023-06-01",
-    attendance: "91%",
-    status: "Activo",
-    image: "/images/user/user-25.jpg",
-  },
-  {
-    id: 10,
-    name: "Ana Martínez",
-    role: "Housekeeping",
-    email: "ana.martinez@hotelplaza.com",
-    age: 31,
-    salary: "S/2,200",
-    entryDate: "2023-01-30",
-    attendance: "89%",
-    status: "Activo",
-    image: "/images/user/user-26.jpg",
-  },
-  
-];
+import { listUsers, createUser, updateUserRole, deleteUser } from "../../../api/users";
+import { useAuth, ROLES } from "../../../context/AuthContext";
 
 export default function BasicTableOne() {
+  const { isSuperadmin } = useAuth();
   const { isOpen: isCreateModalOpen, openModal: openCreateModal, closeModal: closeCreateModal } = useModal();
   const { isOpen: isEditModalOpen, openModal: openEditModal, closeModal: closeEditModal } = useModal();
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [editingUser, setEditingUser] = useState(null);
+  const [data, setData] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [createForm, setCreateForm] = useState({ name: "", email: "", role: "Administrador" });
   const itemsPerPage = 7;
+
+  const roleLabelToApi = (label) => {
+    const l = (label || "").toLowerCase();
+    if (l.includes("super")) return "superadmin";
+    if (l.startsWith("admin")) return "admin";
+    return "receptionist";
+  };
+
+  const roleApiToLabel = (role) => {
+    if (role === "superadmin") return "Superadmin";
+    if (role === "admin") return "Administrador";
+    return "Recepcionista";
+  };
+
+  const mapApiUsersToRows = (users) => {
+    return (users || []).map(u => ({
+      id: u.uid,
+      name: u.display_name || (u.email ? u.email.split("@")[0] : "Usuario"),
+      role: roleApiToLabel(u.role || "receptionist"),
+      email: u.email,
+      age: "—",
+      salary: "—",
+      entryDate: "—",
+      attendance: "—",
+      status: u.disabled ? "Inactivo" : "Activo",
+      image: "/images/user/user-17.jpg",
+    }));
+  };
+
+  const refresh = async () => {
+    try {
+      setError("");
+      setLoading(true);
+      const res = await listUsers();
+      setData(mapApiUsersToRows(res.users));
+    } catch (e) {
+      setError("No se pudo cargar usuarios");
+      setData([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    refresh();
+  }, []);
 
   // Filtrar datos basado en la búsqueda
   const filteredData = useMemo(() => {
-    return tableData.filter(user =>
+    return data.filter(user =>
       user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.role.toLowerCase().includes(searchTerm.toLowerCase())
     );
-  }, [searchTerm]);
+  }, [searchTerm, data]);
 
   // Calcular datos paginados
   const paginatedData = useMemo(() => {
@@ -171,10 +99,23 @@ export default function BasicTableOne() {
     setCurrentPage(1); // Reset a la primera página al buscar
   };
 
-  const handleCreateUser = () => {
-    console.log("Crear nuevo usuario");
-    // Aquí iría la lógica para crear usuario
-    closeCreateModal();
+  const handleCreateUser = async () => {
+    try {
+      if (!isSuperadmin) return;
+      // Usar contraseña temporal para no alterar el diseño
+      await createUser({
+        email: createForm.email,
+        password: "Temporal123!",
+        role: roleLabelToApi(createForm.role),
+        display_name: createForm.name,
+      });
+      await refresh();
+      closeCreateModal();
+      setCreateForm({ name: "", email: "", role: "Administrador" });
+    } catch (e) {
+      console.error(e);
+      setError("No se pudo crear el usuario");
+    }
   };
 
   const handleEditUserClick = (user) => {
@@ -182,16 +123,29 @@ export default function BasicTableOne() {
     openEditModal();
   };
 
-  const handleSaveEdit = () => {
-    console.log("Guardar edición de usuario:", editingUser);
-    // Aquí iría la lógica para guardar la edición
-    setEditingUser(null);
-    closeEditModal();
+  const handleSaveEdit = async () => {
+    try {
+      if (!isSuperadmin || !editingUser?.id) return;
+      await updateUserRole(editingUser.id, roleLabelToApi(editingUser.role));
+      await refresh();
+    } catch (e) {
+      console.error(e);
+      setError("No se pudo actualizar el usuario");
+    } finally {
+      setEditingUser(null);
+      closeEditModal();
+    }
   };
 
-  const handleDeleteUser = (userId) => {
-    console.log("Eliminar usuario:", userId);
-    // Aquí iría la lógica para eliminar usuario
+  const handleDeleteUser = async (userId) => {
+    try {
+      if (!isSuperadmin) return;
+      await deleteUser(userId);
+      await refresh();
+    } catch (e) {
+      console.error(e);
+      setError("No se pudo eliminar el usuario");
+    }
   };
 
   const handlePageChange = (page) => {
@@ -215,11 +169,17 @@ export default function BasicTableOne() {
           onClick={openCreateModal}
           className="bg-orange-500 hover:bg-orange-600 text-white flex items-center gap-2"
           size="sm"
+          disabled={!isSuperadmin}
         >
           <PlusIcon className="w-4 h-4 fill-current" />
           Crear Usuario
         </Button>
       </div>
+      {error && (
+        <div className="p-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg dark:bg-red-900/20 dark:text-red-400 dark:border-red-800">
+          {error}
+        </div>
+      )}
       <Modal isOpen={isCreateModalOpen} onClose={closeCreateModal} className="max-w-[700px] m-4">
         <div className="no-scrollbar relative w-full max-w-[700px] overflow-y-auto rounded-3xl bg-white p-4 dark:bg-gray-900 lg:p-11">
           <div className="px-2 pr-14">
@@ -240,17 +200,17 @@ export default function BasicTableOne() {
                 <div className="grid grid-cols-1 gap-x-6 gap-y-5 lg:grid-cols-2">
                   <div className="col-span-2 lg:col-span-1">
                     <Label>Nombre</Label>
-                    <Input type="text" placeholder="Ingrese el nombre completo" />
+                    <Input type="text" placeholder="Ingrese el nombre completo" value={createForm.name} onChange={(e)=>setCreateForm(v=>({...v,name:e.target.value}))} />
                   </div>
 
                   <div className="col-span-2 lg:col-span-1">
                     <Label>Email</Label>
-                    <Input type="email" placeholder="usuario@hotelplaza.com" />
+                    <Input type="email" placeholder="usuario@hotelplaza.com" value={createForm.email} onChange={(e)=>setCreateForm(v=>({...v,email:e.target.value}))} />
                   </div>
 
                   <div className="col-span-2 lg:col-span-1">
                     <Label>Rol</Label>
-                    <Input type="text" placeholder="Administrador, Recepcionista, etc." />
+                    <Input type="text" placeholder="Administrador, Recepcionista, etc." value={createForm.role} onChange={(e)=>setCreateForm(v=>({...v,role:e.target.value}))} />
                   </div>
 
                   <div className="col-span-2 lg:col-span-1">
@@ -313,7 +273,7 @@ export default function BasicTableOne() {
 
                   <div className="col-span-2 lg:col-span-1">
                     <Label>Rol</Label>
-                    <Input type="text" defaultValue={editingUser?.role || ""} placeholder="Administrador, Recepcionista, etc." />
+                    <Input type="text" defaultValue={editingUser?.role || ""} onChange={(e)=>setEditingUser(prev=>({...prev, role: e.target.value}))} placeholder="Administrador, Recepcionista, etc." />
                   </div>
 
                   <div className="col-span-2 lg:col-span-1">
@@ -427,16 +387,18 @@ export default function BasicTableOne() {
                   <TableCell className="px-4 py-3 text-center">
                     <div className="flex items-center justify-center gap-2">
                       <button
-                        onClick={() => handleEditUserClick(user)}
+                        onClick={() => isSuperadmin && handleEditUserClick(user)}
                         className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-colors"
                         title="Editar usuario"
+                        disabled={!isSuperadmin}
                       >
                         <PencilIcon className="w-4 h-4 fill-current" />
                       </button>
                       <button
-                        onClick={() => handleDeleteUser(user.id)}
+                        onClick={() => isSuperadmin && handleDeleteUser(user.id)}
                         className="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg transition-colors"
                         title="Eliminar usuario"
+                        disabled={!isSuperadmin}
                       >
                         <TrashBinIcon className="w-4 h-4 fill-current" />
                       </button>

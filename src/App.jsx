@@ -15,6 +15,7 @@ import CajaCobros from './pages/Caja-cobros/CajaCobros'
 import Lavanderia from './pages/Lavanderia/Lavanderia'
 import Mantenimiento from './pages/Mantenimiento/Mantenimiento'
 import Perfil from './pages/Perfil'
+import Mensajes from './pages/Mensajes/Mensajes'
 
 function App() {
   return (
@@ -35,16 +36,16 @@ function App() {
               <AppLayout />
             </ProtectedRoute>
           }>
-            <Route path="/dashboard-admin" element={<Home />} />
-            <Route path="/calendar" element={<Calendar />} />
-            <Route path="/usuarios" element={<Users />} />
-            <Route path='/reservas' element={<Reservas/>}/>
-            <Route path='/caja-cobros' element={<CajaCobros/>}/>
-            <Route path='/lavanderia' element={<Lavanderia/>}/>
-            <Route path='/mantenimiento' element={<Mantenimiento/>}/>
-            <Route path="/chatbot" element={<Chatbot />} />
-            <Route path="/perfil" element={<Perfil />} />
-
+            <Route path="/admin/dashboard" element={<Home />} />
+            <Route path="/admin/calendar" element={<Calendar />} />
+            <Route path="/admin/usuarios" element={<Users />} />
+            <Route path='/admin/reservas' element={<Reservas/>}/>
+            <Route path='/admin/caja-cobros' element={<CajaCobros/>}/>
+            <Route path='/admin/lavanderia' element={<Lavanderia/>}/>
+            <Route path='/admin/mantenimiento' element={<Mantenimiento/>}/>
+            <Route path="/admin/chatbot" element={<Chatbot />} />
+            <Route path="/admin/perfil" element={<Perfil />} />
+            <Route path="/admin/mensajes" element={<Mensajes />} />
 
           </Route>
         </Routes>

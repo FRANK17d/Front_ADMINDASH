@@ -13,9 +13,9 @@ export default function PublicRoute({ children }) {
     );
   }
 
-  // Si el usuario está autenticado como admin, redirigir al dashboard
-  if (user && userRole === ROLES.ADMIN) {
-    return <Navigate to="/dashboard-admin" replace />;
+  // Si el usuario está autenticado como admin o superadmin, redirigir al dashboard
+  if (user && (userRole === ROLES.ADMIN || userRole === ROLES.SUPERADMIN)) {
+    return <Navigate to="/admin/dashboard" replace />;
   }
 
   // Si no está autenticado o es otro rol, mostrar la página pública

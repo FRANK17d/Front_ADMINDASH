@@ -5,9 +5,9 @@ import { auth } from '../firebase/config';
 const AuthContext = createContext();
 
 export const ROLES = {
+  SUPERADMIN: 'superadmin',
   ADMIN: 'admin',
-  RECEPTIONIST: 'receptionist', 
-  HOUSEKEEPING: 'housekeeping'
+  RECEPTIONIST: 'receptionist'
 };
 
 export const AuthProvider = ({ children }) => {
@@ -68,9 +68,10 @@ export const AuthProvider = ({ children }) => {
     loading,
     login,
     logout,
-    isAdmin: userRole === ROLES.ADMIN,
-    isReceptionist: userRole === ROLES.RECEPTIONIST,
-    isHousekeeping: userRole === ROLES.HOUSEKEEPING
+    isSuperadmin: userRole === ROLES.SUPERADMIN,
+    // isAdmin incluye superadmin para permisos del panel
+    isAdmin: userRole === ROLES.ADMIN || userRole === ROLES.SUPERADMIN,
+    isReceptionist: userRole === ROLES.RECEPTIONIST
   };
 
   return (

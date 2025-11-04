@@ -52,10 +52,10 @@ export default function SignInForm() {
     if (shouldRedirect && user && userRole && !loading) {
       console.log("Usuario autenticado:", user.email, "Rol:", userRole);
       
-      // Este panel es SOLO para administradores
-      if (userRole === ROLES.ADMIN) {
-        navigate('/dashboard-admin');
-      } else if (userRole === ROLES.RECEPTIONIST || userRole === ROLES.HOUSEKEEPING) {
+      // Este panel es SOLO para administradores (admin o superadmin)
+      if (userRole === ROLES.ADMIN || userRole === ROLES.SUPERADMIN) {
+        navigate('/admin/dashboard');
+      } else if (userRole === ROLES.RECEPTIONIST) {
         // Empleados no pueden usar este panel
         setError("general", {
           type: "server",
@@ -187,7 +187,7 @@ export default function SignInForm() {
                   <div className="flex items-center gap-3">
                     <Checkbox checked={isChecked} onChange={setIsChecked} />
                     <span className="block font-normal text-gray-700 text-theme-sm dark:text-gray-400">
-                      Mantener sesión iniciada
+                    Siempre conectado
                     </span>
                   </div>
                   <Link

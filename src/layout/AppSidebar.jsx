@@ -11,7 +11,8 @@ import {
   ChatBotIcon,
   DollarLineIcon,
   TaskIcon,
-  PlugInIcon
+  PlugInIcon,
+  MailIcon,
 } from "../icons";
 import { useSidebar } from "../context/SiderbarContext";
 import SidebarWidget from "./SidebarWidget";
@@ -20,37 +21,42 @@ const navItems = [
   {
     icon: <GridIcon />,
     name: "Dashboard",
-    path: "/dashboard-admin",
+    path: "/admin/dashboard",
   },
   {
     icon: <UserIcon />,
     name: "Usuarios",
-    path: "/usuarios",
+    path: "/admin/usuarios",
   },
   {
     icon: <CalenderIcon/>,
     name: "Reservas",
-    path: "/reservas",
+    path: "/admin/reservas",
   },
   {
     icon: <DollarLineIcon/>,
     name: "Caja de Cobros",
-    path: "/caja-cobros",
+    path: "/admin/caja-cobros",
   },
   {
     icon: <TaskIcon/>,
     name: "Lavanderia",
-    path: "/lavanderia",
+    path: "/admin/lavanderia",
   },
   {
     icon: <PlugInIcon/>,
     name: "Mantenimiento",
-    path: "/mantenimiento",
+    path: "/admin/mantenimiento",
+  },
+  {
+    icon: <MailIcon/>,
+    name: "Mensajes",
+    path: "/admin/mensajes",
   },
   {
     icon: <ChatBotIcon />,
     name: "ChatBot",
-    path: "/chatbot",
+    path: "/admin/chatbot",
   }
 ];
 
