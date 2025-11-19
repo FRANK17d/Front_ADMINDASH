@@ -37,7 +37,9 @@ export const AuthProvider = ({ children }) => {
   const login = async (email, password, rememberMe = false) => {
     try {
       // Configurar persistencia basada en el checkbox
-      const persistence = rememberMe ? browserLocalPersistence : browserSessionPersistence;
+      const persistence = import.meta?.env?.DEV
+        ? (rememberMe ? browserLocalPersistence : browserSessionPersistence)
+        : browserLocalPersistence;
       await setPersistence(auth, persistence);
       
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
