@@ -9,9 +9,14 @@ import {
 } from "../../components/ui/table";
 import Badge from "../../components/ui/badge/Badge";
 import Button from "../../components/ui/button/Button";
+import { Modal } from "../../components/ui/modal";
+import { useModal } from "../../hooks/useModal";
 
 const CajaCobros = () => {
   const [transactions, setTransactions] = useState([]);
+  const { isOpen: isReceiptOpen, openModal: openReceiptModal, closeModal: closeReceiptModal } = useModal();
+  const [selectedTransaction, setSelectedTransaction] = useState(null);
+  const [receiptForm, setReceiptForm] = useState({ numero: "", fecha: "", senores: "", direccion: "", dni: "", concepto: "", importe: "", total: "", son: "", canceladoFecha: "" });
 
   useEffect(() => {
     document.title = "Caja y Cobros - Administrador - Hotel Plaza Trujillo";
@@ -153,6 +158,28 @@ const CajaCobros = () => {
     console.log("Arque de caja");
   };
 
+  const handleEmitReceipt = (transaction) => {
+    setSelectedTransaction(transaction);
+    setReceiptForm({
+      numero: String(962 + transaction.id).padStart(5, "0"),
+      fecha: new Date().toISOString().slice(0, 10),
+      senores: transaction.guest,
+      direccion: "",
+      dni: "",
+      concepto: transaction.type,
+      importe: transaction.amount,
+      total: transaction.amount,
+      son: "",
+      canceladoFecha: new Date().toISOString().slice(0, 10),
+    });
+    openReceiptModal();
+  };
+
+  const handleReceiptChange = (e) => {
+    const { name, value } = e.target;
+    setReceiptForm((prev) => ({ ...prev, [name]: value }));
+  };
+
   return (
     <div className="space-y-6">
       {/* Header con botones */}
@@ -260,12 +287,8 @@ const CajaCobros = () => {
                     >
                       Hora
                     </TableCell>
-                    <TableCell
-                      isHeader
-                      className="py-3.5 px-2 sm:px-4 font-medium text-gray-500 text-center text-theme-xs dark:text-gray-400"
-                    >
-                      Estado
-                    </TableCell>
+                    <TableCell isHeader className="py-3.5 px-2 sm:px-4 font-medium text-gray-500 text-center text-theme-xs dark:text-gray-400">Estado</TableCell>
+                    <TableCell isHeader className="py-3.5 px-2 sm:px-4 font-medium text-gray-500 text-center text-theme-xs dark:text-gray-400">Acciones</TableCell>
                   </TableRow>
                 </TableHeader>
                 <TableBody className="divide-y divide-gray-100 dark:divide-gray-800">
@@ -296,9 +319,10 @@ const CajaCobros = () => {
                         {transaction.time}
                       </TableCell>
                       <TableCell className="py-3.5 px-2 sm:px-4">
-                        <Badge size="sm" color="success">
-                          {transaction.status}
-                        </Badge>
+                        <Badge size="sm" color="success">{transaction.status}</Badge>
+                      </TableCell>
+                      <TableCell className="py-3.5 px-2 sm:px-4 text-center">
+                        <Button size="sm" onClick={() => handleEmitReceipt(transaction)} className="bg-orange-500 hover:bg-orange-600 text-white">Emitir Recibo</Button>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -308,6 +332,67 @@ const CajaCobros = () => {
           </div>
         </div>
       </div>
+      <Modal isOpen={isReceiptOpen} onClose={closeReceiptModal} className="max-w-[700px] m-4">
+        <div className="no-scrollbar relative w-full max-w-[700px] overflow-y-auto rounded-3xl bg-white p-4 dark:bg-gray-900 lg:p-11">
+          <div className="px-2 pr-14">
+            <h4 className="mb-2 text-2xl font-semibold text-gray-800 dark:text-white/90">Recibo de Caja</h4>
+          </div>
+          <div className="px-2 space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-400">N°</label>
+                <input name="numero" value={receiptForm.numero} onChange={handleReceiptChange} type="text" className="h-11 w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-800 focus:border-orange-300 focus:outline-hidden focus:ring-3 focus:ring-orange-500/20 dark:bg-black dark:text-white dark:border-gray-700" />
+              </div>
+              <div>
+                <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-400">Fecha</label>
+                <input name="fecha" value={receiptForm.fecha} onChange={handleReceiptChange} type="date" className="h-11 w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-800 focus:border-orange-300 focus:outline-hidden focus:ring-3 focus:ring-orange-500/20 dark:bg-black dark:text-white dark:border-gray-700" />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-400">Señor(es)</label>
+                <input name="senores" value={receiptForm.senores} onChange={handleReceiptChange} type="text" className="h-11 w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-800 focus:border-orange-300 focus:outline-hidden focus:ring-3 focus:ring-orange-500/20 dark:bg-black dark:text-white dark:border-gray-700" />
+              </div>
+              <div>
+                <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-400">D.N.I.</label>
+                <input name="dni" value={receiptForm.dni} onChange={handleReceiptChange} type="text" className="h-11 w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-800 focus:border-orange-300 focus:outline-hidden focus:ring-3 focus:ring-orange-500/20 dark:bg-black dark:text-white dark:border-gray-700" />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-400">Dirección</label>
+                <input name="direccion" value={receiptForm.direccion} onChange={handleReceiptChange} type="text" className="h-11 w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-800 focus:border-orange-300 focus:outline-hidden focus:ring-3 focus:ring-orange-500/20 dark:bg-black dark:text-white dark:border-gray-700" />
+              </div>
+              <div>
+                <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-400">Importe</label>
+                <input name="importe" value={receiptForm.importe} onChange={handleReceiptChange} type="number" step="0.01" className="h-11 w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-800 focus:border-orange-300 focus:outline-hidden focus:ring-3 focus:ring-orange-500/20 dark:bg-black dark:text-white dark:border-gray-700" />
+              </div>
+            </div>
+            <div>
+              <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-400">Por concepto de</label>
+              <textarea name="concepto" value={receiptForm.concepto} onChange={handleReceiptChange} className="min-h-24 w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-800 focus:border-orange-300 focus:outline-hidden focus:ring-3 focus:ring-orange-500/20 dark:bg-black dark:text-white dark:border-gray-700" />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-400">Son</label>
+                <input name="son" value={receiptForm.son} onChange={handleReceiptChange} type="text" placeholder="Monto en letras" className="h-11 w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-800 focus:border-orange-300 focus:outline-hidden focus:ring-3 focus:ring-orange-500/20 dark:bg-black dark:text-white dark:border-gray-700" />
+              </div>
+              <div>
+                <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-400">Total S/.</label>
+                <input name="total" value={receiptForm.total} onChange={handleReceiptChange} type="number" step="0.01" className="h-11 w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-800 focus:border-orange-300 focus:outline-hidden focus:ring-3 focus:ring-orange-500/20 dark:bg-black dark:text-white dark:border-gray-700" />
+              </div>
+            </div>
+            <div>
+              <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-400">Cancelado (Fecha)</label>
+              <input name="canceladoFecha" value={receiptForm.canceladoFecha} onChange={handleReceiptChange} type="date" className="h-11 w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-800 focus:border-orange-300 focus:outline-hidden focus:ring-3 focus:ring-orange-500/20 dark:bg-black dark:text-white dark:border-gray-700" />
+            </div>
+          </div>
+          <div className="flex items-center gap-3 px-2 mt-6 lg:justify-end">
+            <Button size="sm" variant="outline" onClick={closeReceiptModal}>Cerrar</Button>
+            <Button size="sm" className="bg-orange-500 hover:bg-orange-600">Imprimir</Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };

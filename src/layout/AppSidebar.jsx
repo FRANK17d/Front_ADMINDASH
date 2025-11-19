@@ -15,55 +15,64 @@ import {
   MailIcon,
 } from "../icons";
 import { useSidebar } from "../context/SiderbarContext";
+import { useAuth, ROLES } from "../context/AuthContext";
 import SidebarWidget from "./SidebarWidget";
-
-const navItems = [
-  {
-    icon: <GridIcon />,
-    name: "Dashboard",
-    path: "/admin/dashboard",
-  },
-  {
-    icon: <UserIcon />,
-    name: "Usuarios",
-    path: "/admin/usuarios",
-  },
-  {
-    icon: <CalenderIcon/>,
-    name: "Reservas",
-    path: "/admin/reservas",
-  },
-  {
-    icon: <DollarLineIcon/>,
-    name: "Caja de Cobros",
-    path: "/admin/caja-cobros",
-  },
-  {
-    icon: <TaskIcon/>,
-    name: "Lavanderia",
-    path: "/admin/lavanderia",
-  },
-  {
-    icon: <PlugInIcon/>,
-    name: "Mantenimiento",
-    path: "/admin/mantenimiento",
-  },
-  {
-    icon: <MailIcon/>,
-    name: "Mensajes",
-    path: "/admin/mensajes",
-  },
-  {
-    icon: <ChatBotIcon />,
-    name: "ChatBot",
-    path: "/admin/chatbot",
-  }
-];
-
 
 const AppSidebar = () => {
   const { isExpanded, isMobileOpen, isHovered, setIsHovered, toggleMobileSidebar } = useSidebar();
+  const { userRole } = useAuth();
   const location = useLocation();
+
+  // Determinar el prefijo de ruta según el rol
+  const routePrefix = userRole === ROLES.RECEPTIONIST ? '/recepcionista' : (userRole === ROLES.HOUSEKEEPING ? '/hoteler' : '/admin');
+
+  // Configurar los items del menú con rutas dinámicas
+  const navItems = [
+    {
+      icon: <GridIcon />,
+      name: "Dashboard",
+      path: `${routePrefix}/dashboard`,
+    },
+    {
+      icon: <UserIcon />,
+      name: "Usuarios",
+      path: `${routePrefix}/usuarios`,
+      allowedRoles: [ROLES.ADMIN],
+    },
+    {
+      icon: <CalenderIcon/>,
+      name: "Reservas",
+      path: `${routePrefix}/reservas`,
+    },
+    {
+      icon: <DollarLineIcon/>,
+      name: "Caja de Cobros",
+      path: `${routePrefix}/caja-cobros`,
+      allowedRoles: [ROLES.ADMIN, ROLES.RECEPTIONIST],
+    },
+    {
+      icon: <TaskIcon/>,
+      name: "Lavanderia",
+      path: `${routePrefix}/lavanderia`,
+      allowedRoles: [ROLES.ADMIN, ROLES.HOUSEKEEPING],
+    },
+    {
+      icon: <PlugInIcon/>,
+      name: "Mantenimiento",
+      path: `${routePrefix}/mantenimiento`,
+      allowedRoles: [ROLES.ADMIN, ROLES.HOUSEKEEPING],
+    },
+    {
+      icon: <MailIcon/>,
+      name: "Mensajes",
+      path: `${routePrefix}/mensajes`,
+    },
+    {
+      icon: <ChatBotIcon />,
+      name: "ChatBot",
+      path: `${routePrefix}/chatbot`,
+    }
+  ];
 
   const [openSubmenu, setOpenSubmenu] = useState(null);
   const [subMenuHeight, setSubMenuHeight] = useState({});
@@ -123,7 +132,7 @@ const AppSidebar = () => {
 
   const renderMenuItems = (items, menuType) => (
     <ul className="flex flex-col gap-4">
-      {items.map((nav, index) => (
+      {items.filter(nav => !nav.allowedRoles || nav.allowedRoles.includes(userRole)).map((nav, index) => (
         <li key={nav.name}>
           {nav.subItems ? (
             <button

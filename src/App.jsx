@@ -1,11 +1,11 @@
 import { ScrollToTop } from './components/common/ScrollToTop'
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
-import { AuthProvider } from './context/AuthContext'
+import { AuthProvider, ROLES } from './context/AuthContext'
 import ProtectedRoute from './components/common/ProtectedRoute'
 import PublicRoute from './components/common/PublicRoute'
+import RoleRoute from './components/common/RoleRoute'
 import AppLayout from './layout/AppLayout'
 import Home from './pages/Dashboard/Home'
-import Calendar from './pages/Calendar'
 import SignIn from './pages/AuthPages/SignIn'
 import Users from './pages/Users/Users'
 import ForgotPass from './pages/AuthPages/ForgotPass'
@@ -30,23 +30,186 @@ function App() {
           <Route path="/iniciar-sesion" element={<PublicRoute><SignIn /></PublicRoute>} />
           <Route path="/recuperar-contraseña" element={<PublicRoute><ForgotPass /></PublicRoute>} />
 
-          {/* Dashboard Admin - Rutas protegidas solo para administradores */}
+          {/* Dashboard - Rutas protegidas */}
           <Route element={
             <ProtectedRoute>
               <AppLayout />
             </ProtectedRoute>
           }>
-            <Route path="/admin/dashboard" element={<Home />} />
-            <Route path="/admin/calendar" element={<Calendar />} />
-            <Route path="/admin/usuarios" element={<Users />} />
-            <Route path='/admin/reservas' element={<Reservas/>}/>
-            <Route path='/admin/caja-cobros' element={<CajaCobros/>}/>
-            <Route path='/admin/lavanderia' element={<Lavanderia/>}/>
-            <Route path='/admin/mantenimiento' element={<Mantenimiento/>}/>
-            <Route path="/admin/chatbot" element={<Chatbot />} />
-            <Route path="/admin/perfil" element={<Perfil />} />
-            <Route path="/admin/mensajes" element={<Mensajes />} />
+            {/* Rutas para ADMIN */}
+            <Route 
+              path="/admin/dashboard" 
+              element={
+                <RoleRoute allowedRoles={[ROLES.ADMIN]}>
+                  <Home />
+                </RoleRoute>
+              } 
+            />
+            <Route 
+              path='/admin/reservas' 
+              element={
+                <RoleRoute allowedRoles={[ROLES.ADMIN]}>
+                  <Reservas/>
+                </RoleRoute>
+              }
+            />
+            <Route 
+              path='/admin/caja-cobros' 
+              element={
+                <RoleRoute allowedRoles={[ROLES.ADMIN]}>
+                  <CajaCobros/>
+                </RoleRoute>
+              }
+            />
+            <Route 
+              path='/admin/lavanderia' 
+              element={
+                <RoleRoute allowedRoles={[ROLES.ADMIN]}>
+                  <Lavanderia/>
+                </RoleRoute>
+              }
+            />
+            <Route 
+              path='/admin/mantenimiento' 
+              element={
+                <RoleRoute allowedRoles={[ROLES.ADMIN]}>
+                  <Mantenimiento/>
+                </RoleRoute>
+              }
+            />
+            <Route 
+              path="/admin/chatbot" 
+              element={
+                <RoleRoute allowedRoles={[ROLES.ADMIN]}>
+                  <Chatbot />
+                </RoleRoute>
+              } 
+            />
+            <Route 
+              path="/admin/perfil" 
+              element={
+                <RoleRoute allowedRoles={[ROLES.ADMIN]}>
+                  <Perfil />
+                </RoleRoute>
+              } 
+            />
+            <Route 
+              path="/admin/mensajes" 
+              element={
+                <RoleRoute allowedRoles={[ROLES.ADMIN]}>
+                  <Mensajes />
+                </RoleRoute>
+              } 
+            />
+            <Route 
+              path="/admin/usuarios" 
+              element={
+                <RoleRoute allowedRoles={[ROLES.ADMIN]}>
+                  <Users />
+                </RoleRoute>
+              } 
+            />
 
+          {/* Rutas para RECEPCIONISTA - Protegidas */}
+            <Route 
+              path="/recepcionista/dashboard" 
+              element={
+                <RoleRoute allowedRoles={[ROLES.RECEPTIONIST]}>
+                  <Home />
+                </RoleRoute>
+              } 
+            />
+            <Route 
+              path='/recepcionista/reservas' 
+              element={
+                <RoleRoute allowedRoles={[ROLES.RECEPTIONIST]}>
+                  <Reservas/>
+                </RoleRoute>
+              }
+            />
+            <Route 
+              path='/recepcionista/caja-cobros' 
+              element={
+                <RoleRoute allowedRoles={[ROLES.RECEPTIONIST]}>
+                  <CajaCobros/>
+                </RoleRoute>
+              }
+            />
+            
+            <Route 
+              path="/recepcionista/chatbot" 
+              element={
+                <RoleRoute allowedRoles={[ROLES.RECEPTIONIST]}>
+                  <Chatbot />
+                </RoleRoute>
+              } 
+            />
+            <Route 
+              path="/recepcionista/perfil" 
+              element={
+                <RoleRoute allowedRoles={[ROLES.RECEPTIONIST]}>
+                  <Perfil />
+                </RoleRoute>
+              } 
+            />
+            <Route 
+              path="/recepcionista/mensajes" 
+              element={
+                <RoleRoute allowedRoles={[ROLES.RECEPTIONIST]}>
+                  <Mensajes />
+                </RoleRoute>
+              } 
+            />
+
+            {/* Rutas para HOUSEKEEPING - Protegidas */}
+            <Route 
+              path="/hoteler/dashboard" 
+              element={
+                <RoleRoute allowedRoles={[ROLES.HOUSEKEEPING]}>
+                  <Home />
+                </RoleRoute>
+              } 
+            />
+            <Route 
+              path='/hoteler/reservas' 
+              element={
+                <RoleRoute allowedRoles={[ROLES.HOUSEKEEPING]}>
+                  <Reservas/>
+                </RoleRoute>
+              }
+            />
+            <Route 
+              path='/hoteler/lavanderia' 
+              element={
+                <RoleRoute allowedRoles={[ROLES.HOUSEKEEPING]}>
+                  <Lavanderia/>
+                </RoleRoute>
+              }
+            />
+            <Route 
+              path='/hoteler/mantenimiento' 
+              element={
+                <RoleRoute allowedRoles={[ROLES.HOUSEKEEPING]}>
+                  <Mantenimiento/>
+                </RoleRoute>
+              }
+            />
+            <Route 
+              path="/hoteler/chatbot" 
+              element={
+                <RoleRoute allowedRoles={[ROLES.HOUSEKEEPING]}>
+                  <Chatbot />
+                </RoleRoute>
+              } 
+            />
+            <Route 
+              path="/hoteler/mensajes" 
+              element={
+                <RoleRoute allowedRoles={[ROLES.HOUSEKEEPING]}>
+                  <Mensajes />
+                </RoleRoute>
+              } 
+            />
           </Route>
         </Routes>
       </Router>

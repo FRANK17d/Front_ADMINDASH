@@ -18,12 +18,12 @@ export default function ProtectedRoute({ children }) {
     return <Navigate to="/iniciar-sesion" replace />;
   }
 
-  // Solo permitir acceso a ADMIN o SUPERADMIN
-  if (userRole === ROLES.ADMIN || userRole === ROLES.SUPERADMIN) {
+  // Permitir acceso a ADMIN, RECEPTIONIST y HOUSEKEEPING
+  if (userRole === ROLES.ADMIN || userRole === ROLES.RECEPTIONIST || userRole === ROLES.HOUSEKEEPING) {
     return children;
   }
 
-  // Cualquier otro rol (incluyendo empleados) no tiene acceso
+  // Cualquier otro rol no tiene acceso
   return <Navigate to="/iniciar-sesion" replace />;
 }
 

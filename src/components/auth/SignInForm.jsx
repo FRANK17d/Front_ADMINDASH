@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router";
+import { Link, useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
@@ -52,29 +52,15 @@ export default function SignInForm() {
     if (shouldRedirect && user && userRole && !loading) {
       console.log("Usuario autenticado:", user.email, "Rol:", userRole);
       
-      // Este panel es SOLO para administradores (admin o superadmin)
-      if (userRole === ROLES.ADMIN || userRole === ROLES.SUPERADMIN) {
+      if (userRole === ROLES.ADMIN) {
         navigate('/admin/dashboard');
       } else if (userRole === ROLES.RECEPTIONIST) {
-        // Empleados no pueden usar este panel
-        setError("general", {
-          type: "server",
-          message: "Este portal es solo para administradores. Los empleados deben acceder al panel de empleados.",
-        });
-        setShouldRedirect(false);
-        
-        // Hacer logout automático para empleados que intentan acceder al panel admin
-        setTimeout(async () => {
-          try {
-            await logout();
-            console.log("Logout automático realizado para empleado que intentó acceder al panel admin");
-          } catch (error) {
-            console.error("Error al hacer logout:", error);
-          }
-        }, 3000); // Esperar 3 segundos para que el usuario lea el mensaje
+        navigate('/recepcionista/dashboard');
+      } else if (userRole === ROLES.HOUSEKEEPING) {
+        navigate('/hoteler/dashboard');
       }
     }
-  }, [shouldRedirect, user, userRole, loading, navigate, setError, logout]);
+  }, [shouldRedirect, user, userRole, loading, navigate]);
 
   const onSubmit = async (data) => {
     setIsLoading(true);
@@ -127,10 +113,10 @@ export default function SignInForm() {
               </div>
             </div>
             <h1 className="mb-2 font-bold text-center text-gray-900 text-title-sm dark:text-white sm:text-title-md">
-              Panel de Administrador
+              Hotel Plaza Trujillo
             </h1>
             <p className="text-sm text-center text-gray-600 dark:text-gray-400">
-              Acceso exclusivo para administradores del hotel
+              Sistema de Gestión Hotelera
             </p>
           </div>
           <div>
@@ -139,7 +125,7 @@ export default function SignInForm() {
                 {/* Error general */}
                 {errors.general && (
                   <div className="p-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg dark:bg-red-900/20 dark:text-red-400 dark:border-red-800">
-                    {errors.general.message}
+                    <p className="mb-2">{errors.general.message}</p>
                   </div>
                 )}
 
@@ -213,13 +199,12 @@ export default function SignInForm() {
                         Verificando credenciales...
                       </span>
                     ) : (
-                      "Acceder al Panel"
+                      "Iniciar Sesión"
                     )}
                   </Button>
                 </div>
               </div>
             </form>
-
           </div>
         </div>
       </div>

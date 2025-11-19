@@ -1,8 +1,8 @@
-import { Navigate } from "react-router-dom";
-import { useAuth, ROLES } from "../../context/AuthContext";
+import { Navigate } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 
-export default function PublicRoute({ children }) {
-  const { user, userRole, loading } = useAuth();
+export default function RoleRoute({ children, allowedRoles }) {
+  const { userRole, loading } = useAuth();
 
   // Mostrar un loader mientras se verifica la autenticación
   if (loading) {
@@ -13,13 +13,12 @@ export default function PublicRoute({ children }) {
     );
   }
 
-  if (user && userRole) {
+  // Si el rol del usuario no está en la lista de roles permitidos, redirigir al dashboard correspondiente
+  if (!allowedRoles.includes(userRole)) {
     const dashboardPath =
-      userRole === ROLES.ADMIN
-        ? '/admin/dashboard'
-        : userRole === ROLES.RECEPTIONIST
+      userRole === 'receptionist'
         ? '/recepcionista/dashboard'
-        : userRole === ROLES.HOUSEKEEPING
+        : userRole === 'housekeeping'
         ? '/hoteler/dashboard'
         : '/admin/dashboard';
     return <Navigate to={dashboardPath} replace />;
@@ -27,4 +26,3 @@ export default function PublicRoute({ children }) {
 
   return children;
 }
-

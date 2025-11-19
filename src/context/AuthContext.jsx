@@ -5,9 +5,9 @@ import { auth } from '../firebase/config';
 const AuthContext = createContext();
 
 export const ROLES = {
-  SUPERADMIN: 'superadmin',
   ADMIN: 'admin',
-  RECEPTIONIST: 'receptionist'
+  RECEPTIONIST: 'receptionist',
+  HOUSEKEEPING: 'housekeeping'
 };
 
 export const AuthProvider = ({ children }) => {
@@ -41,17 +41,17 @@ export const AuthProvider = ({ children }) => {
       await setPersistence(auth, persistence);
       
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      
+
       // Verificar el rol después del login
       const tokenResult = await userCredential.user.getIdTokenResult();
       const role = tokenResult.claims.role;
-      
+
       // Si no tiene rol asignado, hacer logout inmediatamente y lanzar error
       if (!role) {
         await signOut(auth);
         throw new Error('NO_ROLE_ASSIGNED');
       }
-      
+
       return userCredential.user;
     } catch (error) {
       throw error;
@@ -68,10 +68,9 @@ export const AuthProvider = ({ children }) => {
     loading,
     login,
     logout,
-    isSuperadmin: userRole === ROLES.SUPERADMIN,
-    // isAdmin incluye superadmin para permisos del panel
-    isAdmin: userRole === ROLES.ADMIN || userRole === ROLES.SUPERADMIN,
-    isReceptionist: userRole === ROLES.RECEPTIONIST
+    isAdmin: userRole === ROLES.ADMIN,
+    isReceptionist: userRole === ROLES.RECEPTIONIST,
+    isHousekeeping: userRole === ROLES.HOUSEKEEPING
   };
 
   return (

@@ -12,7 +12,7 @@ export default function SidebarWidget() {
           Sistema de administración para la gestión integral del hotel.
         </p>
         <a
-          href="/dashboard-admin"
+          href="/admin/dashboard"
           className="flex items-center justify-center p-3 font-medium text-white rounded-lg bg-orange-500 text-theme-sm hover:bg-orange-600"
         >
           Ir al Dashboard

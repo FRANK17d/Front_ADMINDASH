@@ -86,14 +86,14 @@ const AppHeader = () => {
           <Link to="/" className="lg:hidden">
             <img
               className="dark:hidden"
-              src="./images/logo/logo-light.png"
+              src="/images/logo/logo-light.png"
               alt="Logo"
               width={150}
               height={40}
             />
             <img
               className="hidden dark:block"
-              src="./images/logo/logo-dark.png"
+              src="/images/logo/logo-dark.png"
               alt="Logo"
               width={150}
               height={40}

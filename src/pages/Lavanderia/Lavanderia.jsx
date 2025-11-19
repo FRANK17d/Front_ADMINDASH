@@ -9,10 +9,27 @@ import {
 } from "../../components/ui/table";
 import Badge from "../../components/ui/badge/Badge";
 import Button from "../../components/ui/button/Button";
+import { Modal } from "../../components/ui/modal";
+import { useModal } from "../../hooks/useModal";
 
 const Lavanderia = () => {
   const [inventory, setInventory] = useState([]);
   const [movements, setMovements] = useState([]);
+  const { isOpen: isLaundryOpen, openModal: openLaundryModal, closeModal: closeLaundryModal } = useModal();
+  const [laundryForm, setLaundryForm] = useState({
+    numero: "",
+    habitacion: "",
+    fecha: "",
+    hora: "",
+    nombre: "",
+    toallas: 0,
+    sabanas: 0,
+    fundas: 0,
+    express: false,
+    observaciones: "",
+    total: "",
+    codigo: "",
+  });
 
   useEffect(() => {
     document.title = "Control de Lavandería - Administrador - Hotel Plaza Trujillo";
@@ -149,13 +166,38 @@ const Lavanderia = () => {
   };
 
   const handleEnviarLavanderia = () => {
-    // Función para enviar a lavandería
-    console.log("Enviar a lavandería");
+    setLaundryForm((prev) => ({
+      ...prev,
+      numero: String(1573 + movements.length + 1),
+      fecha: new Date().toISOString().slice(0, 10),
+      hora: new Date().toTimeString().slice(0, 5),
+    }));
+    openLaundryModal();
   };
 
   const handleRegistrarRetorno = () => {
     // Función para registrar retorno
     console.log("Registrar retorno");
+  };
+
+  const handleLaundryChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setLaundryForm((prev) => ({ ...prev, [name]: type === "checkbox" ? checked : value }));
+  };
+
+  const handleGuardarEnvio = () => {
+    const nuevo = {
+      id: movements.length + 1,
+      fechaEnvio: laundryForm.fecha || new Date().toISOString().slice(0, 10),
+      habitacion: laundryForm.habitacion || "-",
+      toallas: Number(laundryForm.toallas || 0),
+      sabanas: Number(laundryForm.sabanas || 0),
+      fundas: Number(laundryForm.fundas || 0),
+      estado: laundryForm.express ? "En Lavandería (Express)" : "En Lavandería",
+      fechaRetorno: "-",
+    };
+    setMovements((prev) => [nuevo, ...prev]);
+    closeLaundryModal();
   };
 
   return (
@@ -274,6 +316,76 @@ const Lavanderia = () => {
           </div>
         </div>
       </div>
+
+      <Modal isOpen={isLaundryOpen} onClose={closeLaundryModal} className="max-w-[700px] m-4">
+        <div className="no-scrollbar relative w-full max-w-[700px] overflow-y-auto rounded-3xl bg-white p-4 dark:bg-gray-900 lg:p-11">
+          <div className="px-2 pr-14">
+            <h4 className="mb-2 text-2xl font-semibold text-gray-800 dark:text-white/90">Ficha de Lavandería</h4>
+          </div>
+          <div className="px-2 space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-400">N°</label>
+                <input name="numero" value={laundryForm.numero} onChange={handleLaundryChange} type="text" className="h-11 w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-800 focus:border-orange-300 focus:outline-hidden focus:ring-3 focus:ring-orange-500/20 dark:bg-black dark:text-white dark:border-gray-700" />
+              </div>
+              <div>
+                <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-400">Habitación</label>
+                <input name="habitacion" value={laundryForm.habitacion} onChange={handleLaundryChange} type="text" className="h-11 w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-800 focus:border-orange-300 focus:outline-hidden focus:ring-3 focus:ring-orange-500/20 dark:bg-black dark:text-white dark:border-gray-700" />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-400">Fecha</label>
+                <input name="fecha" value={laundryForm.fecha} onChange={handleLaundryChange} type="date" className="h-11 w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-800 focus:border-orange-300 focus:outline-hidden focus:ring-3 focus:ring-orange-500/20 dark:bg-black dark:text-white dark:border-gray-700" />
+              </div>
+              <div>
+                <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-400">Hora</label>
+                <input name="hora" value={laundryForm.hora} onChange={handleLaundryChange} type="time" className="h-11 w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-800 focus:border-orange-300 focus:outline-hidden focus:ring-3 focus:ring-orange-500/20 dark:bg-black dark:text-white dark:border-gray-700" />
+              </div>
+            </div>
+            <div>
+              <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-400">Nombre</label>
+              <input name="nombre" value={laundryForm.nombre} onChange={handleLaundryChange} type="text" className="h-11 w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-800 focus:border-orange-300 focus:outline-hidden focus:ring-3 focus:ring-orange-500/20 dark:bg-black dark:text-white dark:border-gray-700" />
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-400">Toallas</label>
+                <input name="toallas" value={laundryForm.toallas} onChange={handleLaundryChange} type="number" min="0" className="h-11 w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-800 focus:border-orange-300 focus:outline-hidden focus:ring-3 focus:ring-orange-500/20 dark:bg-black dark:text-white dark:border-gray-700" />
+              </div>
+              <div>
+                <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-400">Sábanas</label>
+                <input name="sabanas" value={laundryForm.sabanas} onChange={handleLaundryChange} type="number" min="0" className="h-11 w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-800 focus:border-orange-300 focus:outline-hidden focus:ring-3 focus:ring-orange-500/20 dark:bg-black dark:text-white dark:border-gray-700" />
+              </div>
+              <div>
+                <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-400">Fundas</label>
+                <input name="fundas" value={laundryForm.fundas} onChange={handleLaundryChange} type="number" min="0" className="h-11 w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-800 focus:border-orange-300 focus:outline-hidden focus:ring-3 focus:ring-orange-500/20 dark:bg-black dark:text-white dark:border-gray-700" />
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <input id="express" name="express" type="checkbox" checked={laundryForm.express} onChange={handleLaundryChange} className="w-4 h-4 rounded border-gray-300 text-orange-600 focus:ring-orange-500" />
+              <label htmlFor="express" className="text-sm text-gray-700 dark:text-gray-400">Lavado Express</label>
+            </div>
+            <div>
+              <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-400">Observaciones</label>
+              <textarea name="observaciones" value={laundryForm.observaciones} onChange={handleLaundryChange} className="min-h-24 w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-800 focus:border-orange-300 focus:outline-hidden focus:ring-3 focus:ring-orange-500/20 dark:bg-black dark:text-white dark:border-gray-700" />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-400">Total S/.</label>
+                <input name="total" value={laundryForm.total} onChange={handleLaundryChange} type="number" step="0.01" className="h-11 w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-800 focus:border-orange-300 focus:outline-hidden focus:ring-3 focus:ring-orange-500/20 dark:bg-black dark:text-white dark:border-gray-700" />
+              </div>
+              <div>
+                <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-400">Código</label>
+                <input name="codigo" value={laundryForm.codigo} onChange={handleLaundryChange} type="text" className="h-11 w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-800 focus:border-orange-300 focus:outline-hidden focus:ring-3 focus:ring-orange-500/20 dark:bg-black dark:text-white dark:border-gray-700" />
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 px-2 mt-6 lg:justify-end">
+            <Button size="sm" variant="outline" onClick={closeLaundryModal}>Cancelar</Button>
+            <Button size="sm" className="bg-orange-500 hover:bg-orange-600" onClick={handleGuardarEnvio}>Guardar Envío</Button>
+          </div>
+        </div>
+      </Modal>
 
       {/* Tabla de Últimos Movimientos */}
       <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-black">

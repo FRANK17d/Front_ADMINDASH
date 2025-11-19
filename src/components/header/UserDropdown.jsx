@@ -1,13 +1,38 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { DropdownItem } from "../ui/dropdown/DropdownItem";
 import { Dropdown } from "../ui/dropdown/Dropdown";
 import { Link, useNavigate } from "react-router";
 import { useAuth } from "../../context/AuthContext";
+import { getOwnProfile } from "../../api/users";
 
 export default function UserDropdown() {
   const [isOpen, setIsOpen] = useState(false);
-  const { user, logout } = useAuth();
+  const { user, userRole, logout } = useAuth();
   const navigate = useNavigate();
+  const [profilePhotoUrl, setProfilePhotoUrl] = useState('');
+
+  useEffect(() => {
+    const loadProfile = async () => {
+      try {
+        const profile = await getOwnProfile();
+        if (profile?.profile_photo_url) {
+          setProfilePhotoUrl(profile.profile_photo_url);
+        }
+      } catch (error) {
+        console.error('Error cargando perfil:', error);
+      }
+    };
+    
+    loadProfile();
+  }, []);
+
+  // Función para formatear el rol
+  const getRoleLabel = (role) => {
+    if (role === 'admin') return 'Administrador';
+    if (role === 'receptionist') return 'Recepcionista';
+    if (role === 'housekeeping') return 'Hotelero';
+    return 'Usuario';
+  };
 
   function toggleDropdown() {
     setIsOpen(!isOpen);
@@ -34,12 +59,30 @@ export default function UserDropdown() {
         onClick={toggleDropdown}
         className="flex items-center text-gray-700 dropdown-toggle dark:text-gray-400"
       >
-        <span className="mr-3 overflow-hidden rounded-full h-11 w-11">
-          <img src="/images/user/owner.jpg" alt="User" />
+        <span className="mr-3 overflow-hidden rounded-full h-11 w-11 bg-orange-100 dark:bg-orange-900/30 border-2 border-orange-200 dark:border-orange-800 flex items-center justify-center">
+          {profilePhotoUrl ? (
+            <img 
+              src={profilePhotoUrl} 
+              alt="User" 
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                e.target.style.display = 'none';
+                e.target.nextElementSibling.style.display = 'flex';
+              }}
+            />
+          ) : null}
+          <svg 
+            className="w-6 h-6 text-orange-600 dark:text-orange-400" 
+            fill="currentColor" 
+            viewBox="0 0 20 20"
+            style={{ display: profilePhotoUrl ? 'none' : 'block' }}
+          >
+            <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+          </svg>
         </span>
 
         <span className="block mr-1 font-medium text-theme-sm">
-          {user?.displayName || user?.email?.split('@')[0] || 'Administrador'}
+          {user?.displayName}
         </span>
         <svg
           className={`stroke-gray-500 dark:stroke-gray-400 transition-transform duration-200 ${
@@ -68,10 +111,10 @@ export default function UserDropdown() {
       >
         <div>
           <span className="block font-medium text-gray-700 text-theme-sm dark:text-gray-400">
-            {user?.displayName || 'Administrador'}
+            {getRoleLabel(userRole)}
           </span>
           <span className="mt-0.5 block text-theme-xs text-gray-500 dark:text-gray-400">
-            {user?.email || 'admin@hotelplaza.com'}
+            {user?.email}
           </span>
         </div>
 
