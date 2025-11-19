@@ -46,8 +46,13 @@ export default function UserDropdown() {
     try {
       await logout();
       closeDropdown();
-      // Redirigir al login de administrador en el mismo puerto
-      window.location.href = 'http://localhost:3000/iniciar-sesion';
+      const loginPath = '/iniciar-sesion';
+      const isDev = import.meta?.env?.DEV;
+      if (isDev) {
+        navigate(loginPath, { replace: true });
+      } else {
+        window.location.assign(loginPath);
+      }
     } catch (error) {
       console.error('Error al cerrar sesión:', error);
     }
