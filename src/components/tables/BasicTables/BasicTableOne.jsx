@@ -277,7 +277,7 @@ export default function BasicTableOne() {
         </div>
       )}
       <Modal isOpen={isCreateModalOpen} onClose={handleCloseCreateModal} className="max-w-[700px] m-4">
-        <div className="no-scrollbar relative w-full max-w-[700px] overflow-y-auto rounded-3xl bg-white dark:bg-black dark:border dark:border-orange-500/30 p-6 lg:p-8">
+        <div className="no-scrollbar relative w-full max-w-[700px] max-h-[80vh] overflow-y-auto lg:max-h-none lg:overflow-visible rounded-3xl bg-white dark:bg-black dark:border dark:border-orange-500/30 p-6 lg:p-8">
           <div className="mb-6">
             <h4 className="mb-2 text-2xl font-semibold text-gray-900 dark:text-white">
               Crear Usuario
@@ -362,7 +362,7 @@ export default function BasicTableOne() {
                 </div>
               </div>
               <div className="flex items-center gap-3 justify-end pt-4 border-t border-gray-200 dark:border-orange-500/20">
-                <Button size="sm" variant="outline" onClick={handleCloseCreateModal} disabled={creatingUser} className="border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-black dark:text-white dark:hover:bg-gray-900">
+                <Button type="button" size="sm" variant="outline" onClick={handleCloseCreateModal} disabled={creatingUser} className="border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-black dark:text-white dark:hover:bg-gray-900">
                   Cancelar
                 </Button>
                 <Button 
@@ -403,18 +403,18 @@ export default function BasicTableOne() {
                     Credenciales de acceso:
                   </p>
                   <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
+                    <div className="flex flex-col sm:flex-row sm:justify-between gap-2 sm:gap-0">
                       <span className="font-medium text-orange-800 dark:text-orange-300">Nombre:</span>
-                      <span className="text-gray-900 dark:text-white">{successData.name}</span>
+                      <span className="text-gray-900 dark:text-white break-words">{successData.name}</span>
                     </div>
-                    <div className="flex justify-between">
+                    <div className="flex flex-col sm:flex-row sm:justify-between gap-2 sm:gap-0">
                       <span className="font-medium text-orange-800 dark:text-orange-300">Email:</span>
-                      <span className="text-gray-900 dark:text-white">{successData.email}</span>
+                      <span className="text-gray-900 dark:text-white break-all">{successData.email}</span>
                     </div>
-                    <div className="flex justify-between items-center">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0">
                       <span className="font-medium text-orange-800 dark:text-orange-300">Contraseña:</span>
                       <div className="flex items-center gap-2">
-                        <span className="text-gray-900 dark:text-white font-mono">{successData.tempPassword}</span>
+                        <span className="text-gray-900 dark:text-white font-mono break-all">{successData.tempPassword}</span>
                         <button
                           onClick={() => {
                             navigator.clipboard.writeText(successData?.tempPassword || "");
@@ -429,7 +429,7 @@ export default function BasicTableOne() {
                         </button>
                       </div>
                     </div>
-                    <div className="flex justify-between">
+                    <div className="flex flex-col sm:flex-row sm:justify-between gap-2 sm:gap-0">
                       <span className="font-medium text-orange-800 dark:text-orange-300">Rol:</span>
                       <span className="text-gray-900 dark:text-white">{successData.role}</span>
                     </div>
@@ -454,7 +454,7 @@ export default function BasicTableOne() {
 
       {/* Modal de Edición */}
       <Modal isOpen={isEditModalOpen} onClose={closeEditModal} className="max-w-[700px] m-4">
-        <div className="no-scrollbar relative w-full max-w-[700px] overflow-y-auto rounded-3xl bg-white dark:bg-black dark:border dark:border-orange-500/30 p-6 lg:p-8">
+        <div className="no-scrollbar relative w-full max-w-[700px] max-h-[80vh] overflow-y-auto lg:max-h-none lg:overflow-visible rounded-3xl bg-white dark:bg-black dark:border dark:border-orange-500/30 p-6 lg:p-8">
           <div className="mb-6">
             <h4 className="mb-2 text-2xl font-semibold text-gray-900 dark:text-white">
               Editar Usuario
@@ -557,6 +557,7 @@ export default function BasicTableOne() {
                 Cancelar
               </Button>
               <Button 
+                type="button"
                 size="sm" 
                 onClick={handleSaveEdit} 
                 disabled={editingUserLoading}
@@ -581,7 +582,7 @@ export default function BasicTableOne() {
 
       {/* Modal de Confirmación de Eliminación */}
       <Modal isOpen={isDeleteModalOpen} onClose={closeDeleteModal} className="max-w-[500px] m-4">
-        <div className="no-scrollbar relative w-full max-w-[500px] overflow-y-auto rounded-3xl bg-white dark:bg-black dark:border dark:border-orange-500/30 p-6 lg:p-8">
+        <div className="no-scrollbar relative w-full max-w-[500px] max-h-[80vh] overflow-y-auto lg:max-h-none lg:overflow-visible rounded-3xl bg-white dark:bg-black dark:border dark:border-orange-500/30 p-6 lg:p-8">
           <div className="mb-6 text-center">
             <div className="mx-auto w-16 h-16 mb-4 flex items-center justify-center rounded-full bg-red-100 dark:bg-red-900/30">
               <svg className="w-8 h-8 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
