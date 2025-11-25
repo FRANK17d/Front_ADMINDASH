@@ -1,0 +1,16 @@
+.dark .rbc-calendar{background-color:#000;color:#e5e7eb}
+.dark .rbc-toolbar{border-color:#374151}
+.rbc-toolbar .rbc-btn-group{display:flex;gap:.5rem}
+.dark .rbc-toolbar .rbc-btn-group button{background-color:#374151;color:#e5e7eb;border:1px solid #4b5563;border-radius:.5rem;padding:.5rem .75rem}
+.dark .rbc-toolbar .rbc-btn-group button:hover{background-color:#4b5563;color:#f3f4f6}
+.dark .rbc-toolbar .rbc-btn-group button.rbc-active{background-color:#4b5563;color:#fff;border-color:#4b5563}
+.dark .rbc-month-view,.dark .rbc-time-view,.dark .rbc-agenda-view{border-color:#374151}
+.dark .rbc-header{background-color:#0b0b0b;color:#9ca3af;border-color:#374151}
+.dark .rbc-month-row{border-color:#374151}
+.dark .rbc-off-range-bg{background-color:#374151}
+.dark .rbc-today{background-color:rgba(251,101,20,.08)}
+.rbc-today .rbc-button-link{font-weight:600;color:#fb6514}
+.dark .rbc-today{background-color:#1f2937;border:2px solid #fb6514}
+.dark .rbc-today .rbc-button-link{color:#fb6514}
+.dark .rbc-date-cell .rbc-button-link{color:#d1d5db}
+.dark .rbc-event{color:#fff;border:none}

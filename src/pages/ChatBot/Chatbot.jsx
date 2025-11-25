@@ -2,17 +2,31 @@ import { useEffect, useState, useRef } from "react";
 import { PaperPlaneIcon } from "../../icons";
 import { ChatBotIcon } from "../../icons";
 
+async function processChatbotMessage(text, sessionId) {
+  return { message: `Recibido: ${text}`, timestamp: new Date().toISOString(), session_id: sessionId };
+}
+
+async function getChatbotHistory() {
+  return { conversations: [] };
+}
+
+async function endChatbotSession(sessionId) {
+  return { ended: true, session_id: sessionId };
+}
+
 export default function Chatbot() {
   const [messages, setMessages] = useState([
     {
       id: 1,
       type: "bot",
-      text: "¡Hola! Soy tu asistente virtual del Hotel Plaza. Puedo ayudarte con información sobre ingresos, ocupación, reservas y más. ¿En qué puedo ayudarte hoy?",
+      text: "¡Hola! 👋 Soy tu asistente virtual del Hotel Plaza. Puedo ayudarte con información sobre ingresos, ocupación, reservas y más. ¿En qué puedo asistirte hoy?",
       timestamp: new Date(),
     },
   ]);
   const [inputValue, setInputValue] = useState("");
   const [isTyping, setIsTyping] = useState(false);
+  const [sessionId, setSessionId] = useState(() => `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
+  const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef(null);
 
   const suggestedQuestions = [
@@ -26,6 +40,8 @@ export default function Chatbot() {
 
   useEffect(() => {
     document.title = "Chatbot IA - Administrador - Hotel Plaza Trujillo";
+    // Cargar historial de conversaciones al montar el componente
+    loadChatHistory();
   }, []);
 
   useEffect(() => {
@@ -36,8 +52,36 @@ export default function Chatbot() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  const handleSendMessage = (text = inputValue) => {
-    if (!text.trim()) return;
+  const loadChatHistory = async () => {
+    try {
+      const data = await getChatbotHistory();
+      if (data.conversations && data.conversations.length > 0) {
+        // Cargar la conversación más reciente
+        const latestConv = data.conversations[0];
+        const formattedMessages = [];
+        
+        latestConv.messages.forEach((msg, index) => {
+          formattedMessages.push({
+            id: index + 1,
+            type: msg.type === 'user' ? 'user' : 'bot',
+            text: msg.content,
+            timestamp: new Date(msg.timestamp),
+          });
+        });
+        
+        if (formattedMessages.length > 0) {
+          setMessages(formattedMessages);
+          setSessionId(latestConv.session_id);
+        }
+      }
+    } catch (error) {
+      console.error("Error al cargar historial:", error);
+      // Si hay error, mantener el mensaje de bienvenida por defecto
+    }
+  };
+
+  const handleSendMessage = async (text = inputValue) => {
+    if (!text.trim() || isLoading) return;
 
     // Agregar mensaje del usuario
     const userMessage = {
@@ -50,43 +94,39 @@ export default function Chatbot() {
     setMessages((prev) => [...prev, userMessage]);
     setInputValue("");
     setIsTyping(true);
+    setIsLoading(true);
 
-    // Simular respuesta del bot
-    setTimeout(() => {
-      const botResponse = generateBotResponse(text);
+    try {
+      // Enviar mensaje al backend
+      const response = await processChatbotMessage(text.trim(), sessionId);
+      
+      // Agregar respuesta del bot
       const botMessage = {
         id: messages.length + 2,
         type: "bot",
-        text: botResponse,
+        text: response.message,
+        timestamp: new Date(response.timestamp),
+      };
+      
+      setMessages((prev) => [...prev, botMessage]);
+    } catch (error) {
+      console.error("Error al procesar mensaje:", error);
+      // Mensaje de error
+      const errorMessage = {
+        id: messages.length + 2,
+        type: "bot",
+        text: "Lo siento, ha ocurrido un error al procesar tu mensaje. Por favor, inténtalo de nuevo.",
         timestamp: new Date(),
       };
-      setMessages((prev) => [...prev, botMessage]);
+      setMessages((prev) => [...prev, errorMessage]);
+    } finally {
       setIsTyping(false);
-    }, 1500);
-  };
-
-  const generateBotResponse = (question) => {
-    const lowerQuestion = question.toLowerCase();
-    
-    if (lowerQuestion.includes("ganancia") || lowerQuestion.includes("ingreso")) {
-      return "📊 Según los datos actuales:\n\n• Ingresos del mes: S/ 45,280\n• Ingresos totales: S/ 385,290\n• Incremento: +12.5% respecto al mes anterior\n\n¿Necesitas más detalles sobre algún período específico?";
-    } else if (lowerQuestion.includes("ocupación")) {
-      return "🏨 Estado de ocupación:\n\n• Tasa actual: 78.5%\n• Habitaciones ocupadas: 94 de 120\n• Tendencia: +5.2% esta semana\n\n¿Quieres ver la ocupación por tipo de habitación?";
-    } else if (lowerQuestion.includes("reserva")) {
-      return "📅 Información de reservas:\n\n• Reservas activas: 156\n• Check-ins hoy: 12\n• Check-outs hoy: 8\n• Próximas reservas (7 días): 45\n\n¿Te gustaría ver más detalles?";
-    } else if (lowerQuestion.includes("disponible") || lowerQuestion.includes("habitación")) {
-      return "🛏️ Habitaciones disponibles:\n\n• Suite: 3 disponibles\n• Doble: 8 disponibles\n• Individual: 15 disponibles\n\n¿Necesitas información sobre tarifas o características?";
-    } else if (lowerQuestion.includes("check-in") || lowerQuestion.includes("checkin")) {
-      return "✅ Check-ins de hoy:\n\n• Total: 12 check-ins programados\n• Completados: 8\n• Pendientes: 4\n• Promedio de tiempo: 8 min\n\n¿Quieres ver la lista completa?";
-    } else if (lowerQuestion.includes("semana")) {
-      return "📈 Resumen semanal:\n\n• Ingresos: S/ 89,450\n• Ocupación promedio: 76.3%\n• Nuevas reservas: 34\n• ADR promedio: S/ 245\n\n¿Necesitas comparar con semanas anteriores?";
-    } else {
-      return "Entiendo tu consulta. Puedo ayudarte con información sobre:\n\n• 💰 Ingresos y ganancias\n• 📊 Tasa de ocupación\n• 📅 Reservas y disponibilidad\n• 🏨 Estado de habitaciones\n• 📈 Estadísticas y reportes\n\n¿Sobre cuál te gustaría saber más?";
+      setIsLoading(false);
     }
   };
 
   const handleKeyPress = (e) => {
-    if (e.key === "Enter" && !e.shiftKey) {
+    if (e.key === "Enter" && !e.shiftKey && !isLoading) {
       e.preventDefault();
       handleSendMessage();
     }
@@ -239,10 +279,14 @@ export default function Chatbot() {
               </div>
               <button
                 onClick={() => handleSendMessage()}
-                disabled={!inputValue.trim()}
+                disabled={!inputValue.trim() || isLoading}
                 className="flex-shrink-0 w-12 h-12 rounded-xl bg-gradient-to-br from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 disabled:from-gray-300 disabled:to-gray-400 dark:disabled:from-gray-700 dark:disabled:to-gray-800 text-white flex items-center justify-center transition-all duration-200 disabled:cursor-not-allowed"
               >
-                <PaperPlaneIcon className="size-5" />
+                {isLoading ? (
+                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                ) : (
+                  <PaperPlaneIcon className="size-5" />
+                )}
               </button>
             </div>
             
