@@ -1,8 +1,36 @@
+import { useEffect, useState } from "react";
 import Chart from "react-apexcharts";
 import { YapeIcon, DollarLineIcon, BoxIcon, PaperPlaneIcon } from "../../icons";
+import { getPaymentMethods } from "../../api/dashboard";
+import LoadingSpinner from "../common/LoadingSpinner";
 
 export default function PaymentMethodChart() {
-  const series = [45, 30, 15, 10]; // Porcentajes para cada método de pago
+  const [paymentData, setPaymentData] = useState({ Efectivo: 0, Tarjeta: 0, Yape: 0, Transferencia: 0 });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const data = await getPaymentMethods();
+        setPaymentData(data.data || {});
+      } catch (error) {
+        console.error("Error fetching payment methods:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
+
+  // Calcular total y porcentajes
+  const total = Object.values(paymentData).reduce((sum, val) => sum + val, 0);
+  const percentages = {
+    Efectivo: total > 0 ? (paymentData.Efectivo / total) * 100 : 0,
+    Tarjeta: total > 0 ? (paymentData.Tarjeta / total) * 100 : 0,
+    Yape: total > 0 ? (paymentData.Yape / total) * 100 : 0,
+    Transferencia: total > 0 ? (paymentData.Transferencia / total) * 100 : 0,
+  };
+  const series = [percentages.Efectivo, percentages.Tarjeta, percentages.Yape, percentages.Transferencia];
 
   const options = {
     chart: {
@@ -89,6 +117,14 @@ export default function PaymentMethodChart() {
     },
   };
 
+  if (loading) {
+    return (
+      <div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-black sm:p-6">
+        <LoadingSpinner />
+      </div>
+    );
+  }
+
   return (
     <div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-black sm:p-6">
       <div className="mb-6">
@@ -110,28 +146,36 @@ export default function PaymentMethodChart() {
             <DollarLineIcon className="w-5 h-5" style={{ color: "#22C55E" }} />
             <span className="text-xs text-gray-600 dark:text-gray-400">Efectivo</span>
           </div>
-          <span className="text-xs font-semibold text-gray-800 dark:text-white/90">S/ 20,376</span>
+          <span className="text-xs font-semibold text-gray-800 dark:text-white/90">
+            S/ {paymentData.Efectivo.toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          </span>
         </div>
         <div className="flex items-center justify-between p-2 rounded-lg bg-gray-50 dark:bg-gray-800/50">
           <div className="flex items-center gap-2">
             <BoxIcon className="w-5 h-5" style={{ color: "#3B82F6" }} />
             <span className="text-xs text-gray-600 dark:text-gray-400">Tarjeta</span>
           </div>
-          <span className="text-xs font-semibold text-gray-800 dark:text-white/90">S/ 13,584</span>
+          <span className="text-xs font-semibold text-gray-800 dark:text-white/90">
+            S/ {paymentData.Tarjeta.toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          </span>
         </div>
         <div className="flex items-center justify-between p-2 rounded-lg bg-gray-50 dark:bg-gray-800/50">
           <div className="flex items-center gap-2">
             <YapeIcon className="w-5 h-5" style={{ color: "#5E0B72" }} />
             <span className="text-xs text-gray-600 dark:text-gray-400">Yape</span>
           </div>
-          <span className="text-xs font-semibold text-gray-800 dark:text-white/90">S/ 6,792</span>
+          <span className="text-xs font-semibold text-gray-800 dark:text-white/90">
+            S/ {paymentData.Yape.toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          </span>
         </div>
         <div className="flex items-center justify-between p-2 rounded-lg bg-gray-50 dark:bg-gray-800/50">
           <div className="flex items-center gap-2">
             <PaperPlaneIcon className="w-5 h-5" style={{ color: "#FB6514" }} />
             <span className="text-xs text-gray-600 dark:text-gray-400">Transferencia</span>
           </div>
-          <span className="text-xs font-semibold text-gray-800 dark:text-white/90">S/ 4,528</span>
+          <span className="text-xs font-semibold text-gray-800 dark:text-white/90">
+            S/ {paymentData.Transferencia.toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          </span>
         </div>
       </div>
     </div>

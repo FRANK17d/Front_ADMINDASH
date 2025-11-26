@@ -14,6 +14,7 @@ const Mensajes = () => {
   const [lastMessageCount, setLastMessageCount] = useState(0);
   const [selectedFile, setSelectedFile] = useState(null);
   const [filePreview, setFilePreview] = useState(null);
+  const [selectedImage, setSelectedImage] = useState(null);
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -530,7 +531,7 @@ const Mensajes = () => {
                               src={message.attachment} 
                               alt={message.attachment_name || 'Imagen'} 
                               className="max-w-xs max-h-64 rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
-                              onClick={() => window.open(message.attachment, '_blank')}
+                              onClick={() => setSelectedImage(message.attachment)}
                             />
                           </div>
                         )}
@@ -668,6 +669,37 @@ const Mensajes = () => {
           </div>
         )}
       </div>
+
+      {/* Modal para mostrar imagen ampliada */}
+      {selectedImage && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-75 p-4 overflow-auto"
+          onClick={() => setSelectedImage(null)}
+        >
+          <div 
+            className="px-4 py-3 rounded-2xl bg-orange-500 text-white"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-center mb-3">
+              <h3 className="text-lg font-semibold">Imagen</h3>
+              <button
+                onClick={() => setSelectedImage(null)}
+                className="text-white hover:text-gray-200 transition-colors"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <img 
+              src={selectedImage} 
+              alt="Imagen ampliada" 
+              className="w-auto h-auto rounded-lg"
+              style={{ maxWidth: 'none', maxHeight: 'none' }}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };

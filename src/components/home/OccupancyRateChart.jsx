@@ -1,6 +1,25 @@
+import { useEffect, useState } from "react";
 import Chart from "react-apexcharts";
+import { getOccupancyWeekly } from "../../api/dashboard";
+import LoadingSpinner from "../common/LoadingSpinner";
 
 export default function OccupancyRateChart() {
+  const [occupancyData, setOccupancyData] = useState([0, 0, 0, 0, 0, 0, 0]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const data = await getOccupancyWeekly();
+        setOccupancyData(data.data || []);
+      } catch (error) {
+        console.error("Error fetching occupancy data:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
   const options = {
     colors: ["#fb6514"],
     chart: {
@@ -74,9 +93,27 @@ export default function OccupancyRateChart() {
   const series = [
     {
       name: "Ocupación",
-      data: [72, 68, 75, 85, 92, 95, 88],
+      data: occupancyData,
     },
   ];
+
+  // Calcular estadísticas
+  const average = occupancyData.length > 0 
+    ? (occupancyData.reduce((a, b) => a + b, 0) / occupancyData.length).toFixed(1)
+    : 0;
+  const maxValue = Math.max(...occupancyData);
+  const maxIndex = occupancyData.indexOf(maxValue);
+  const minValue = Math.min(...occupancyData);
+  const minIndex = occupancyData.indexOf(minValue);
+  const dayNames = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
+
+  if (loading) {
+    return (
+      <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white px-5 pt-5 pb-3 dark:border-gray-800 dark:bg-black sm:px-6 sm:pt-6">
+        <LoadingSpinner />
+      </div>
+    );
+  }
 
   return (
     <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white px-5 pt-5 pb-3 dark:border-gray-800 dark:bg-black sm:px-6 sm:pt-6">
@@ -103,7 +140,7 @@ export default function OccupancyRateChart() {
             Promedio Semana
           </p>
           <p className="text-lg font-semibold text-gray-800 dark:text-white/90">
-            82.1%
+            {average}%
           </p>
         </div>
         <div className="text-center">
@@ -111,7 +148,7 @@ export default function OccupancyRateChart() {
             Día Pico
           </p>
           <p className="text-lg font-semibold" style={{ color: "#fb6514" }}>
-            95% (Sáb)
+            {maxValue.toFixed(1)}% ({dayNames[maxIndex]})
           </p>
         </div>
         <div className="text-center">
@@ -119,7 +156,7 @@ export default function OccupancyRateChart() {
             Día Bajo
           </p>
           <p className="text-lg font-semibold" style={{ color: "#c4320a" }}>
-            68% (Mar)
+            {minValue.toFixed(1)}% ({dayNames[minIndex]})
           </p>
         </div>
       </div>

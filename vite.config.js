@@ -5,7 +5,7 @@ import svgr from "vite-plugin-svgr";
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react(), 
+  plugins: [react({ jsxRuntime: 'automatic' }), 
     tailwindcss(),
     svgr({
       svgrOptions: {
@@ -18,5 +18,9 @@ export default defineConfig({
   server: {
     port: parseInt(process.env.PORT) || 3000,
     host: true
+  },
+  esbuild: {
+    jsx: 'automatic',
+    jsxImportSource: 'react'
   }
 })

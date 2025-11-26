@@ -1,11 +1,13 @@
 import { useState, useEffect } from "react";
 import { useAuth, ROLES } from "../../context/AuthContext";
 import { getOwnProfile } from "../../api/users";
+import EditProfileModal from "./EditProfileModal";
 
 export default function UserMetaCard() {
   const { user, userRole } = useAuth();
   const [profilePhotoUrl, setProfilePhotoUrl] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   
   useEffect(() => {
     const loadProfile = async () => {
@@ -77,8 +79,25 @@ export default function UserMetaCard() {
               </p>
             </div>
           </div>
+          <div className="order-2 xl:order-3">
+            <button
+              onClick={() => setIsEditModalOpen(true)}
+              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-orange-500 hover:bg-orange-600 rounded-lg transition-colors"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+              </svg>
+              Editar Foto
+            </button>
+          </div>
         </div>
       </div>
+
+      {/* Modal de edición */}
+      <EditProfileModal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+      />
     </div>
   );
 }

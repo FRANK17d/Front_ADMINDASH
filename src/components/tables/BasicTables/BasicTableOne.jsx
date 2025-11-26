@@ -15,6 +15,8 @@ import { Modal } from "../../ui/modal";
 import Label from "../../form/Label";
 import { listUsers, createUser, updateUser, deleteUser } from "../../../api/users";
 import { useAuth } from "../../../context/AuthContext";
+import LoadingSpinner from "../../common/LoadingSpinner";
+import { toast } from 'react-toastify';
 
 // Genera una contraseña temporal robusta distinta para cada usuario creado
 const generateTempPassword = () => {
@@ -48,6 +50,7 @@ export default function BasicTableOne() {
   const [editingUser, setEditingUser] = useState(null);
   const [userToDelete, setUserToDelete] = useState(null);
   const [data, setData] = useState([]);
+  const [loadingUsers, setLoadingUsers] = useState(false);
   const [creatingUser, setCreatingUser] = useState(false);
   const [editingUserLoading, setEditingUserLoading] = useState(false);
   const [deletingUser, setDeletingUser] = useState(false);
@@ -90,12 +93,15 @@ export default function BasicTableOne() {
 
   const refresh = async () => {
     try {
+      setLoadingUsers(true);
       setError("");
       const res = await listUsers();
       setData(mapApiUsersToRows(res.users));
     } catch (e) {
       setError("No se pudo cargar usuarios");
       setData([]);
+    } finally {
+      setLoadingUsers(false);
     }
   };
 
@@ -182,12 +188,24 @@ export default function BasicTableOne() {
       // Refrescar lista de usuarios
       await refresh();
       
+      // Mostrar toast de éxito
+      toast.success(`Usuario "${createForm.name}" creado exitosamente`, {
+        position: "bottom-right",
+        autoClose: 3000,
+      });
+      
       // No cerrar el modal, solo mostrar éxito
       setCreatingUser(false);
       
     } catch (e) {
       console.error("Error creando usuario:", e);
-      setError(e.message || "No se pudo crear el usuario. Por favor, intenta nuevamente.");
+      const errorMessage = e.message || "No se pudo crear el usuario. Por favor, intenta nuevamente.";
+      setError(errorMessage);
+      // Mostrar toast de error
+      toast.error(errorMessage, {
+        position: "bottom-right",
+        autoClose: 4000,
+      });
     } finally {
       setCreatingUser(false);
     }
@@ -202,22 +220,58 @@ export default function BasicTableOne() {
     setEditingUserLoading(true);
     setError(""); // Limpiar errores previos
     try {
-      if (!isAdmin || !editingUser?.id) return;
+      if (!isAdmin || !editingUser?.id) {
+        const errorMessage = "No tienes permisos para editar usuarios o el usuario no es válido";
+        setError(errorMessage);
+        toast.error(errorMessage, {
+          position: "bottom-right",
+          autoClose: 4000,
+        });
+        setEditingUserLoading(false);
+        return;
+      }
+      
+      // Validar que el rol sea válido
+      if (!editingUser.role || editingUser.role.trim() === "") {
+        const errorMessage = "Debe seleccionar un rol válido";
+        setError(errorMessage);
+        toast.error(errorMessage, {
+          position: "bottom-right",
+          autoClose: 4000,
+        });
+        setEditingUserLoading(false);
+        return;
+      }
       
       // Preparar datos - enviar null si la fecha está vacía
+      const apiRole = roleLabelToApi(editingUser.role);
       const updateData = {
-        role: roleLabelToApi(editingUser.role),
+        role: apiRole,
         salary: editingUser.salary || "",
         entry_date: editingUser.entryDate && editingUser.entryDate.trim() !== "" ? editingUser.entryDate : null
       };
       
+      console.log('Actualizando usuario:', editingUser.id, 'con datos:', updateData);
       await updateUser(editingUser.id, updateData);
       await refresh();
+      
+      // Mostrar toast de éxito
+      toast.success(`Usuario "${editingUser.name}" actualizado exitosamente`, {
+        position: "bottom-right",
+        autoClose: 3000,
+      });
+      
       setEditingUser(null);
       closeEditModal();
     } catch (e) {
       console.error("Error actualizando usuario:", e);
-      setError(e.message || "No se pudo actualizar el usuario");
+      const errorMessage = e.message || "No se pudo actualizar el usuario";
+      setError(errorMessage);
+      // Mostrar toast de error
+      toast.error(errorMessage, {
+        position: "bottom-right",
+        autoClose: 4000,
+      });
     } finally {
       setEditingUserLoading(false);
     }
@@ -226,14 +280,51 @@ export default function BasicTableOne() {
   const handleDeleteUser = async (userId) => {
     setDeletingUser(true);
     try {
-      if (!isAdmin) return;
+      if (!isAdmin) {
+        const errorMessage = "No tienes permisos para eliminar usuarios";
+        setError(errorMessage);
+        toast.error(errorMessage, {
+          position: "bottom-right",
+          autoClose: 4000,
+        });
+        setDeletingUser(false);
+        return;
+      }
+      
+      if (!userId) {
+        const errorMessage = "No se pudo identificar el usuario a eliminar";
+        setError(errorMessage);
+        toast.error(errorMessage, {
+          position: "bottom-right",
+          autoClose: 4000,
+        });
+        setDeletingUser(false);
+        return;
+      }
+      
+      // Obtener el nombre del usuario antes de eliminarlo para el toast
+      const userName = userToDelete?.name || "Usuario";
+      
       await deleteUser(userId);
       await refresh();
+      
+      // Mostrar toast de éxito
+      toast.success(`Usuario "${userName}" eliminado exitosamente`, {
+        position: "bottom-right",
+        autoClose: 3000,
+      });
+      
       closeDeleteModal();
       setUserToDelete(null);
     } catch (e) {
       console.error(e);
-      setError("No se pudo eliminar el usuario");
+      const errorMessage = e.message || "No se pudo eliminar el usuario";
+      setError(errorMessage);
+      // Mostrar toast de error
+      toast.error(errorMessage, {
+        position: "bottom-right",
+        autoClose: 4000,
+      });
     } finally {
       setDeletingUser(false);
     }
@@ -443,7 +534,7 @@ export default function BasicTableOne() {
                   <ul className="list-disc space-y-1.5 pl-5 text-xs text-gray-600 dark:text-gray-300">
                     <li>Esta es la contraseña permanente del usuario.</li>
                     <li>El usuario puede iniciar sesión inmediatamente con estas credenciales.</li>
-                    <li>Comparte estas credenciales de forma segura con el usuario.</li>
+                    <li>Antes debe verificar su correo electrónico.</li>
                   </ul>
                 </div>
               </div>
@@ -505,10 +596,11 @@ export default function BasicTableOne() {
                 <div>
                   <Label>Rol</Label>
                   <select 
-                    defaultValue={editingUser?.role || ""} 
+                    value={editingUser?.role || ""} 
                     onChange={(e)=>setEditingUser(prev=>({...prev, role: e.target.value}))}
                     className="w-full px-4 py-2.5 pr-16 border border-gray-300 rounded-lg bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-orange-500 dark:border-orange-500/30 dark:bg-black dark:text-white dark:focus:ring-orange-500"
                   >
+                    <option value="">Seleccione un rol</option>
                     <option value="Administrador">Administrador</option>
                     <option value="Recepcionista">Recepcionista</option>
                     <option value="Hotelero">Hotelero</option>
@@ -673,112 +765,129 @@ export default function BasicTableOne() {
 
       {/* Tabla */}
       <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/5 dark:bg-white/3">
-        <div className="max-w-full overflow-x-auto">
-          <Table>
-            {/* Table Header */}
-            <TableHeader className="border-b border-gray-100 dark:border-white/5">
-              <TableRow>
-                <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
-                  Usuario
-                </TableCell>
-                <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
-                  Rol
-                </TableCell>
-                <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
-                  Correo
-                </TableCell>
-                <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-center text-theme-xs dark:text-gray-400">
-                  Salario
-                </TableCell>
-                <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-center text-theme-xs dark:text-gray-400">
-                  Fecha Entrada
-                </TableCell>
-                <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-center text-theme-xs dark:text-gray-400">
-                  Estado
-                </TableCell>
-                <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-center text-theme-xs dark:text-gray-400">
-                  Acciones
-                </TableCell>
-              </TableRow>
-            </TableHeader>
-
-            {/* Table Body */}
-            <TableBody className="divide-y divide-gray-100 dark:divide-white/5">
-              {paginatedData.map((user) => (
-                <TableRow key={user.id}>
-                  <TableCell className="px-5 py-4 sm:px-6 text-start">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 overflow-hidden rounded-full bg-orange-100 dark:bg-orange-900/30 border-2 border-orange-200 dark:border-orange-800 flex items-center justify-center">
-                        {user.image ? (
-                          <img
-                            width={40}
-                            height={40}
-                            src={user.image}
-                            alt={user.name}
-                            className="w-full h-full object-cover"
-                            onError={(e) => {
-                              e.target.style.display = 'none';
-                              e.target.parentElement.innerHTML = '<svg class="w-6 h-6 text-orange-600 dark:text-orange-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd" /></svg>';
-                            }}
-                          />
-                        ) : (
-                          <svg className="w-6 h-6 text-orange-600 dark:text-orange-400" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
-                          </svg>
-                        )}
-                      </div>
-                      <div>
-                        <span className="block font-medium text-gray-800 text-theme-sm dark:text-white/90">
-                          {user.name}
-                        </span>
-                      </div>
-                    </div>
+        {loadingUsers && data.length === 0 ? (
+          <div className="flex items-center justify-center py-20">
+            <div className="flex flex-col items-center gap-4">
+              <LoadingSpinner size="lg" />
+              <p className="text-sm text-gray-500 dark:text-gray-400">Cargando usuarios...</p>
+            </div>
+          </div>
+        ) : (
+          <div className="max-w-full overflow-x-auto">
+            <Table>
+              {/* Table Header */}
+              <TableHeader className="border-b border-gray-100 dark:border-white/5">
+                <TableRow>
+                  <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
+                    Usuario
                   </TableCell>
-                  <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-                    {user.role}
+                  <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
+                    Rol
                   </TableCell>
-                  <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-                    {user.email}
+                  <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
+                    Correo
                   </TableCell>
-                  <TableCell className="px-4 py-3 text-gray-500 text-center text-theme-sm dark:text-gray-400">
-                    {user.salary && user.salary !== "—" ? `S/ ${user.salary}` : user.salary}
+                  <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-center text-theme-xs dark:text-gray-400">
+                    Salario
                   </TableCell>
-                  <TableCell className="px-4 py-3 text-gray-500 text-center text-theme-sm dark:text-gray-400">
-                    {user.entryDate}
+                  <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-center text-theme-xs dark:text-gray-400">
+                    Fecha Entrada
                   </TableCell>
-                  <TableCell className="px-4 py-3 text-gray-500 text-center text-theme-sm dark:text-gray-400">
-                    <Badge
-                      size="sm"
-                      color={user.status === "Activo" ? "success" : "error"}
-                    >
-                      {user.status}
-                    </Badge>
+                  <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-center text-theme-xs dark:text-gray-400">
+                    Estado
                   </TableCell>
-                  <TableCell className="px-4 py-3 text-center">
-                    <div className="flex items-center justify-center gap-2">
-                      <button
-                        onClick={() => isAdmin && handleEditUserClick(user)}
-                        className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-colors disabled:text-gray-400 disabled:cursor-not-allowed disabled:hover:bg-transparent"
-                        title="Editar usuario"
-                        disabled={!isAdmin}
-                      >
-                        <PencilIcon className="w-4 h-4 fill-current" />
-                      </button>
-                      <button
-                        onClick={() => isAdmin && handleOpenDeleteModal(user)}
-                        className="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg transition-colors disabled:text-gray-400 disabled:cursor-not-allowed disabled:hover:bg-transparent"
-                        title="Eliminar usuario"
-                        disabled={!isAdmin}
-                      >
-                        <TrashBinIcon className="w-4 h-4 fill-current" />
-                      </button>
-                    </div>
+                  <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-center text-theme-xs dark:text-gray-400">
+                    Acciones
                   </TableCell>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+              </TableHeader>
+
+              {/* Table Body */}
+              <TableBody className="divide-y divide-gray-100 dark:divide-white/5">
+                {paginatedData.length > 0 ? (
+                  paginatedData.map((user) => (
+                    <TableRow key={user.id}>
+                      <TableCell className="px-5 py-4 sm:px-6 text-start">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 overflow-hidden rounded-full bg-orange-100 dark:bg-orange-900/30 border-2 border-orange-200 dark:border-orange-800 flex items-center justify-center">
+                            {user.image ? (
+                              <img
+                                width={40}
+                                height={40}
+                                src={user.image}
+                                alt={user.name}
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  e.target.style.display = 'none';
+                                  e.target.parentElement.innerHTML = '<svg class="w-6 h-6 text-orange-600 dark:text-orange-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd" /></svg>';
+                                }}
+                              />
+                            ) : (
+                              <svg className="w-6 h-6 text-orange-600 dark:text-orange-400" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+                              </svg>
+                            )}
+                          </div>
+                          <div>
+                            <span className="block font-medium text-gray-800 text-theme-sm dark:text-white/90">
+                              {user.name}
+                            </span>
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
+                        {user.role}
+                      </TableCell>
+                      <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
+                        {user.email}
+                      </TableCell>
+                      <TableCell className="px-4 py-3 text-gray-500 text-center text-theme-sm dark:text-gray-400">
+                        {user.salary && user.salary !== "—" ? `S/ ${user.salary}` : user.salary}
+                      </TableCell>
+                      <TableCell className="px-4 py-3 text-gray-500 text-center text-theme-sm dark:text-gray-400">
+                        {user.entryDate}
+                      </TableCell>
+                      <TableCell className="px-4 py-3 text-gray-500 text-center text-theme-sm dark:text-gray-400">
+                        <Badge
+                          size="sm"
+                          color={user.status === "Activo" ? "success" : "error"}
+                        >
+                          {user.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="px-4 py-3 text-center">
+                        <div className="flex items-center justify-center gap-2">
+                          <button
+                            onClick={() => isAdmin && handleEditUserClick(user)}
+                            className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-colors disabled:text-gray-400 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+                            title="Editar usuario"
+                            disabled={!isAdmin}
+                          >
+                            <PencilIcon className="w-4 h-4 fill-current" />
+                          </button>
+                          <button
+                            onClick={() => isAdmin && handleOpenDeleteModal(user)}
+                            className="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg transition-colors disabled:text-gray-400 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+                            title="Eliminar usuario"
+                            disabled={!isAdmin}
+                          >
+                            <TrashBinIcon className="w-4 h-4 fill-current" />
+                          </button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={7} className="px-5 py-8 text-center text-gray-500 dark:text-gray-400">
+                      No se encontraron usuarios
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        )}
       </div>
 
       {/* Paginación */}

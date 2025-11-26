@@ -31,7 +31,7 @@ export default function UserAddressCard() {
               Dirección
             </p>
             <p className="text-sm font-medium text-gray-800 dark:text-white/90">
-              Jr. Independencia 477, Trujillo
+              Jr. Bolognesi 344, Trujillo
             </p>
           </div>
 
@@ -40,7 +40,7 @@ export default function UserAddressCard() {
               Teléfono
             </p>
             <p className="text-sm font-medium text-gray-800 dark:text-white/90">
-              +51 044 258888
+              +51 992 810 971
             </p>
           </div>
         </div>

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import jsPDF from "jspdf";
 import { PlusIcon } from "../../icons";
 import {
   Table,
@@ -11,77 +12,54 @@ import Badge from "../../components/ui/badge/Badge";
 import Button from "../../components/ui/button/Button";
 import { Modal } from "../../components/ui/modal";
 import { useModal } from "../../hooks/useModal";
+import { listTodayTransactions, todayTotals, createPayment, emitReceipt, todayClients, paidClients, paidClientsDetails } from "../../api/caja";
+import { toast } from 'react-toastify';
 
 const CajaCobros = () => {
   const [transactions, setTransactions] = useState([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const PAGE_SIZE = 4;
   const { isOpen: isReceiptOpen, openModal: openReceiptModal, closeModal: closeReceiptModal } = useModal();
   const [selectedTransaction, setSelectedTransaction] = useState(null);
   const [receiptForm, setReceiptForm] = useState({ numero: "", fecha: "", senores: "", direccion: "", dni: "", concepto: "", importe: "", total: "", son: "", canceladoFecha: "" });
+  const { isOpen: isCreateOpen, openModal: openCreateModal, closeModal: closeCreateModal } = useModal();
+  const { isOpen: isArqueOpen, openModal: openArqueModal, closeModal: closeArqueModal } = useModal();
+  const [newPayment, setNewPayment] = useState({ type: "Pago de Reserva", guest: "", method: "Efectivo", amount: "", reservationCode: "" });
+  const [creatingPayment, setCreatingPayment] = useState(false);
+  const [createError, setCreateError] = useState("");
+  const [totals, setTotals] = useState({ methods: { Yape: 0, Efectivo: 0, Tarjeta: 0, Transferencia: 0 }, total: 0 });
+  const [clientsSummary, setClientsSummary] = useState({ clients: [], total: 0 });
+  const [clientsList, setClientsList] = useState([]);
 
   useEffect(() => {
     document.title = "Caja y Cobros - Administrador - Hotel Plaza Trujillo";
-
-    // Datos de ejemplo para las transacciones del día
-    setTransactions([
-      {
-        id: 1,
-        transactionId: "TXN-001",
-        type: "Pago de Reserva",
-        guest: "Carlos Mendoza",
-        method: "Yape",
-        amount: 960.00,
-        time: "09:15 AM",
-        status: "Completado",
-      },
-      {
-        id: 2,
-        transactionId: "TXN-002",
-        type: "Pago de Reserva",
-        guest: "Ana García López",
-        method: "Efectivo",
-        amount: 735.00,
-        time: "10:30 AM",
-        status: "Completado",
-      },
-      {
-        id: 3,
-        transactionId: "TXN-003",
-        type: "Servicio Adicional",
-        guest: "Roberto Silva",
-        method: "Tarjeta",
-        amount: 150.00,
-        time: "11:45 AM",
-        status: "Completado",
-      },
-      {
-        id: 4,
-        transactionId: "TXN-004",
-        type: "Pago de Reserva",
-        guest: "Luis Ramírez",
-        method: "Yape",
-        amount: 735.00,
-        time: "02:20 PM",
-        status: "Completado",
-      },
-      {
-        id: 5,
-        transactionId: "TXN-005",
-        type: "Servicio Adicional",
-        guest: "María Torres",
-        method: "Efectivo",
-        amount: 80.00,
-        time: "03:10 PM",
-        status: "Completado",
-      },
-    ]);
+    (async () => {
+      try {
+        const tx = await listTodayTransactions();
+        setTransactions(tx);
+        setCurrentPage(1);
+        const t = await todayTotals();
+        setTotals(t);
+      } catch (e) {
+        setTransactions([]);
+        setTotals({ methods: { Yape: 0, Efectivo: 0, Tarjeta: 0, Transferencia: 0 }, total: 0 });
+      }
+    })();
   }, []);
+
+  useEffect(() => {
+    const pages = Math.ceil((transactions || []).length / PAGE_SIZE) || 1;
+    if (currentPage > pages) {
+      setCurrentPage(pages);
+    }
+  }, [transactions]);
 
   // Tarjetas de totales
   const totalCards = [
     {
       id: 1,
       title: "Total Yape",
-      amount: 1695.00,
+      amount: Number(totals.methods?.Yape || 0),
       icon: (
         <svg className="size-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
@@ -93,7 +71,7 @@ const CajaCobros = () => {
     {
       id: 2,
       title: "Total Efectivo",
-      amount: 815.00,
+      amount: Number(totals.methods?.Efectivo || 0),
       icon: (
         <svg className="size-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
@@ -105,7 +83,7 @@ const CajaCobros = () => {
     {
       id: 3,
       title: "Total Tarjeta",
-      amount: 150.00,
+      amount: Number(totals.methods?.Tarjeta || 0),
       icon: (
         <svg className="size-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
@@ -117,7 +95,7 @@ const CajaCobros = () => {
     {
       id: 4,
       title: "Total del Día",
-      amount: 2660.00,
+      amount: Number(totals.total || 0),
       icon: (
         <svg className="size-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
@@ -148,24 +126,77 @@ const CajaCobros = () => {
     }).format(amount);
   };
 
+  const amountToWordsEs = (val) => {
+    const numAbs = Math.abs(Number(val) || 0);
+    const num = Math.floor(numAbs);
+    const dec = Math.round((numAbs - num) * 100) % 100;
+    const u = ['', 'uno', 'dos', 'tres', 'cuatro', 'cinco', 'seis', 'siete', 'ocho', 'nueve'];
+    const teen = ['diez', 'once', 'doce', 'trece', 'catorce', 'quince', 'dieciséis', 'diecisiete', 'dieciocho', 'diecinueve'];
+    const d = ['', 'diez', 'veinte', 'treinta', 'cuarenta', 'cincuenta', 'sesenta', 'setenta', 'ochenta', 'noventa'];
+    const c = ['', 'cien', 'doscientos', 'trescientos', 'cuatrocientos', 'quinientos', 'seiscientos', 'setecientos', 'ochocientos', 'novecientos'];
+    const veinti = (n) => (n === 0 ? 'veinte' : 'veinti' + u[n]);
+    const two = (n) => {
+      if (n < 10) return u[n];
+      if (n < 20) return teen[n - 10];
+      if (n < 30) return veinti(n - 20);
+      const de = Math.floor(n / 10);
+      const un = n % 10;
+      return un ? d[de] + ' y ' + u[un] : d[de];
+    };
+    const three = (n) => {
+      if (n === 0) return '';
+      if (n === 100) return 'cien';
+      const ce = Math.floor(n / 100);
+      const rest = n % 100;
+      return [c[ce], two(rest)].filter(Boolean).join(' ').trim();
+    };
+    const numberToWords = (n) => {
+      if (n === 0) return 'cero';
+      const millones = Math.floor(n / 1000000);
+      const miles = Math.floor((n % 1000000) / 1000);
+      const rest = n % 1000;
+      const parts = [];
+      if (millones) parts.push(millones === 1 ? 'un millón' : numberToWords(millones) + ' millones');
+      if (miles) parts.push(miles === 1 ? 'mil' : three(miles) + ' mil');
+      if (rest) parts.push(three(rest));
+      return parts.join(' ').trim();
+    };
+    const words = numberToWords(num).replace(/\s+/g, ' ').trim();
+    const decTxt = String(dec).padStart(2, '0');
+    const final = `${words} con ${decTxt}/100 soles`;
+    return final.charAt(0).toUpperCase() + final.slice(1);
+  };
+
   const handleRegistrarCobro = () => {
-    // Función para registrar nuevo cobro
-    console.log("Registrar cobro");
+    openCreateModal();
   };
 
-  const handleArqueCaja = () => {
-    // Función para arque de caja
-    console.log("Arque de caja");
+  const handleArqueCaja = async () => {
+    try {
+      const t = await todayTotals();
+      setTotals(t);
+    } catch (e) {}
+    openArqueModal();
   };
 
-  const handleEmitReceipt = (transaction) => {
+  const handleEmitReceipt = async (transaction) => {
     setSelectedTransaction(transaction);
+    let dni = "";
+    let direccion = "";
+    try {
+      const details = await paidClientsDetails();
+      const found = (details.clients || []).find((c) => c.guest === transaction.guest);
+      if (found) {
+        dni = found.dni || "";
+        direccion = found.direccion || "";
+      }
+    } catch (e) {}
     setReceiptForm({
       numero: String(962 + transaction.id).padStart(5, "0"),
       fecha: new Date().toISOString().slice(0, 10),
       senores: transaction.guest,
-      direccion: "",
-      dni: "",
+      direccion,
+      dni,
       concepto: transaction.type,
       importe: transaction.amount,
       total: transaction.amount,
@@ -179,6 +210,164 @@ const CajaCobros = () => {
     const { name, value } = e.target;
     setReceiptForm((prev) => ({ ...prev, [name]: value }));
   };
+
+  const handleCreatePaymentChange = (e) => {
+    const { name, value } = e.target;
+    setNewPayment((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmitPayment = async () => {
+    setCreateError("");
+    // Validaciones básicas en cliente
+    const amt = Number(newPayment.amount);
+    if (!newPayment.guest) {
+      setCreateError("Seleccione cliente");
+      return;
+    }
+    if (!Number.isFinite(amt) || amt <= 0) {
+      setCreateError("Ingrese un monto válido (> 0)");
+      return;
+    }
+    setCreatingPayment(true);
+    try {
+      await createPayment({
+        type: newPayment.type,
+        guest: newPayment.guest,
+        method: newPayment.method,
+        amount: amt,
+        reservationCode: newPayment.reservationCode || null,
+      });
+      const tx = await listTodayTransactions();
+      setTransactions(tx);
+      const t = await todayTotals();
+      setTotals(t);
+      
+      // Obtener el nombre del cliente para el toast
+      const guestName = newPayment.guest || "Cliente";
+      const methodName = newPayment.method || "Efectivo";
+      
+      // Mostrar toast de éxito
+      toast.success(`Cobro de ${formatCurrency(amt)} registrado exitosamente (${methodName})`, {
+        position: "bottom-right",
+        autoClose: 3000,
+      });
+      
+      closeCreateModal();
+      setNewPayment({ type: "Pago de Reserva", guest: "", method: "Efectivo", amount: "", reservationCode: "" });
+    } catch (e) {
+      const msg = (e && e.response && e.response.data && (e.response.data.error || e.response.data.detail)) || "Error creando pago";
+      setCreateError(String(msg));
+      
+      // Mostrar toast de error
+      toast.error(msg, {
+        position: "bottom-right",
+        autoClose: 4000,
+      });
+    } finally {
+      setCreatingPayment(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isCreateOpen) {
+      (async () => {
+        try {
+          const cs = await todayClients();
+          setClientsSummary(cs);
+          const all = await paidClients();
+          setClientsList(all.clients || []);
+        } catch (e) {
+          setClientsSummary({ clients: [], total: 0 });
+          setClientsList([]);
+        }
+      })();
+    }
+  }, [isCreateOpen]);
+
+  const handlePrintReceipt = async () => {
+    try {
+      if (!selectedTransaction) return;
+      await emitReceipt({
+        paymentId: selectedTransaction.id,
+        numero: receiptForm.numero,
+        fecha: receiptForm.fecha,
+        senores: receiptForm.senores,
+        direccion: receiptForm.direccion,
+        dni: receiptForm.dni,
+        concepto: receiptForm.concepto,
+        importe: Number(receiptForm.importe || 0),
+        total: Number(receiptForm.total || 0),
+        son: receiptForm.son,
+        canceladoFecha: receiptForm.canceladoFecha,
+      });
+    } catch (e) {}
+    const toDataUrl = async () => {
+      try {
+        const res = await fetch('/Logo_Hotel.png');
+        if (!res.ok) return null;
+        const blob = await res.blob();
+        return await new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.readAsDataURL(blob);
+        });
+      } catch (e) {
+        return null;
+      }
+    };
+
+    const doc = new jsPDF('p', 'mm', 'a4');
+    const logoUrl = await toDataUrl();
+    if (logoUrl) {
+      try { doc.addImage(logoUrl, 'PNG', 15, 12, 24, 16); } catch (e) {}
+    }
+    doc.setTextColor(31, 41, 55);
+    doc.setFontSize(16);
+    doc.text('Hotel Plaza Trujillo', 45, 20);
+    doc.setFontSize(10);
+    doc.setTextColor(100, 116, 139);
+    doc.text(`Recibo N° ${receiptForm.numero}`, 45, 26);
+    doc.text(`Fecha ${receiptForm.fecha}`, 195, 26, { align: 'right' });
+    doc.setDrawColor(229, 231, 235);
+    doc.line(15, 32, 195, 32);
+
+    let y = 40;
+    doc.setTextColor(31, 41, 55);
+    doc.setFontSize(11);
+    doc.text(`Señor(es): ${receiptForm.senores}`, 15, y);
+    y += 8;
+    doc.text(`DNI: ${receiptForm.dni || ''}`, 15, y);
+    y += 8;
+    doc.text(`Dirección: ${receiptForm.direccion || ''}`, 15, y);
+    y += 12;
+    doc.text(`Concepto: ${receiptForm.concepto}`, 15, y);
+    y += 8;
+    doc.text(`Importe: S/ ${Number(receiptForm.importe || 0).toFixed(2)}`, 15, y);
+    y += 8;
+    doc.setFontSize(12);
+    doc.text(`Total: S/ ${Number(receiptForm.total || 0).toFixed(2)}`, 15, y);
+    y += 8;
+    doc.setFontSize(11);
+    doc.text(`Son: ${receiptForm.son || ''}`, 15, y);
+    y += 8;
+    doc.text(`Cancelado: ${receiptForm.canceladoFecha || ''}`, 15, y);
+
+    doc.setDrawColor(229, 231, 235);
+    doc.line(15, 270, 195, 270);
+    doc.setTextColor(100, 116, 139);
+    doc.setFontSize(9);
+    doc.text('Gracias por su preferencia', 105, 276, { align: 'center' });
+
+    doc.save(`recibo_${receiptForm.numero}.pdf`);
+  };
+
+  useEffect(() => {
+    const amount = Number(receiptForm.total || receiptForm.importe || 0);
+    const text = amountToWordsEs(amount);
+    if (text && text !== receiptForm.son) {
+      setReceiptForm((prev) => ({ ...prev, son: text }));
+    }
+  }, [receiptForm.total, receiptForm.importe]);
 
   return (
     <div className="space-y-6">
@@ -255,12 +444,6 @@ const CajaCobros = () => {
                       isHeader
                       className="py-3.5 px-2 sm:px-4 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
                     >
-                      ID Transacción
-                    </TableCell>
-                    <TableCell
-                      isHeader
-                      className="py-3.5 px-2 sm:px-4 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
-                    >
                       Tipo
                     </TableCell>
                     <TableCell
@@ -292,13 +475,15 @@ const CajaCobros = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody className="divide-y divide-gray-100 dark:divide-gray-800">
-                  {transactions.map((transaction) => (
-                    <TableRow key={transaction.id}>
-                      <TableCell className="py-3.5 px-2 sm:px-4 font-medium text-gray-800 text-theme-sm dark:text-white/90">
-                        <div className="truncate max-w-[80px] sm:max-w-none">
-                          {transaction.transactionId}
-                        </div>
+                  {transactions.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={7} className="py-10 px-4 text-center text-gray-500 dark:text-gray-400">
+                        No hay transacciones
                       </TableCell>
+                    </TableRow>
+                  ) : (
+                    (transactions.slice((currentPage - 1) * PAGE_SIZE, (currentPage) * PAGE_SIZE)).map((transaction) => (
+                      <TableRow key={transaction.id}>
                       <TableCell className="py-3.5 px-2 sm:px-4 text-gray-500 text-theme-sm dark:text-gray-400">
                         {transaction.type}
                       </TableCell>
@@ -324,16 +509,26 @@ const CajaCobros = () => {
                       <TableCell className="py-3.5 px-2 sm:px-4 text-center">
                         <Button size="sm" onClick={() => handleEmitReceipt(transaction)} className="bg-orange-500 hover:bg-orange-600 text-white">Emitir Recibo</Button>
                       </TableCell>
-                    </TableRow>
-                  ))}
+                      </TableRow>
+                    ))
+                  )}
                 </TableBody>
               </Table>
             </div>
+            {Math.ceil((transactions || []).length / PAGE_SIZE) > 1 && (
+              <div className="flex items-center justify-between px-2 py-3">
+                <span className="text-sm text-gray-500 dark:text-gray-400">Página {currentPage} de {Math.ceil((transactions || []).length / PAGE_SIZE)}</span>
+                <div className="flex gap-2">
+                  <Button size="sm" variant="outline" disabled={currentPage <= 1} onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}>Anterior</Button>
+                  <Button size="sm" variant="outline" disabled={currentPage >= Math.ceil((transactions || []).length / PAGE_SIZE)} onClick={() => setCurrentPage((p) => Math.min(Math.ceil((transactions || []).length / PAGE_SIZE), p + 1))}>Siguiente</Button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
       <Modal isOpen={isReceiptOpen} onClose={closeReceiptModal} className="max-w-[700px] m-4">
-        <div className="no-scrollbar relative w-full max-w-[700px] overflow-y-auto rounded-3xl bg-white p-4 dark:bg-gray-900 lg:p-11">
+        <div className="no-scrollbar relative w-full max-w-[700px] overflow-y-auto overflow-x-hidden max-h-[85vh] rounded-3xl bg-white p-4 dark:bg-black lg:p-11">
           <div className="px-2 pr-14">
             <h4 className="mb-2 text-2xl font-semibold text-gray-800 dark:text-white/90">Recibo de Caja</h4>
           </div>
@@ -389,7 +584,117 @@ const CajaCobros = () => {
           </div>
           <div className="flex items-center gap-3 px-2 mt-6 lg:justify-end">
             <Button size="sm" variant="outline" onClick={closeReceiptModal}>Cerrar</Button>
-            <Button size="sm" className="bg-orange-500 hover:bg-orange-600">Imprimir</Button>
+            <Button size="sm" className="bg-orange-500 hover:bg-orange-600" onClick={handlePrintReceipt}>Imprimir</Button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal isOpen={isCreateOpen} onClose={closeCreateModal} className="max-w-[900px] m-4">
+        <div className="no-scrollbar relative w-full max-w-[900px] overflow-y-auto rounded-3xl bg-white p-4 dark:bg-black lg:p-11">
+          <div className="px-2 pr-14">
+            <h4 className="mb-2 text-2xl font-semibold text-gray-800 dark:text-white/90">Registrar Cobro</h4>
+          </div>
+          <div className="px-2 space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-400">Tipo</label>
+                <select name="type" value={newPayment.type} onChange={handleCreatePaymentChange} className="h-11 w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-800 cursor-pointer focus:border-orange-300 focus:outline-hidden focus:ring-3 focus:ring-orange-500/20 dark:bg-black dark:text-white dark:border-gray-700">
+                  <option>Pago de Reserva</option>
+                  <option>Servicio Adicional</option>
+                </select>
+              </div>
+              <div>
+                <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-400">Método</label>
+                <select name="method" value={newPayment.method} onChange={handleCreatePaymentChange} className="h-11 w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-800 cursor-pointer focus:border-orange-300 focus:outline-hidden focus:ring-3 focus:ring-orange-500/20 dark:bg-black dark:text-white dark:border-gray-700">
+                  <option>Efectivo</option>
+                  <option>Tarjeta</option>
+                  <option>Yape</option>
+                  <option>Transferencia</option>
+                </select>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-400">Cliente</label>
+                <select name="guest" value={newPayment.guest} onChange={(e) => {
+                  const val = e.target.value;
+                  setNewPayment((prev) => ({ ...prev, guest: val }));
+                  const found = clientsList.find((c) => c.guest === val);
+                  if (found) {
+                    setNewPayment((prev) => ({ ...prev, amount: String(Number(found.total || 0)) }));
+                  }
+                }} className="h-11 w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-800 cursor-pointer focus:border-orange-300 focus:outline-hidden focus:ring-3 focus:ring-orange-500/20 dark:bg-black dark:text-white dark:border-gray-700">
+                  <option value="">Seleccione cliente</option>
+                  {clientsList.map((c) => (
+                    <option key={c.guest} value={c.guest}>{c.guest}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-400">Monto</label>
+                <input name="amount" value={newPayment.amount} onChange={handleCreatePaymentChange} type="number" step="0.01" className="h-11 w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-800 focus:border-orange-300 focus:outline-hidden focus:ring-3 focus:ring-orange-500/20 dark:bg-black dark:text-white dark:border-gray-700" />
+              </div>
+            </div>
+
+            <div>
+              <h5 className="mb-2 text-base font-semibold text-gray-800 dark:text-white/90">Clientes y montos del día</h5>
+              <div className="space-y-2">
+                {clientsSummary.clients.map((c) => (
+                  <div key={c.guest} className="flex items-center justify-between p-2 rounded-lg bg-gray-50 dark:bg-gray-800/50">
+                    <span className="text-sm text-gray-600 dark:text-gray-400">{c.guest}</span>
+                    <span className="text-sm font-semibold text-gray-800 dark:text-white/90">{formatCurrency(Number(c.total || 0))}</span>
+                  </div>
+                ))}
+                <div className="flex items-center justify-between p-2 rounded-lg bg-gray-100 dark:bg-gray-800">
+                  <span className="text-sm text-gray-800 dark:text-white/90">Total general</span>
+                  <span className="text-sm font-semibold text-gray-800 dark:text-white/90">{formatCurrency(Number(clientsSummary.total || 0))}</span>
+                </div>
+              </div>
+          </div>
+          {createError && (
+            <div className="px-2">
+              <div className="mt-2 rounded-md bg-red-50 p-3 text-sm text-red-700 dark:bg-red-900/30 dark:text-red-300">
+                {createError}
+              </div>
+            </div>
+          )}
+        </div>
+        <div className="flex items-center gap-3 px-2 mt-6 lg:justify-end">
+          <Button size="sm" variant="outline" onClick={closeCreateModal}>Cancelar</Button>
+          <Button size="sm" className="bg-orange-500 hover:bg-orange-600" onClick={handleSubmitPayment} disabled={creatingPayment}>Guardar</Button>
+        </div>
+      </div>
+      </Modal>
+
+      <Modal isOpen={isArqueOpen} onClose={closeArqueModal} className="max-w-[600px] m-4">
+        <div className="no-scrollbar relative w-full max-w-[600px] overflow-y-auto rounded-3xl bg-white p-4 dark:bg-black lg:p-11">
+          <div className="px-2 pr-14">
+            <h4 className="mb-2 text-2xl font-semibold text-gray-800 dark:text-white/90">Arque de Caja</h4>
+          </div>
+          <div className="px-2 space-y-3">
+            <div className="flex items-center justify-between p-2 rounded-lg bg-gray-50 dark:bg-gray-800/50">
+              <span className="text-sm text-gray-600 dark:text-gray-400">Efectivo</span>
+              <span className="text-sm font-semibold text-gray-800 dark:text-white/90">{formatCurrency(Number(totals.methods?.Efectivo || 0))}</span>
+            </div>
+            <div className="flex items-center justify-between p-2 rounded-lg bg-gray-50 dark:bg-gray-800/50">
+              <span className="text-sm text-gray-600 dark:text-gray-400">Tarjeta</span>
+              <span className="text-sm font-semibold text-gray-800 dark:text-white/90">{formatCurrency(Number(totals.methods?.Tarjeta || 0))}</span>
+            </div>
+            <div className="flex items-center justify-between p-2 rounded-lg bg-gray-50 dark:bg-gray-800/50">
+              <span className="text-sm text-gray-600 dark:text-gray-400">Yape</span>
+              <span className="text-sm font-semibold text-gray-800 dark:text-white/90">{formatCurrency(Number(totals.methods?.Yape || 0))}</span>
+            </div>
+            <div className="flex items-center justify-between p-2 rounded-lg bg-gray-50 dark:bg-gray-800/50">
+              <span className="text-sm text-gray-600 dark:text-gray-400">Transferencia</span>
+              <span className="text-sm font-semibold text-gray-800 dark:text-white/90">{formatCurrency(Number(totals.methods?.Transferencia || 0))}</span>
+            </div>
+            <div className="flex items-center justify-between p-2 rounded-lg bg-gray-100 dark:bg-gray-800">
+              <span className="text-sm text-gray-800 dark:text-white/90">Total del Día</span>
+              <span className="text-sm font-semibold text-gray-800 dark:text-white/90">{formatCurrency(Number(totals.total || 0))}</span>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 px-2 mt-6 lg:justify-end">
+            <Button size="sm" variant="outline" onClick={closeArqueModal}>Cerrar</Button>
           </div>
         </div>
       </Modal>
