@@ -1,10 +1,28 @@
+import { useEffect, useState } from "react";
 import Chart from "react-apexcharts";
 import { Dropdown } from "../ui/dropdown/Dropdown";
 import { DropdownItem } from "../ui/dropdown/DropdownItem";
 import { MoreDotIcon } from "../../icons";
-import { useState } from "react";
+import { getMonthlyRevenue } from "../../api/dashboard";
+import LoadingSpinner from "../common/LoadingSpinner";
 
 export default function MonthlySalesChart() {
+  const [monthlyData, setMonthlyData] = useState([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const data = await getMonthlyRevenue();
+        setMonthlyData(data.data || []);
+      } catch (error) {
+        console.error("Error fetching monthly revenue:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
   const options = {
     colors: ["#fb6514"],
     chart: {
@@ -87,7 +105,7 @@ export default function MonthlySalesChart() {
   const series = [
     {
       name: "Ingresos",
-      data: [35200, 42300, 38500, 45280, 39700, 41500, 47200, 38800, 43500, 48900, 45600, 42100],
+      data: monthlyData,
     },
   ];
   const [isOpen, setIsOpen] = useState(false);
@@ -99,6 +117,14 @@ export default function MonthlySalesChart() {
   function closeDropdown() {
     setIsOpen(false);
   }
+  if (loading) {
+    return (
+      <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white px-5 pt-5 dark:border-gray-800 dark:bg-black sm:px-6 sm:pt-6">
+        <LoadingSpinner />
+      </div>
+    );
+  }
+
   return (
     <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white px-5 pt-5 dark:border-gray-800 dark:bg-black sm:px-6 sm:pt-6">
       <div className="flex items-center justify-between">

@@ -80,6 +80,10 @@ export default function SignInForm() {
       if (error.message === 'NO_ROLE_ASSIGNED') {
         errorMessage = "Usuario sin rol asignado. Contacta al administrador para obtener acceso.";
       }
+      // Manejar error de correo no verificado
+      else if (error.message === 'EMAIL_NOT_VERIFIED') {
+        errorMessage = "Debes verificar tu correo electrónico antes de iniciar sesión. Revisa tu bandeja de entrada y haz clic en el botón de verificación en el correo que recibiste.";
+      }
       // Manejar errores específicos de Firebase
       else if (error.code === 'auth/user-not-found') {
         errorMessage = "Usuario no encontrado.";

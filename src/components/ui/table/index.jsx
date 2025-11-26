@@ -25,9 +25,11 @@ const TableCell = ({
   children,
   isHeader = false,
   className,
+  colSpan,
+  ...props
 }) => {
   const CellTag = isHeader ? "th" : "td";
-  return <CellTag className={` ${className}`}>{children}</CellTag>;
+  return <CellTag className={` ${className}`} colSpan={colSpan} {...props}>{children}</CellTag>;
 };
 
 export { Table, TableHeader, TableBody, TableRow, TableCell };

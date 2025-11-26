@@ -1,10 +1,52 @@
+import { useEffect, useState } from "react";
 import {
   ArrowDownIcon,
   ArrowUpIcon,
 } from "../../icons";
 import Badge from "../ui/badge/Badge";
+import { getDashboardMetrics } from "../../api/dashboard";
 
 export default function EcommerceMetrics() {
+  const [metrics, setMetrics] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchMetrics = async () => {
+      try {
+        const data = await getDashboardMetrics();
+        setMetrics(data);
+      } catch (error) {
+        console.error("Error fetching dashboard metrics:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchMetrics();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 md:gap-6">
+        {[1, 2, 3, 4].map((i) => (
+          <div key={i} className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-900 dark:bg-black md:p-6">
+            <div className="w-12 h-12 bg-gray-200 rounded-xl dark:bg-gray-700 animate-pulse"></div>
+            <div className="flex items-end justify-between mt-5">
+              <div className="flex-1">
+                <div className="h-4 w-24 bg-gray-200 rounded dark:bg-gray-700 animate-pulse mb-2"></div>
+                <div className="h-6 w-32 bg-gray-200 rounded dark:bg-gray-700 animate-pulse"></div>
+              </div>
+              <div className="h-6 w-16 bg-gray-200 rounded-full dark:bg-gray-700 animate-pulse"></div>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (!metrics) {
+    return null;
+  }
+
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 md:gap-6">
       {/* <!-- Ingresos Mensuales --> */}
@@ -21,12 +63,12 @@ export default function EcommerceMetrics() {
               Ingresos Mensuales
             </span>
             <h4 className="mt-2 font-bold text-gray-800 text-title-sm dark:text-white/90">
-              S/ 45,280
+              S/ {metrics.monthly_revenue.amount.toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </h4>
           </div>
-          <Badge color="success">
-            <ArrowUpIcon />
-            12.5%
+          <Badge color={metrics.monthly_revenue.change_percent >= 0 ? "success" : "error"}>
+            {metrics.monthly_revenue.change_percent >= 0 ? <ArrowUpIcon /> : <ArrowDownIcon />}
+            {Math.abs(metrics.monthly_revenue.change_percent).toFixed(1)}%
           </Badge>
         </div>
       </div>
@@ -45,13 +87,13 @@ export default function EcommerceMetrics() {
               Ingresos Totales
             </span>
             <h4 className="mt-2 font-bold text-gray-800 text-title-sm dark:text-white/90">
-              S/ 385,290
+              S/ {metrics.total_revenue.amount.toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </h4>
           </div>
 
-          <Badge color="success">
-            <ArrowUpIcon />
-            8.3%
+          <Badge color={metrics.total_revenue.change_percent >= 0 ? "success" : "error"}>
+            {metrics.total_revenue.change_percent >= 0 ? <ArrowUpIcon /> : <ArrowDownIcon />}
+            {Math.abs(metrics.total_revenue.change_percent).toFixed(1)}%
           </Badge>
         </div>
       </div>
@@ -70,13 +112,13 @@ export default function EcommerceMetrics() {
               Tasa de Ocupación
             </span>
             <h4 className="mt-2 font-bold text-gray-800 text-title-sm dark:text-white/90">
-              78.5%
+              {metrics.occupancy_rate.rate.toFixed(1)}%
             </h4>
           </div>
 
-          <Badge color="success">
-            <ArrowUpIcon />
-            5.2%
+          <Badge color={metrics.occupancy_rate.change_percent >= 0 ? "success" : "error"}>
+            {metrics.occupancy_rate.change_percent >= 0 ? <ArrowUpIcon /> : <ArrowDownIcon />}
+            {Math.abs(metrics.occupancy_rate.change_percent).toFixed(1)}%
           </Badge>
         </div>
       </div>
@@ -95,13 +137,13 @@ export default function EcommerceMetrics() {
               ADR Promedio
             </span>
             <h4 className="mt-2 font-bold text-gray-800 text-title-sm dark:text-white/90">
-              S/ 245
+              S/ {metrics.adr.amount.toFixed(2)}
             </h4>
           </div>
 
-          <Badge color="error">
-            <ArrowDownIcon />
-            2.1%
+          <Badge color={metrics.adr.change_percent >= 0 ? "success" : "error"}>
+            {metrics.adr.change_percent >= 0 ? <ArrowUpIcon /> : <ArrowDownIcon />}
+            {Math.abs(metrics.adr.change_percent).toFixed(1)}%
           </Badge>
         </div>
       </div>

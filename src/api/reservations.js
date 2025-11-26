@@ -49,3 +49,13 @@ export async function getAvailableRooms(checkIn, checkOut) {
   const res = await api.get(`${BASE}/rooms/available/`, { params: { check_in: checkIn, check_out: checkOut } });
   return res.data?.rooms || [];
 }
+
+export async function getAllRooms() {
+  const res = await api.get(`${BASE}/rooms/all/`);
+  return res.data?.rooms || [];
+}
+
+export async function getReservationDetail(reservationId) {
+  const res = await api.get(`${BASE}/${reservationId}/`);
+  return res.data?.reservation || null;
+}

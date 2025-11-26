@@ -18,12 +18,15 @@ import Button from "../../components/ui/button/Button";
 import { Modal } from "../../components/ui/modal";
 import { useModal } from "../../hooks/useModal";
 import { listReservations, getCalendarEvents, getCalendarNotes, setCalendarNote, deleteCalendarNote, createReservation, lookupDocument, getAvailableRooms, deleteReservation, updateReservation } from "../../api/reservations";
-import { useAuth } from "../../context/AuthContext";
+import { getBlockedRooms } from "../../api/mantenimiento";
+import { useAuth, ROLES } from "../../context/AuthContext";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { toast } from 'react-toastify';
 
 export default function Reservas() {
-  const { user } = useAuth();
+  const { user, userRole } = useAuth();
+  const isHousekeeping = userRole === ROLES.HOUSEKEEPING;
   const { isOpen: isCreateModalOpen, openModal: openCreateModal, closeModal: closeCreateModal } = useModal();
   const { isOpen: isViewModalOpen, openModal: openViewModal, closeModal: closeViewModal } = useModal();
   const { isOpen: isEditModalOpen, openModal: openEditModal, closeModal: closeEditModal } = useModal();
@@ -45,6 +48,7 @@ export default function Reservas() {
   const [reservationPendingDeletion, setReservationPendingDeletion] = useState(null);
   
   const [activeReservations, setActiveReservations] = useState([]);
+  const [blockedRooms, setBlockedRooms] = useState([]);
   const initialReservation = { channel: "Booking.com", guest: "", room: "", roomType: "", checkIn: "", checkOut: "", total: "", status: "Confirmada", paid: false, documentType: "DNI", documentNumber: "", arrivalTime: "", numPeople: 1, numAdults: 1, numChildren: 0, numRooms: 1, companions: [], documentInfo: null, address: "", department: "", province: "", district: "", taxpayerType: "", businessStatus: "", businessCondition: "" };
   const [newReservation, setNewReservation] = useState(initialReservation);
   const [editReservation, setEditReservation] = useState(null);
@@ -210,9 +214,14 @@ export default function Reservas() {
     document.title = "Reservas - Administrador - Hotel Plaza Trujillo";
     (async () => {
       try {
-        const [resvs, evts] = await Promise.all([listReservations(), getCalendarEvents()]);
+        const [resvs, evts, blocked] = await Promise.all([
+          listReservations(), 
+          getCalendarEvents(),
+          getBlockedRooms()
+        ]);
         setActiveReservations(resvs);
         setEvents(evts);
+        setBlockedRooms(blocked);
       } catch (e) {
         console.error(e);
       }
@@ -220,16 +229,36 @@ export default function Reservas() {
   }, []);
 
   async function handleDeleteReservation(reservation) {
+    if (isHousekeeping) return; // Bloquear eliminación para hotelero
     try {
       const identifier = reservation?.reservationId || reservation?.id;
-      if (!identifier) return;
+      if (!identifier) {
+        toast.error("No se pudo identificar la reserva a eliminar", {
+          position: "bottom-right",
+          autoClose: 4000,
+        });
+        return;
+      }
+      
+      const guestName = reservation?.guest || "Reserva";
       await deleteReservation(identifier);
       const [resvs, evts] = await Promise.all([listReservations(), getCalendarEvents()]);
       setActiveReservations(resvs);
       setEvents(evts);
       await refreshAvailableRoomsCount();
+      
+      // Mostrar toast de éxito
+      toast.success(`Reserva de "${guestName}" eliminada exitosamente`, {
+        position: "bottom-right",
+        autoClose: 3000,
+      });
     } catch (e) {
       console.error(e);
+      const errorMessage = e.message || "No se pudo eliminar la reserva";
+      toast.error(errorMessage, {
+        position: "bottom-right",
+        autoClose: 4000,
+      });
     }
   }
 
@@ -374,6 +403,8 @@ export default function Reservas() {
         return "primary";
       case "Mantenimiento":
         return "light";
+      case "Bloqueada":
+        return "error";
       case "Confirmada":
         return "success";
       case "Check-in":
@@ -434,12 +465,31 @@ export default function Reservas() {
     const floorLabel = (f) => (String(f) === '1' ? '1ro' : String(f) === '2' ? '2do' : '3ro');
     const statuses = new Map();
     const today = getTodayLocal();
+    
+    // Verificar habitaciones bloqueadas
+    const blockedRoomCodes = new Set();
+    const todayDate = new Date(today + 'T00:00:00');
+    for (const blocked of blockedRooms) {
+      if (blocked.blockedUntil) {
+        const blockedUntilDate = new Date(blocked.blockedUntil + 'T00:00:00');
+        // Si la fecha de bloqueo es mayor o igual a hoy, la habitación está bloqueada
+        if (blockedUntilDate >= todayDate) {
+          blockedRoomCodes.add(String(blocked.room));
+        }
+      }
+    }
+    
     for (const r of activeReservations) {
       if ((r.status || '').toLowerCase() === 'cancelada') continue;
       const s = getAutoStatus(r);
       const codes = Array.isArray(r.rooms) ? r.rooms : (r.room ? [r.room] : []);
       for (const code of codes) {
         const key = String(code);
+        // Si la habitación está bloqueada, tiene prioridad sobre otros estados
+        if (blockedRoomCodes.has(key)) {
+          statuses.set(key, { status: 'Bloqueada', guest: '-', checkout: '-', type: r.roomType || '-' });
+          continue;
+        }
         if (s === 'Check-in') {
           statuses.set(key, { status: 'Ocupada', guest: r.guest || '-', checkout: r.checkOut || '-', type: r.roomType || '-' });
         } else if (s === 'Confirmada') {
@@ -455,7 +505,13 @@ export default function Reservas() {
     for (const [floor, items] of Object.entries(predefinedRooms || {})) {
       for (const it of items) {
         const code = String(it.code);
-        const st = statuses.get(code) || { status: 'Disponible', guest: '-', checkout: '-', type: '-' };
+        // Verificar si la habitación está bloqueada (tiene prioridad sobre otros estados)
+        let st;
+        if (blockedRoomCodes.has(code)) {
+          st = { status: 'Bloqueada', guest: '-', checkout: '-', type: '-' };
+        } else {
+          st = statuses.get(code) || { status: 'Disponible', guest: '-', checkout: '-', type: '-' };
+        }
         rows.push({
           id: Number(code),
           room: code,
@@ -474,7 +530,7 @@ export default function Reservas() {
       return String(a.room).localeCompare(String(b.room));
     });
     return rows;
-  }, [activeReservations, predefinedRooms]);
+  }, [activeReservations, predefinedRooms, blockedRooms]);
 
   const [historySearch, setHistorySearch] = useState("");
   const [historyPage, setHistoryPage] = useState(1);
@@ -520,7 +576,21 @@ export default function Reservas() {
           for (const code of roomsArr) occupied.add(String(code));
         }
       }
-      setAvailableRoomsCount(Math.max(totalRooms - occupied.size, 0));
+      
+      // Contar habitaciones bloqueadas que aún no han expirado
+      const blocked = new Set();
+      const todayDate = new Date(today + 'T00:00:00');
+      for (const blockedRoom of blockedRooms) {
+        if (blockedRoom.blockedUntil) {
+          const blockedUntilDate = new Date(blockedRoom.blockedUntil + 'T00:00:00');
+          if (blockedUntilDate >= todayDate) {
+            blocked.add(String(blockedRoom.room));
+          }
+        }
+      }
+      
+      // Restar tanto las ocupadas como las bloqueadas
+      setAvailableRoomsCount(Math.max(totalRooms - occupied.size - blocked.size, 0));
     } catch (e) {
       setAvailableRoomsCount(0);
     }
@@ -530,7 +600,7 @@ export default function Reservas() {
     (async () => {
       await refreshAvailableRoomsCount();
     })();
-  }, [activeReservations]);
+  }, [activeReservations, blockedRooms]);
 
   const handleSetCancelled = async (reservation) => {
     try {
@@ -546,15 +616,43 @@ export default function Reservas() {
   };
 
   const handleSetStatus = async (reservation, status) => {
+    if (isHousekeeping) return; // Bloquear cambio de estado para hotelero
     try {
       const identifier = reservation?.reservationId || reservation?.id;
-      if (!identifier) return;
+      if (!identifier) {
+        toast.error("No se pudo identificar la reserva", {
+          position: "bottom-right",
+          autoClose: 4000,
+        });
+        return;
+      }
+      
+      const guestName = reservation?.guest || "Reserva";
+      const statusMessages = {
+        "Cancelada": "cancelada",
+        "Check-in": "registrada con check-in",
+        "Check-out": "registrada con check-out",
+        "Confirmada": "confirmada"
+      };
+      const statusMessage = statusMessages[status] || "actualizada";
+      
       await updateReservation(identifier, { status });
       const resvs = await listReservations();
       setActiveReservations(resvs);
       await refreshAvailableRoomsCount();
+      
+      // Mostrar toast de éxito
+      toast.success(`Reserva de "${guestName}" ${statusMessage} exitosamente`, {
+        position: "bottom-right",
+        autoClose: 3000,
+      });
     } catch (e) {
       console.error(e);
+      const errorMessage = e.message || "No se pudo actualizar el estado de la reserva";
+      toast.error(errorMessage, {
+        position: "bottom-right",
+        autoClose: 4000,
+      });
     }
   };
 
@@ -564,6 +662,7 @@ export default function Reservas() {
   };
 
   const handleOpenEditReservation = (reservation) => {
+    if (isHousekeeping) return; // Bloquear edición para hotelero
     const s = getAutoStatus(reservation);
     if (s === "Cancelada" || s === "Check-out" || (reservation?.status || "") === "Cancelada" || (reservation?.status || "") === "Check-out") return;
     const found = activeReservations.find((r) => r.id === reservation?.id || String(r.reservationId || "") === String(reservation?.reservationId || "")) || reservation;
@@ -806,13 +905,15 @@ export default function Reservas() {
             Administra reservas/ventas y habitaciones del hotel
           </p>
         </div>
-        <Button
-          onClick={openCreateModal}
-          className="bg-orange-500 hover:bg-orange-600 text-white flex items-center gap-2"
-        >
-          <PlusIcon className="w-5 h-5 fill-current" />
-          Nueva Reserva/Venta
-        </Button>
+        {!isHousekeeping && (
+          <Button
+            onClick={openCreateModal}
+            className="bg-orange-500 hover:bg-orange-600 text-white flex items-center gap-2"
+          >
+            <PlusIcon className="w-5 h-5 fill-current" />
+            Nueva Reserva/Venta
+          </Button>
+        )}
       </div>
 
       {/* Tarjetas de estado de habitaciones */}
@@ -857,7 +958,15 @@ export default function Reservas() {
           {
             id: 4,
             title: "Mantenimiento",
-            count: 0,
+            count: (() => {
+              const today = getTodayLocal();
+              const todayDate = new Date(today + 'T00:00:00');
+              return blockedRooms.filter(blocked => {
+                if (!blocked.blockedUntil) return false;
+                const blockedUntilDate = new Date(blocked.blockedUntil + 'T00:00:00');
+                return blockedUntilDate >= todayDate;
+              }).length;
+            })(),
             icon: (
               <svg className="size-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
@@ -1161,21 +1270,25 @@ export default function Reservas() {
                             >
                               <EyeIcon className="w-4 h-4 fill-current text-gray-600 dark:text-gray-300" />
                             </button>
-                            <button
-                              onClick={() => handleOpenEditReservation(reservation)}
-                              className={`p-1.5 sm:p-2 rounded-lg transition-colors ${['Cancelada','Check-out'].includes(getAutoStatus(reservation)) ? 'text-orange-300 bg-transparent cursor-not-allowed' : 'text-orange-600 hover:text-orange-800 hover:bg-orange-50 cursor-pointer'}`}
-                              title="Editar"
-                              disabled={['Cancelada','Check-out'].includes(getAutoStatus(reservation))}
-                            >
-                              <PencilIcon className="w-4 h-4 fill-current" />
-                            </button>
-                            <button
-                              onClick={() => { setReservationPendingDeletion(reservation); openConfirmModal(); }}
-                              className="p-1.5 sm:p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg transition-colors cursor-pointer hidden lg:inline-block"
-                              title="Cancelar"
-                            >
-                              <TrashBinIcon className="w-4 h-4 fill-current" />
-                            </button>
+                            {!isHousekeeping && (
+                              <>
+                                <button
+                                  onClick={() => handleOpenEditReservation(reservation)}
+                                  className={`p-1.5 sm:p-2 rounded-lg transition-colors ${['Cancelada','Check-out'].includes(getAutoStatus(reservation)) ? 'text-orange-300 bg-transparent cursor-not-allowed' : 'text-orange-600 hover:text-orange-800 hover:bg-orange-50 cursor-pointer'}`}
+                                  title="Editar"
+                                  disabled={['Cancelada','Check-out'].includes(getAutoStatus(reservation))}
+                                >
+                                  <PencilIcon className="w-4 h-4 fill-current" />
+                                </button>
+                                <button
+                                  onClick={() => { setReservationPendingDeletion(reservation); openConfirmModal(); }}
+                                  className="p-1.5 sm:p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg transition-colors cursor-pointer hidden lg:inline-block"
+                                  title="Cancelar"
+                                >
+                                  <TrashBinIcon className="w-4 h-4 fill-current" />
+                                </button>
+                              </>
+                            )}
                           </div>
                         </TableCell>
                         
@@ -1235,17 +1348,31 @@ export default function Reservas() {
                       </TableRow>
                     </TableHeader>
                     <TableBody className="divide-y divide-gray-100 dark:divide-gray-800">
-                      {paginatedHistory.map((r) => (
-                        <TableRow key={r.id}>
-                          <TableCell className="py-3.5 px-2 sm:px-4 font-medium text-gray-800 text-theme-sm dark:text-white/90">{r.guest || '-'}</TableCell>
-                          <TableCell className="py-3.5 px-2 sm:px-4 text-gray-500 text-theme-sm dark:text-gray-400">{(r.documentType || '-') + ' ' + (r.documentNumber || '')}</TableCell>
-                          <TableCell className="py-3.5 px-2 sm:px-4 text-gray-500 text-theme-sm dark:text-gray-400">{Array.isArray(r.rooms) ? r.rooms.join(', ') : (r.room || '-')}</TableCell>
-                          <TableCell className="py-3.5 px-2 sm:px-4 text-gray-500 text-theme-sm dark:text-gray-400">{r.roomType || '-'}</TableCell>
-                          <TableCell className="py-3.5 px-2 sm:px-4 text-gray-800 text-theme-sm dark:text-gray-300">{r.checkOut || '-'}</TableCell>
-                          <TableCell className="py-3.5 px-2 sm:px-4"><Badge size="sm">{r.channel || '-'}</Badge></TableCell>
-                          <TableCell className="py-3.5 px-2 sm:px-4 font-semibold text-gray-800 text-theme-sm dark:text-white/90">{r.total || '-'}</TableCell>
+                      {paginatedHistory.length > 0 ? (
+                        paginatedHistory.map((r) => (
+                          <TableRow key={r.id}>
+                            <TableCell className="py-3.5 px-2 sm:px-4 font-medium text-gray-800 text-theme-sm dark:text-white/90">{r.guest || '-'}</TableCell>
+                            <TableCell className="py-3.5 px-2 sm:px-4 text-gray-500 text-theme-sm dark:text-gray-400">{(r.documentType || '-') + ' ' + (r.documentNumber || '')}</TableCell>
+                            <TableCell className="py-3.5 px-2 sm:px-4 text-gray-500 text-theme-sm dark:text-gray-400">{Array.isArray(r.rooms) ? r.rooms.join(', ') : (r.room || '-')}</TableCell>
+                            <TableCell className="py-3.5 px-2 sm:px-4 text-gray-500 text-theme-sm dark:text-gray-400">{r.roomType || '-'}</TableCell>
+                            <TableCell className="py-3.5 px-2 sm:px-4 text-gray-800 text-theme-sm dark:text-gray-300">{r.checkOut || '-'}</TableCell>
+                            <TableCell className="py-3.5 px-2 sm:px-4"><Badge size="sm">{r.channel || '-'}</Badge></TableCell>
+                            <TableCell className="py-3.5 px-2 sm:px-4 font-semibold text-gray-800 text-theme-sm dark:text-white/90">{r.total || '-'}</TableCell>
+                          </TableRow>
+                        ))
+                      ) : (
+                        <TableRow>
+                          <TableCell colSpan={7} className="py-12 px-4 text-center">
+                            <div className="flex flex-col items-center justify-center gap-2">
+                              <svg className="w-12 h-12 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                              </svg>
+                              <p className="text-gray-500 dark:text-gray-400 text-sm font-medium">No hay registros disponibles</p>
+                              <p className="text-gray-400 dark:text-gray-500 text-xs">No se encontraron clientes con estado Check-out</p>
+                            </div>
+                          </TableCell>
                         </TableRow>
-                      ))}
+                      )}
                     </TableBody>
                   </Table>
                 </div>
@@ -1653,18 +1780,33 @@ export default function Reservas() {
             <Button size="sm" variant="outline" className="cursor-pointer" onClick={() => { setNewReservation(initialReservation); setTouched({ checkIn: false, checkOut: false, room: false, guest: false, documentNumber: false }); closeCreateModal(); }}>
               Cancelar
             </Button>
-            <Button size="sm" className="bg-orange-500 hover:bg-orange-600 cursor-pointer disabled:bg-orange-300 disabled:cursor-not-allowed" disabled={!isCreateValid} onClick={async () => {
+            <Button size="sm" className="bg-orange-500 hover:bg-orange-600 cursor-pointer disabled:bg-orange-300 disabled:cursor-not-allowed" disabled={!isCreateValid || isHousekeeping} onClick={async () => {
               try {
                 await createReservation(newReservation);
                 const [resvs, evts] = await Promise.all([listReservations(), getCalendarEvents()]);
                 setActiveReservations(resvs);
                 setEvents(evts);
                 await refreshAvailableRoomsCount();
+                
+                // Obtener el nombre del huésped para el toast
+                const guestName = newReservation.guest || newReservation.documentNumber || "Reserva";
+                
+                // Mostrar toast de éxito
+                toast.success(`Reserva de "${guestName}" creada exitosamente`, {
+                  position: "bottom-right",
+                  autoClose: 3000,
+                });
+                
                 setNewReservation(initialReservation);
                 setTouched({ checkIn: false, checkOut: false, room: false, guest: false, documentNumber: false });
                 closeCreateModal();
               } catch (e) {
                 console.error(e);
+                const errorMessage = e.message || "No se pudo crear la reserva";
+                toast.error(errorMessage, {
+                  position: "bottom-right",
+                  autoClose: 4000,
+                });
               }
             }}>
               Crear Reserva/Venta
@@ -1777,7 +1919,7 @@ export default function Reservas() {
             <Button size="sm" variant="outline" className="cursor-pointer" onClick={() => { setEditReservation(null); closeEditModal(); }}>
               Cancelar
             </Button>
-            {editReservation && (
+            {editReservation && !isHousekeeping && (
               <Button
                 size="sm"
                 className="bg-red-600 hover:bg-red-700 text-white cursor-pointer disabled:bg-red-300 disabled:cursor-not-allowed disabled:opacity-50"
@@ -1792,10 +1934,19 @@ export default function Reservas() {
                 Cancelar reserva
               </Button>
             )}
-            <Button size="sm" className="bg-orange-500 hover:bg-orange-600 cursor-pointer" onClick={async () => {
+            {!isHousekeeping && (
+              <Button size="sm" className="bg-orange-500 hover:bg-orange-600 cursor-pointer" onClick={async () => {
               try {
                 const identifier = editReservation?.reservationId || editReservation?.id;
-                if (!identifier) return;
+                if (!identifier) {
+                  toast.error("No se pudo identificar la reserva a editar", {
+                    position: "bottom-right",
+                    autoClose: 4000,
+                  });
+                  return;
+                }
+                
+                const guestName = editReservation?.guest || "Reserva";
                 const payload = {};
                 const keys = ["guest","room","roomType","checkIn","checkOut","arrivalTime","total","paid","channel","address","department","province","district"];
                 for (const k of keys) {
@@ -1819,15 +1970,28 @@ export default function Reservas() {
                   resvs = resvs.map((r) => (r.id === identifier || String(r.reservationId || "") === String(identifier)) ? { ...r, roomType: payload.roomType } : r);
                 }
                 setActiveReservations(resvs);
+                
+                // Mostrar toast de éxito
+                toast.success(`Reserva de "${guestName}" actualizada exitosamente`, {
+                  position: "bottom-right",
+                  autoClose: 3000,
+                });
+                
                 setEditReservation(null);
                 setEditOriginalReservation(null);
                 closeEditModal();
               } catch (e) {
                 console.error(e);
+                const errorMessage = e.message || "No se pudo actualizar la reserva";
+                toast.error(errorMessage, {
+                  position: "bottom-right",
+                  autoClose: 4000,
+                });
               }
             }}>
               Guardar Cambios
             </Button>
+            )}
           </div>
         </div>
       </Modal>
@@ -2109,11 +2273,11 @@ export default function Reservas() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-400">Empleado</label>
-                <input name="empleado" value={breakfastForm.empleado} onChange={handleBreakfastChange} type="text" className="h-11 w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm focus:border-orange-300 focus:outline-hidden focus:ring-3 focus:ring-orange-500/20 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-200" />
+                <input name="empleado" value={breakfastForm.empleado} onChange={handleBreakfastChange} type="text" className="h-11 w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-800 focus:border-orange-300 focus:outline-hidden focus:ring-3 focus:ring-orange-500/20 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-200" />
               </div>
               <div>
                 <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-400">Fecha</label>
-                <input name="fecha" value={breakfastForm.fecha} onChange={handleBreakfastChange} type="date" className="h-11 w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm focus:border-orange-300 focus:outline-hidden focus:ring-3 focus:ring-orange-500/20 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-200" />
+                <input name="fecha" value={breakfastForm.fecha} onChange={handleBreakfastChange} type="date" className="h-11 w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-800 focus:border-orange-300 focus:outline-hidden focus:ring-3 focus:ring-orange-500/20 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-200" />
               </div>
             </div>
             <div className="no-scrollbar overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
@@ -2131,11 +2295,11 @@ export default function Reservas() {
                 <tbody className="align-top divide-y divide-gray-100 dark:divide-gray-800">
                   {breakfastRows.map((r) => (
                     <tr key={r.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/30">
-                      <td className="py-3 px-4"><input type="text" value={r.hab} onChange={(e) => handleBreakfastRowChange(r.id, "hab", e.target.value)} className="h-10 w-20 rounded-lg border border-gray-300 px-3 focus:border-orange-300 focus:outline-hidden focus:ring-3 focus:ring-orange-500/20 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-200" /></td>
-                      <td className="py-3 px-4"><input type="text" value={r.nombres} onChange={(e) => handleBreakfastRowChange(r.id, "nombres", e.target.value)} className="h-10 w-full rounded-lg border border-gray-300 px-3 focus:border-orange-300 focus:outline-hidden focus:ring-3 focus:ring-orange-500/20 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-200" /></td>
-                      <td className="py-3 px-4"><input type="number" min="0" value={r.americ} onChange={(e) => handleBreakfastRowChange(r.id, "americ", Number(e.target.value))} className="h-10 w-20 rounded-lg border border-gray-300 px-3 text-center focus:border-orange-300 focus:outline-hidden focus:ring-3 focus:ring-orange-500/20 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-200" /></td>
-                      <td className="py-3 px-4"><input type="number" min="0" value={r.contin} onChange={(e) => handleBreakfastRowChange(r.id, "contin", Number(e.target.value))} className="h-10 w-20 rounded-lg border border-gray-300 px-3 text-center focus:border-orange-300 focus:outline-hidden focus:ring-3 focus:ring-orange-500/20 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-200" /></td>
-                      <td className="py-3 px-4"><input type="number" min="0" value={r.adici} onChange={(e) => handleBreakfastRowChange(r.id, "adici", Number(e.target.value))} className="h-10 w-20 rounded-lg border border-gray-300 px-3 text-center focus:border-orange-300 focus:outline-hidden focus:ring-3 focus:ring-orange-500/20 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-200" /></td>
+                      <td className="py-3 px-4"><input type="text" value={r.hab} onChange={(e) => handleBreakfastRowChange(r.id, "hab", e.target.value)} className="h-10 w-20 rounded-lg border border-gray-300 px-3 text-gray-800 focus:border-orange-300 focus:outline-hidden focus:ring-3 focus:ring-orange-500/20 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-200" /></td>
+                      <td className="py-3 px-4"><input type="text" value={r.nombres} onChange={(e) => handleBreakfastRowChange(r.id, "nombres", e.target.value)} className="h-10 w-full rounded-lg border border-gray-300 px-3 text-gray-800 focus:border-orange-300 focus:outline-hidden focus:ring-3 focus:ring-orange-500/20 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-200" /></td>
+                      <td className="py-3 px-4"><input type="number" min="0" value={r.americ} onChange={(e) => handleBreakfastRowChange(r.id, "americ", Number(e.target.value))} className="h-10 w-20 rounded-lg border border-gray-300 px-3 text-center text-gray-800 focus:border-orange-300 focus:outline-hidden focus:ring-3 focus:ring-orange-500/20 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-200" /></td>
+                      <td className="py-3 px-4"><input type="number" min="0" value={r.contin} onChange={(e) => handleBreakfastRowChange(r.id, "contin", Number(e.target.value))} className="h-10 w-20 rounded-lg border border-gray-300 px-3 text-center text-gray-800 focus:border-orange-300 focus:outline-hidden focus:ring-3 focus:ring-orange-500/20 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-200" /></td>
+                      <td className="py-3 px-4"><input type="number" min="0" value={r.adici} onChange={(e) => handleBreakfastRowChange(r.id, "adici", Number(e.target.value))} className="h-10 w-20 rounded-lg border border-gray-300 px-3 text-center text-gray-800 focus:border-orange-300 focus:outline-hidden focus:ring-3 focus:ring-orange-500/20 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-200" /></td>
                       <td className="py-3 px-4 text-center">
                          <button onClick={() => removeBreakfastRow(r.id)} className="inline-flex items-center justify-center p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg cursor-pointer" title="Eliminar fila">
                            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 6h18M9 6V4h6v2M10 11v6M14 11v6M5 6l1 14a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2l1-14"/></svg>

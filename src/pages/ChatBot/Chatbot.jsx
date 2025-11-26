@@ -1,18 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { PaperPlaneIcon } from "../../icons";
 import { ChatBotIcon } from "../../icons";
-
-async function processChatbotMessage(text, sessionId) {
-  return { message: `Recibido: ${text}`, timestamp: new Date().toISOString(), session_id: sessionId };
-}
-
-async function getChatbotHistory() {
-  return { conversations: [] };
-}
-
-async function endChatbotSession(sessionId) {
-  return { ended: true, session_id: sessionId };
-}
+import { processChatbotMessage, getChatbotHistory, endChatbotSession } from "../../api/chatbot";
 
 export default function Chatbot() {
   const [messages, setMessages] = useState([
@@ -61,9 +50,11 @@ export default function Chatbot() {
         const formattedMessages = [];
         
         latestConv.messages.forEach((msg, index) => {
+          // El backend devuelve 'role' ('user' o 'assistant'), no 'type'
+          const messageType = msg.role === 'user' ? 'user' : 'bot';
           formattedMessages.push({
             id: index + 1,
-            type: msg.type === 'user' ? 'user' : 'bot',
+            type: messageType,
             text: msg.content,
             timestamp: new Date(msg.timestamp),
           });
@@ -111,11 +102,23 @@ export default function Chatbot() {
       setMessages((prev) => [...prev, botMessage]);
     } catch (error) {
       console.error("Error al procesar mensaje:", error);
-      // Mensaje de error
+      // Mensaje de error - usar el mensaje del backend si está disponible
+      let errorText = "Lo siento, ha ocurrido un error al procesar tu mensaje. Por favor, inténtalo de nuevo.";
+      
+      if (error?.response?.data) {
+        // Priorizar el mensaje amigable del backend
+        errorText = error.response.data.message || error.response.data.error || errorText;
+        
+        // Si es un error 503 (servicio no disponible), mostrar mensaje más específico
+        if (error.response.status === 503) {
+          errorText = "El servicio de IA no está disponible. Por favor, verifica que la API key de Gemini esté configurada correctamente.";
+        }
+      }
+      
       const errorMessage = {
         id: messages.length + 2,
         type: "bot",
-        text: "Lo siento, ha ocurrido un error al procesar tu mensaje. Por favor, inténtalo de nuevo.",
+        text: errorText,
         timestamp: new Date(),
       };
       setMessages((prev) => [...prev, errorMessage]);

@@ -6,6 +6,7 @@ import PublicRoute from './components/common/PublicRoute'
 import RoleRoute from './components/common/RoleRoute'
 import AppLayout from './layout/AppLayout'
 import Home from './pages/Dashboard/Home'
+import HomeHousekeeping from './pages/Dashboard/HomeHousekeeping'
 import SignIn from './pages/AuthPages/SignIn'
 import Users from './pages/Users/Users'
 import ForgotPass from './pages/AuthPages/ForgotPass'
@@ -16,12 +17,26 @@ import Lavanderia from './pages/Lavanderia/Lavanderia'
 import Mantenimiento from './pages/Mantenimiento/Mantenimiento'
 import Perfil from './pages/Perfil'
 import Mensajes from './pages/Mensajes/Mensajes'
+import { ToastContainer } from 'react-toastify'
+import 'react-toastify/dist/ReactToastify.css'
 
 function App() {
   return (
     <AuthProvider>
       <Router>
         <ScrollToTop />
+        <ToastContainer
+          position="bottom-right"
+          autoClose={3000}
+          hideProgressBar={false}
+          newestOnTop={false}
+          closeOnClick
+          rtl={false}
+          pauseOnFocusLoss
+          draggable
+          pauseOnHover
+          theme="light"
+        />
         <Routes>
           {/* Redirección de la raíz a signin */}
           <Route path="/" element={<Navigate to="/iniciar-sesion" replace />} />
@@ -66,6 +81,14 @@ function App() {
               element={
                 <RoleRoute allowedRoles={[ROLES.ADMIN]}>
                   <Lavanderia/>
+                </RoleRoute>
+              }
+            />
+            <Route 
+              path='/admin/caja-cobros' 
+              element={
+                <RoleRoute allowedRoles={[ROLES.ADMIN]}>
+                  <CajaCobros/>
                 </RoleRoute>
               }
             />
@@ -166,7 +189,7 @@ function App() {
               path="/hoteler/dashboard" 
               element={
                 <RoleRoute allowedRoles={[ROLES.HOUSEKEEPING]}>
-                  <Home />
+                  <HomeHousekeeping />
                 </RoleRoute>
               } 
             />
@@ -207,6 +230,14 @@ function App() {
               element={
                 <RoleRoute allowedRoles={[ROLES.HOUSEKEEPING]}>
                   <Mensajes />
+                </RoleRoute>
+              } 
+            />
+            <Route 
+              path="/hoteler/perfil" 
+              element={
+                <RoleRoute allowedRoles={[ROLES.HOUSEKEEPING]}>
+                  <Perfil />
                 </RoleRoute>
               } 
             />

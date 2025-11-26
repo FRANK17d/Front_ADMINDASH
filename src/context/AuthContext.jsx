@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut, setPersistence, browserLocalPersistence, browserSessionPersistence } from 'firebase/auth';
 import { auth } from '../firebase/config';
+import { getOwnProfile } from '../api/users';
 
 const AuthContext = createContext();
 
@@ -52,6 +53,24 @@ export const AuthProvider = ({ children }) => {
       if (!role) {
         await signOut(auth);
         throw new Error('NO_ROLE_ASSIGNED');
+      }
+
+      // Verificar si el correo está verificado (solo para housekeeping y receptionist)
+      if (role === ROLES.HOUSEKEEPING || role === ROLES.RECEPTIONIST) {
+        try {
+          const profile = await getOwnProfile();
+          if (profile && !profile.email_verified) {
+            await signOut(auth);
+            throw new Error('EMAIL_NOT_VERIFIED');
+          }
+        } catch (error) {
+          // Si hay error obteniendo el perfil, verificar si es el error de verificación
+          if (error.message === 'EMAIL_NOT_VERIFIED') {
+            throw error;
+          }
+          // Si es otro error, continuar (puede ser que el perfil no exista aún)
+          console.warn('Error obteniendo perfil durante login:', error);
+        }
       }
 
       return userCredential.user;

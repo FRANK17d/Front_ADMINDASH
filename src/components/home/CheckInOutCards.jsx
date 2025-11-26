@@ -1,17 +1,96 @@
-export default function CheckInOutCards() {
-  // Datos de ejemplo para check-ins del día
-  const checkIns = [
-    { id: 1, name: "Ana García López", room: "105", time: "14:30" },
-    { id: 2, name: "Roberto Silva", room: "302", time: "15:15" },
-    { id: 3, name: "Luis Ramírez", room: "110", time: "16:00" },
-  ];
+import { useEffect, useState } from "react";
+import { getTodayCheckinsCheckouts } from "../../api/dashboard";
+import { getReservationDetail } from "../../api/reservations";
+import { Modal } from "../ui/modal";
+import { useModal } from "../../hooks/useModal";
+import Badge from "../ui/badge/Badge";
+import Button from "../ui/button/Button";
 
-  // Datos de ejemplo para check-outs del día
-  const checkOuts = [
-    { id: 1, name: "María Torres", room: "208", time: "11:00" },
-    { id: 2, name: "Juan Pérez", room: "150", time: "11:30" },
-    { id: 3, name: "Carmen Díaz", room: "305", time: "12:00" },
-  ];
+export default function CheckInOutCards() {
+  const [checkIns, setCheckIns] = useState([]);
+  const [checkOuts, setCheckOuts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const { isOpen: isDetailModalOpen, openModal: openDetailModal, closeModal: closeDetailModal } = useModal();
+  const [selectedReservation, setSelectedReservation] = useState(null);
+  const [loadingDetail, setLoadingDetail] = useState(false);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const data = await getTodayCheckinsCheckouts();
+        setCheckIns(data.checkins || []);
+        setCheckOuts(data.checkouts || []);
+      } catch (error) {
+        console.error("Error fetching check-ins/check-outs:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
+
+  const handleGuestClick = async (reservationId) => {
+    if (!reservationId) return;
+    
+    setLoadingDetail(true);
+    try {
+      const reservation = await getReservationDetail(reservationId);
+      setSelectedReservation(reservation);
+      openDetailModal();
+    } catch (error) {
+      console.error("Error cargando detalles de reserva:", error);
+    } finally {
+      setLoadingDetail(false);
+    }
+  };
+
+  const getStatusBadgeColor = (status) => {
+    switch (status) {
+      case "Confirmada":
+        return "success";
+      case "Check-in":
+        return "warning";
+      case "Check-out":
+        return "primary";
+      case "Cancelada":
+        return "error";
+      default:
+        return "light";
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 md:gap-6">
+        {[1, 2].map((i) => (
+          <div key={i} className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-black md:p-6">
+            <div className="flex items-center justify-between mb-5">
+              <div className="flex-1">
+                <div className="h-5 w-32 bg-gray-200 rounded dark:bg-gray-700 animate-pulse mb-2"></div>
+                <div className="h-4 w-40 bg-gray-200 rounded dark:bg-gray-700 animate-pulse"></div>
+              </div>
+              <div className="w-12 h-12 bg-gray-200 rounded-xl dark:bg-gray-700 animate-pulse"></div>
+            </div>
+            <div className="space-y-3">
+              {[1, 2, 3].map((j) => (
+                <div key={j} className="flex items-center justify-between p-3 rounded-lg bg-gray-50 dark:bg-gray-800/50">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-gray-200 rounded-full dark:bg-gray-700 animate-pulse"></div>
+                    <div>
+                      <div className="h-4 w-32 bg-gray-200 rounded dark:bg-gray-700 animate-pulse mb-2"></div>
+                      <div className="h-3 w-24 bg-gray-200 rounded dark:bg-gray-700 animate-pulse"></div>
+                    </div>
+                  </div>
+                  <div className="h-4 w-16 bg-gray-200 rounded dark:bg-gray-700 animate-pulse"></div>
+                </div>
+              ))}
+            </div>
+            <div className="w-full h-10 bg-gray-200 rounded-lg dark:bg-gray-700 animate-pulse mt-4"></div>
+          </div>
+        ))}
+      </div>
+    );
+  }
 
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 md:gap-6">
@@ -44,10 +123,16 @@ export default function CheckInOutCards() {
         </div>
 
         <div className="space-y-3">
-          {checkIns.map((guest) => (
+          {checkIns.length === 0 ? (
+            <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4">
+              No hay check-ins programados para hoy
+            </p>
+          ) : (
+            checkIns.map((guest) => (
             <div
               key={guest.id}
-              className="flex items-center justify-between p-3 transition-colors rounded-lg bg-gray-50 hover:bg-gray-100 dark:bg-gray-800/50 dark:hover:bg-gray-800"
+              onClick={() => handleGuestClick(guest.reservation_id)}
+              className="flex items-center justify-between p-3 transition-colors rounded-lg bg-gray-50 hover:bg-gray-100 dark:bg-gray-800/50 dark:hover:bg-gray-800 cursor-pointer"
             >
               <div className="flex items-center gap-3">
                 <div className="flex items-center justify-center w-10 h-10 bg-white rounded-full dark:bg-gray-900">
@@ -93,12 +178,9 @@ export default function CheckInOutCards() {
                 </svg>
               </div>
             </div>
-          ))}
+            ))
+          )}
         </div>
-
-        <button className="w-full mt-4 py-2.5 text-sm font-medium text-blue-600 transition-colors border border-blue-200 rounded-lg hover:bg-blue-50 dark:text-blue-400 dark:border-blue-900 dark:hover:bg-blue-900/20">
-          Ver todos los check-ins
-        </button>
       </div>
 
       {/* Card de Check-out */}
@@ -130,10 +212,16 @@ export default function CheckInOutCards() {
         </div>
 
         <div className="space-y-3">
-          {checkOuts.map((guest) => (
+          {checkOuts.length === 0 ? (
+            <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4">
+              No hay check-outs programados para hoy
+            </p>
+          ) : (
+            checkOuts.map((guest) => (
             <div
               key={guest.id}
-              className="flex items-center justify-between p-3 transition-colors rounded-lg bg-gray-50 hover:bg-gray-100 dark:bg-gray-800/50 dark:hover:bg-gray-800"
+              onClick={() => handleGuestClick(guest.reservation_id)}
+              className="flex items-center justify-between p-3 transition-colors rounded-lg bg-gray-50 hover:bg-gray-100 dark:bg-gray-800/50 dark:hover:bg-gray-800 cursor-pointer"
             >
               <div className="flex items-center gap-3">
                 <div className="flex items-center justify-center w-10 h-10 bg-white rounded-full dark:bg-gray-900">
@@ -179,13 +267,136 @@ export default function CheckInOutCards() {
                 </svg>
               </div>
             </div>
-          ))}
+          ))
+          )}
         </div>
-
-        <button className="w-full mt-4 py-2.5 text-sm font-medium text-blue-600 transition-colors border border-blue-200 rounded-lg hover:bg-blue-50 dark:text-blue-400 dark:border-blue-900 dark:hover:bg-blue-900/20">
-          Ver todos los check-outs
-        </button>
       </div>
+
+      {/* Modal de Detalles */}
+      <Modal isOpen={isDetailModalOpen} onClose={closeDetailModal} className="m-4 w-[95vw] max-w-[800px]">
+        <div className="no-scrollbar relative w-full max-w-full max-h-[85vh] overflow-y-auto overflow-x-hidden rounded-3xl bg-white p-4 lg:p-8 dark:bg-black dark:border dark:border-orange-500/30">
+          <div className="px-2 pr-14">
+            <h4 className="mb-2 text-2xl font-semibold text-gray-800 dark:text-white/90">
+              Detalles de Reserva
+            </h4>
+          </div>
+          {loadingDetail ? (
+            <div className="flex items-center justify-center py-10">
+              <div className="w-8 h-8 border-4 border-orange-500 border-t-transparent rounded-full animate-spin"></div>
+            </div>
+          ) : selectedReservation ? (
+            <div className="px-2 space-y-4 mt-6">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Canal</p>
+                  <Badge size="sm">
+                    {selectedReservation.channel}
+                  </Badge>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Huésped</p>
+                  <p className="font-semibold text-gray-800 dark:text-white">
+                    {selectedReservation.guest_name || selectedReservation.guest}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Habitación</p>
+                  <p className="font-semibold text-gray-800 dark:text-white">
+                    {selectedReservation.room_label || selectedReservation.room || '-'}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Tipo de Habitación</p>
+                  <p className="font-semibold text-gray-800 dark:text-white">{selectedReservation.room_type || selectedReservation.roomType || '-'}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Check-in</p>
+                  <p className="font-semibold text-gray-800 dark:text-white">
+                    {selectedReservation.check_in || selectedReservation.checkIn}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Check-out</p>
+                  <p className="font-semibold text-gray-800 dark:text-white">
+                    {selectedReservation.check_out || selectedReservation.checkOut}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Total</p>
+                  <p className="font-semibold text-orange-600 dark:text-orange-400">
+                    S/ {selectedReservation.total_amount ? selectedReservation.total_amount.toFixed(2) : (selectedReservation.total || '0.00')}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Hora de llegada</p>
+                  <p className="font-semibold text-gray-800 dark:text-white">
+                    {selectedReservation.arrival_time || selectedReservation.arrivalTime || "-"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Personas</p>
+                  <p className="font-semibold text-gray-800 dark:text-white">
+                    {String(selectedReservation.num_adults || selectedReservation.numAdults || 0)} Adultos, {String(selectedReservation.num_children || selectedReservation.numChildren || 0)} Niños
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Estado</p>
+                  <Badge size="sm" color={getStatusBadgeColor(selectedReservation.status)}>
+                    {selectedReservation.status}
+                  </Badge>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Documento</p>
+                  <p className="font-semibold text-gray-800 dark:text-white">
+                    {(selectedReservation.document_type || selectedReservation.documentType || '-') + ' ' + (selectedReservation.document_number || selectedReservation.documentNumber || '')}
+                  </p>
+                </div>
+                {selectedReservation.document_type === 'RUC' || selectedReservation.documentType === 'RUC' ? (
+                  <div>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Tipo / Estado / Condición</p>
+                    <p className="font-semibold text-gray-800 dark:text-white">
+                      {(selectedReservation.taxpayer_type || selectedReservation.taxpayerType || '-') + ' / ' + (selectedReservation.business_status || selectedReservation.businessStatus || '-') + ' / ' + (selectedReservation.business_condition || selectedReservation.businessCondition || '-')}
+                    </p>
+                  </div>
+                ) : null}
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="md:col-span-3">
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Dirección</p>
+                  <p className="font-semibold text-gray-800 dark:text-white">{selectedReservation.address || '-'}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Departamento</p>
+                  <p className="font-semibold text-gray-800 dark:text-white">{selectedReservation.department || '-'}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Provincia</p>
+                  <p className="font-semibold text-gray-800 dark:text-white">{selectedReservation.province || '-'}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Distrito</p>
+                  <p className="font-semibold text-gray-800 dark:text-white">{selectedReservation.district || '-'}</p>
+                </div>
+              </div>
+              {selectedReservation.companions && selectedReservation.companions.length > 0 && (
+                <div>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Acompañantes</p>
+                  <div className="mt-1 space-y-1">
+                    {selectedReservation.companions.map((c, i) => (
+                      <p key={i} className="text-gray-800 dark:text-white">{c.name}</p>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : null}
+          <div className="flex items-center gap-3 px-2 mt-6 lg:justify-end">
+            <Button size="sm" variant="outline" className="cursor-pointer" onClick={closeDetailModal}>
+              Cerrar
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }
