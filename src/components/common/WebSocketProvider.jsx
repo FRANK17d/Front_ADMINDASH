@@ -10,7 +10,7 @@ const getWebSocketUrl = () => {
   }
   
   // Si no, construirla basándose en la URL de la API
-  const apiUrl = import.meta?.env?.VITE_API_URL || "http://localhost:8000";
+  const apiUrl = import.meta?.env?.VITE_API_URL || "https://web-m6c7e8zv43a9.up-de-fra1-k8s-1.apps.run-on-seenode.com";
   
   // Convertir http:// a ws:// y https:// a wss://
   const wsUrl = apiUrl
