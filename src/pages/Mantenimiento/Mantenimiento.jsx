@@ -24,7 +24,7 @@ import {
   blockRoom,
   unblockRoom,
 } from "../../api/mantenimiento";
-import { getAllRooms } from "../../api/reservations";
+import { getAllRooms, getAvailableRooms } from "../../api/reservations";
 import { useAuth } from "../../context/AuthContext";
 import { getOwnProfile } from "../../api/users";
 import LoadingSpinner from "../../components/common/LoadingSpinner";
@@ -36,6 +36,7 @@ export default function Mantenimiento() {
   const { isOpen: isIncidenceModalOpen, openModal: openIncidenceModal, closeModal: closeIncidenceModal } = useModal();
   const [activeTab, setActiveTab] = useState("system");
   const [allRooms, setAllRooms] = useState([]);
+  const [availableRoomsToday, setAvailableRoomsToday] = useState([]);
   
   // Estados para los datos
   const [loading, setLoading] = useState(true);
@@ -49,6 +50,9 @@ export default function Mantenimiento() {
   const [maintenanceIssues, setMaintenanceIssues] = useState([]);
   const [blockedRooms, setBlockedRooms] = useState([]);
   const [briquettesPage, setBriquettesPage] = useState(1);
+  const [isSavingChange, setIsSavingChange] = useState(false);
+  const [isSavingBlock, setIsSavingBlock] = useState(false);
+  const [isSavingIncidence, setIsSavingIncidence] = useState(false);
   
   // Estados para los formularios
   const [changeForm, setChangeForm] = useState({
@@ -96,32 +100,85 @@ export default function Mantenimiento() {
   useEffect(() => {
     document.title = "Mantenimiento Técnico - Administrador - Hotel Plaza Trujillo";
     fetchAll();
-    
-    // Escuchar notificaciones de mantenimiento desde WebSocket
-    const handleMaintenanceNotification = (event) => {
-      const notification = event.detail;
-      toast.info(
-        <div>
-          <div className="font-semibold">{notification.title}</div>
-          <div className="text-sm mt-1">{notification.message}</div>
-        </div>,
-        {
-          position: "bottom-right",
-          autoClose: 10000,
-          hideProgressBar: false,
-          closeOnClick: true,
-          pauseOnHover: true,
-          draggable: true,
-        }
-      );
-    };
-    
-    window.addEventListener('maintenanceNotification', handleMaintenanceNotification);
-    
-    return () => {
-      window.removeEventListener('maintenanceNotification', handleMaintenanceNotification);
-    };
   }, []);
+
+  // Verificar periódicamente si es hora del próximo cambio de briquetas
+  useEffect(() => {
+    const convert12To24Hour = (time12h) => {
+      // Convierte formato "06:15 PM" o "06:15 AM" a "18:15" o "06:15"
+      if (!time12h) return null;
+      
+      const [time, period] = time12h.split(' ');
+      if (!time || !period) return null;
+      
+      const [hours, minutes] = time.split(':');
+      let hour24 = parseInt(hours, 10);
+      
+      if (period.toUpperCase() === 'PM' && hour24 !== 12) {
+        hour24 += 12;
+      } else if (period.toUpperCase() === 'AM' && hour24 === 12) {
+        hour24 = 0;
+      }
+      
+      return `${hour24.toString().padStart(2, '0')}:${minutes}`;
+    };
+
+    const checkMaintenanceTime = () => {
+      const { nextMaintenance } = waterHeatingSystem;
+      
+      if (!nextMaintenance?.date || !nextMaintenance?.time) {
+        return; // No hay próximo cambio programado
+      }
+
+      try {
+        // Obtener fecha y hora actual
+        const now = new Date();
+        const currentDate = now.toISOString().split('T')[0]; // YYYY-MM-DD
+        const currentTime = now.toTimeString().split(' ')[0].substring(0, 5); // HH:MM
+
+        // Convertir hora del próximo cambio de formato 12h a 24h
+        const nextMaintenanceTime24 = convert12To24Hour(nextMaintenance.time);
+        
+        if (!nextMaintenanceTime24) {
+          return; // No se pudo convertir la hora
+        }
+
+        // Comparar fecha y hora
+        if (nextMaintenance.date === currentDate && nextMaintenanceTime24 === currentTime) {
+          // Es hora del cambio
+          const message = `¡Es hora de realizar el cambio de briquetas! Fecha: ${nextMaintenance.date} Hora: ${nextMaintenance.time}`;
+          
+          toast.info(
+            <div>
+              <div className="font-semibold">Recordatorio de Mantenimiento</div>
+              <div className="text-sm mt-1">{message}</div>
+            </div>,
+            {
+              position: "bottom-right",
+              autoClose: 10000,
+              hideProgressBar: false,
+              closeOnClick: true,
+              pauseOnHover: true,
+              draggable: true,
+              toastId: 'maintenance-reminder', // ID único para evitar duplicados
+            }
+          );
+        }
+      } catch (error) {
+        console.error('Error verificando hora de mantenimiento:', error);
+      }
+    };
+
+    // Verificar cada minuto
+    const interval = setInterval(checkMaintenanceTime, 60000); // 60000ms = 1 minuto
+    
+    // Verificar inmediatamente al montar
+    checkMaintenanceTime();
+
+    return () => {
+      clearInterval(interval);
+    };
+  }, [waterHeatingSystem.nextMaintenance]);
 
   // Resetear página cuando se cambia de pestaña
   useEffect(() => {
@@ -135,6 +192,17 @@ export default function Mantenimiento() {
         try {
           const rooms = await getAllRooms();
           setAllRooms(rooms);
+          
+          // Obtener habitaciones disponibles para hoy (excluye ocupadas y bloqueadas)
+          const today = new Date().toISOString().split('T')[0];
+          const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+          try {
+            const available = await getAvailableRooms(today, tomorrow);
+            setAvailableRoomsToday(available || []);
+          } catch (e) {
+            console.error("Error obteniendo habitaciones disponibles:", e);
+            setAvailableRoomsToday([]);
+          }
           
           // Obtener el nombre del usuario logueado desde el perfil
           let userName = "";
@@ -158,6 +226,7 @@ export default function Mantenimiento() {
         } catch (error) {
           console.error("Error cargando habitaciones:", error);
           setAllRooms([]);
+          setAvailableRoomsToday([]);
         }
       })();
     } else {
@@ -222,42 +291,104 @@ export default function Mantenimiento() {
   };
 
   const handleChangeBriquettes = async () => {
+    // Validar campos obligatorios
+    if (!changeForm.quantity || !changeForm.date || !changeForm.time) {
+      toast.error("Por favor complete todos los campos obligatorios: Cantidad, Fecha y Hora", {
+        position: "bottom-right",
+        autoClose: 4000,
+      });
+      return;
+    }
+    
+    // Validar que la cantidad sea un número válido
+    const quantity = parseInt(changeForm.quantity, 10);
+    if (isNaN(quantity) || quantity <= 0) {
+      toast.error("La cantidad debe ser un número mayor a 0", {
+        position: "bottom-right",
+        autoClose: 4000,
+      });
+      return;
+    }
+    
+    setIsSavingChange(true);
     try {
       await registerBriquetteChange(changeForm);
       setChangeForm({ quantity: "", date: "", time: "", operationalStatus: "Operativo" });
       closeChangeModal();
       await fetchAll();
+      toast.success("Cambio de briquetas registrado exitosamente", {
+        position: "bottom-right",
+        autoClose: 3000,
+      });
     } catch (error) {
       console.error("Error registrando cambio de briquetas:", error);
-      alert("Error al registrar el cambio de briquetas");
+      const errorMessage = error?.response?.data?.error || "Error al registrar el cambio de briquetas";
+      toast.error(errorMessage, {
+        position: "bottom-right",
+        autoClose: 4000,
+      });
+    } finally {
+      setIsSavingChange(false);
     }
   };
 
   const handleBlockRoom = async () => {
     try {
       if (!blockForm.room || !blockForm.reason || !blockForm.blockedUntil) {
-        alert("Por favor complete todos los campos requeridos");
+        toast.error("Por favor complete todos los campos obligatorios: Habitación, Razón de Bloqueo y Fecha Estimada de Liberación", {
+          position: "bottom-right",
+          autoClose: 4000,
+        });
         return;
       }
+      setIsSavingBlock(true);
       await blockRoom(blockForm);
       setBlockForm({ room: "", reason: "", blockedUntil: "", blockedBy: "" });
       closeBlockModal();
       await fetchAll();
+      toast.success("Habitación bloqueada exitosamente", {
+        position: "bottom-right",
+        autoClose: 3000,
+      });
     } catch (error) {
       console.error("Error bloqueando habitación:", error);
-      alert("Error al bloquear la habitación");
+      const errorMessage = error?.response?.data?.error || "Error al bloquear la habitación";
+      toast.error(errorMessage, {
+        position: "bottom-right",
+        autoClose: 4000,
+      });
+    } finally {
+      setIsSavingBlock(false);
     }
   };
 
   const handleReportIncidence = async () => {
     try {
+      if (!issueForm.room || !issueForm.problem || !issueForm.priority) {
+        toast.error("Por favor complete todos los campos obligatorios: Habitación/Área, Problema y Prioridad", {
+          position: "bottom-right",
+          autoClose: 4000,
+        });
+        return;
+      }
+      setIsSavingIncidence(true);
       await reportIssue(issueForm);
       setIssueForm({ room: "", problem: "", priority: "Media", technician: "" });
       closeIncidenceModal();
       await fetchAll();
+      toast.success("Incidencia reportada exitosamente", {
+        position: "bottom-right",
+        autoClose: 3000,
+      });
     } catch (error) {
       console.error("Error reportando incidencia:", error);
-      alert("Error al reportar la incidencia");
+      const errorMessage = error?.response?.data?.error || "Error al reportar la incidencia";
+      toast.error(errorMessage, {
+        position: "bottom-right",
+        autoClose: 4000,
+      });
+    } finally {
+      setIsSavingIncidence(false);
     }
   };
 
@@ -291,8 +422,52 @@ export default function Mantenimiento() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <LoadingSpinner />
+      <div className="space-y-6">
+        {/* Header Placeholder */}
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="h-8 w-64 bg-gray-200 rounded dark:bg-gray-700 animate-pulse mb-2"></div>
+            <div className="h-4 w-96 bg-gray-200 rounded dark:bg-gray-700 animate-pulse"></div>
+          </div>
+        </div>
+
+        {/* Tabla con Pestañas Placeholder */}
+        <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-black">
+          {/* Tabs Navigation Placeholder */}
+          <div className="border-b border-gray-200 dark:border-gray-800">
+            <div className="flex flex-wrap px-5 sm:px-6 pt-5 gap-4">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="h-10 w-40 bg-gray-200 rounded-lg dark:bg-gray-700 animate-pulse"></div>
+              ))}
+            </div>
+          </div>
+
+          {/* Tab Content Placeholder */}
+          <div className="p-5 sm:p-6">
+            {/* Sistema de Agua Caliente Placeholder */}
+            <div className="space-y-6">
+              {/* Estado del Sistema Placeholder */}
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+                {[1, 2, 3, 4].map((i) => (
+                  <div key={i} className="rounded-xl border border-gray-200 bg-white p-5 dark:border-gray-900 dark:bg-black">
+                    <div className="w-12 h-12 bg-gray-200 rounded-xl dark:bg-gray-700 animate-pulse"></div>
+                    <div className="mt-4 space-y-2">
+                      <div className="h-4 w-32 bg-gray-200 rounded dark:bg-gray-700 animate-pulse"></div>
+                      <div className="h-6 w-24 bg-gray-200 rounded dark:bg-gray-700 animate-pulse"></div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Botones de Acción Placeholder */}
+              <div className="flex flex-wrap gap-3">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="h-10 w-48 bg-gray-200 rounded-lg dark:bg-gray-700 animate-pulse"></div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -769,52 +944,93 @@ export default function Mantenimiento() {
           <div className="px-2 space-y-4">
             <div>
               <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-400">
-                Cantidad de Briquetas
+                Cantidad de Briquetas <span className="text-red-600">*</span>
               </label>
               <input
                 type="number"
+                min="1"
                 placeholder="Ingrese la cantidad"
                 value={changeForm.quantity}
                 onChange={(e) => setChangeForm({ ...changeForm, quantity: e.target.value })}
+                required
                 className="h-11 w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-800 focus:border-orange-300 focus:outline-hidden focus:ring-3 focus:ring-orange-500/20 dark:bg-black dark:text-white dark:border-gray-700"
               />
             </div>
             <div>
               <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-400">
-                Fecha
+                Fecha <span className="text-red-600">*</span>
               </label>
               <div className="relative">
                 <input
                   type="date"
                   value={changeForm.date}
                   onChange={(e) => setChangeForm({ ...changeForm, date: e.target.value })}
-                  className="h-11 w-full rounded-lg border border-gray-300 bg-white pl-4 pr-10 py-2.5 text-sm text-gray-800 focus:border-orange-300 focus:outline-hidden focus:ring-3 focus:ring-orange-500/20 dark:bg-black dark:text-white dark:border-gray-700 [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-100 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:right-2 [&::-webkit-calendar-picker-indicator]:w-6 [&::-webkit-calendar-picker-indicator]:h-6 [&::-webkit-calendar-picker-indicator]:z-10"
+                  onClick={(e) => e.target.showPicker?.()}
+                  required
+                  className="h-11 w-full rounded-lg border border-gray-300 bg-white pl-4 pr-10 py-2.5 text-sm text-gray-800 focus:border-orange-300 focus:outline-hidden focus:ring-3 focus:ring-orange-500/20 dark:bg-black dark:text-white dark:border-gray-700 cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:right-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:cursor-pointer"
                 />
-                <svg
-                  className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none z-0"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    const input = e.currentTarget.previousElementSibling;
+                    if (input && input.showPicker) {
+                      input.showPicker();
+                    } else {
+                      input?.click();
+                    }
+                  }}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 cursor-pointer focus:outline-none"
+                  aria-label="Abrir calendario"
                 >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-                  />
-                </svg>
+                  <svg 
+                    className="w-5 h-5" 
+                    fill="none" 
+                    stroke="currentColor" 
+                    viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                </button>
               </div>
             </div>
             <div>
               <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-400">
-                Hora
+                Hora <span className="text-red-600">*</span>
               </label>
-              <input
-                type="time"
-                value={changeForm.time}
-                onChange={(e) => setChangeForm({ ...changeForm, time: e.target.value })}
-                className="h-11 w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-800 focus:border-orange-300 focus:outline-hidden focus:ring-3 focus:ring-orange-500/20 dark:bg-black dark:text-white dark:border-gray-700"
-              />
+              <div className="relative">
+                <input
+                  type="time"
+                  value={changeForm.time}
+                  onChange={(e) => setChangeForm({ ...changeForm, time: e.target.value })}
+                  onClick={(e) => e.target.showPicker?.()}
+                  required
+                  className="h-11 w-full rounded-lg border border-gray-300 bg-white pl-4 pr-10 py-2.5 text-sm text-gray-800 focus:border-orange-300 focus:outline-hidden focus:ring-3 focus:ring-orange-500/20 dark:bg-black dark:text-white dark:border-gray-700 cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:right-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:cursor-pointer"
+                />
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    const input = e.currentTarget.previousElementSibling;
+                    if (input && input.showPicker) {
+                      input.showPicker();
+                    } else {
+                      input?.click();
+                    }
+                  }}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 cursor-pointer focus:outline-none"
+                  aria-label="Abrir selector de hora"
+                >
+                  <svg 
+                    className="w-5 h-5" 
+                    fill="none" 
+                    stroke="currentColor" 
+                    viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </button>
+              </div>
             </div>
             <div>
               <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-400">
@@ -832,11 +1048,31 @@ export default function Mantenimiento() {
             </div>
           </div>
           <div className="flex items-center gap-3 px-2 mt-6 lg:justify-end">
-            <Button size="sm" variant="outline" onClick={closeChangeModal}>
+            <Button 
+              size="sm" 
+              variant="outline" 
+              onClick={closeChangeModal}
+              disabled={isSavingChange}
+            >
               Cancelar
             </Button>
-            <Button size="sm" onClick={handleChangeBriquettes} className="bg-orange-500 hover:bg-orange-600">
-              Registrar Cambio
+            <Button 
+              size="sm" 
+              onClick={handleChangeBriquettes} 
+              disabled={!changeForm.quantity || !changeForm.date || !changeForm.time || parseInt(changeForm.quantity, 10) <= 0 || isSavingChange}
+              className="bg-orange-500 hover:bg-orange-600 disabled:bg-gray-300 disabled:cursor-not-allowed disabled:hover:bg-gray-300"
+            >
+              {isSavingChange ? (
+                <span className="flex items-center gap-2">
+                  <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Guardando...
+                </span>
+              ) : (
+                "Registrar Cambio"
+              )}
             </Button>
           </div>
         </div>
@@ -865,41 +1101,82 @@ export default function Mantenimiento() {
                 required
               >
                 <option value="">Seleccione una habitación</option>
-                {allRooms
-                  .sort((a, b) => {
-                    // Ordenar por piso primero, luego por código
-                    if (a.floor !== b.floor) return a.floor - b.floor;
-                    return String(a.code).localeCompare(String(b.code));
-                  })
-                  .map((room) => (
-                    <option key={room.code} value={room.code}>
-                      {room.code} - Piso {room.floor} {room.type ? `(${room.type})` : ''}
-                    </option>
-                  ))}
+                {(() => {
+                  // Filtrar solo habitaciones con estado "Disponible"
+                  // Primero usar allRooms que tiene el estado desde el backend
+                  const roomsWithStatus = allRooms.filter(room => room.status === 'Disponible');
+                  
+                  // También excluir las que están bloqueadas (por si acaso)
+                  const blockedRoomCodes = new Set(blockedRooms.map(br => String(br.room)));
+                  const roomsToShow = roomsWithStatus.filter(room => !blockedRoomCodes.has(String(room.code)));
+                  
+                  if (roomsToShow.length === 0) {
+                    return <option value="" disabled>No hay habitaciones disponibles</option>;
+                  }
+                  
+                  return roomsToShow
+                    .sort((a, b) => {
+                      if (a.floor !== b.floor) return a.floor - b.floor;
+                      return String(a.code).localeCompare(String(b.code));
+                    })
+                    .map((room) => (
+                      <option key={room.code} value={room.code}>
+                        {room.code} - Piso {room.floor} {room.type ? `(${room.type})` : ''}
+                      </option>
+                    ));
+                })()}
               </select>
             </div>
             <div>
               <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-400">
-                Razón de Bloqueo
+                Razón de Bloqueo <span className="text-red-600">*</span>
               </label>
               <textarea
                 rows="3"
                 placeholder="Describa el motivo del bloqueo"
                 value={blockForm.reason}
                 onChange={(e) => setBlockForm({ ...blockForm, reason: e.target.value })}
+                required
                 className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-800 focus:border-orange-300 focus:outline-hidden focus:ring-3 focus:ring-orange-500/20 dark:bg-black dark:text-white dark:border-gray-700 resize-none"
               />
             </div>
             <div>
               <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-400">
-                Fecha Estimada de Liberación
+                Fecha Estimada de Liberación <span className="text-red-600">*</span>
               </label>
-              <input
-                type="date"
-                value={blockForm.blockedUntil}
-                onChange={(e) => setBlockForm({ ...blockForm, blockedUntil: e.target.value })}
-                className="h-11 w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-800 focus:border-orange-300 focus:outline-hidden focus:ring-3 focus:ring-orange-500/20 dark:bg-black dark:text-white dark:border-gray-700"
-              />
+              <div className="relative">
+                <input
+                  type="date"
+                  value={blockForm.blockedUntil}
+                  onChange={(e) => setBlockForm({ ...blockForm, blockedUntil: e.target.value })}
+                  onClick={(e) => e.target.showPicker?.()}
+                  required
+                  className="h-11 w-full rounded-lg border border-gray-300 bg-white pl-4 pr-10 py-2.5 text-sm text-gray-800 focus:border-orange-300 focus:outline-hidden focus:ring-3 focus:ring-orange-500/20 dark:bg-black dark:text-white dark:border-gray-700 cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:right-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:cursor-pointer"
+                />
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    const input = e.currentTarget.previousElementSibling;
+                    if (input && input.showPicker) {
+                      input.showPicker();
+                    } else {
+                      input?.click();
+                    }
+                  }}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 cursor-pointer focus:outline-none"
+                  aria-label="Abrir calendario"
+                >
+                  <svg 
+                    className="w-5 h-5" 
+                    fill="none" 
+                    stroke="currentColor" 
+                    viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                </button>
+              </div>
             </div>
             <div>
               <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-400">
@@ -918,11 +1195,31 @@ export default function Mantenimiento() {
             </div>
           </div>
           <div className="flex items-center gap-3 px-2 mt-6 lg:justify-end">
-            <Button size="sm" variant="outline" onClick={closeBlockModal}>
+            <Button 
+              size="sm" 
+              variant="outline" 
+              onClick={closeBlockModal}
+              disabled={isSavingBlock}
+            >
               Cancelar
             </Button>
-            <Button size="sm" onClick={handleBlockRoom} className="bg-gray-600 hover:bg-gray-700">
-              Bloquear Habitación
+            <Button 
+              size="sm" 
+              onClick={handleBlockRoom} 
+              disabled={!blockForm.room || !blockForm.reason || !blockForm.blockedUntil || isSavingBlock}
+              className="bg-gray-600 hover:bg-gray-700 disabled:bg-gray-300 disabled:cursor-not-allowed disabled:hover:bg-gray-300"
+            >
+              {isSavingBlock ? (
+                <span className="flex items-center gap-2">
+                  <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Bloqueando...
+                </span>
+              ) : (
+                "Bloquear Habitación"
+              )}
             </Button>
           </div>
         </div>
@@ -942,35 +1239,38 @@ export default function Mantenimiento() {
           <div className="px-2 space-y-4">
             <div>
               <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-400">
-                Habitación/Área
+                Habitación/Área <span className="text-red-600">*</span>
               </label>
               <input
                 type="text"
                 placeholder="Ej: Habitación 301, Pasillo 2do piso"
                 value={issueForm.room}
                 onChange={(e) => setIssueForm({ ...issueForm, room: e.target.value })}
+                required
                 className="h-11 w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-800 focus:border-orange-300 focus:outline-hidden focus:ring-3 focus:ring-orange-500/20 dark:bg-black dark:text-white dark:border-gray-700"
               />
             </div>
             <div>
               <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-400">
-                Problema
+                Problema <span className="text-red-600">*</span>
               </label>
               <textarea
                 rows="3"
                 placeholder="Describa el problema en detalle"
                 value={issueForm.problem}
                 onChange={(e) => setIssueForm({ ...issueForm, problem: e.target.value })}
+                required
                 className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-800 focus:border-orange-300 focus:outline-hidden focus:ring-3 focus:ring-orange-500/20 dark:bg-black dark:text-white dark:border-gray-700 resize-none"
               />
             </div>
             <div>
               <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-400">
-                Prioridad
+                Prioridad <span className="text-red-600">*</span>
               </label>
               <select 
                 value={issueForm.priority}
                 onChange={(e) => setIssueForm({ ...issueForm, priority: e.target.value })}
+                required
                 className="h-11 w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-800 focus:border-orange-300 focus:outline-hidden focus:ring-3 focus:ring-orange-500/20 dark:bg-black dark:text-white dark:border-gray-700"
               >
                 <option>Baja</option>
@@ -980,11 +1280,31 @@ export default function Mantenimiento() {
             </div>
           </div>
           <div className="flex items-center gap-3 px-2 mt-6 lg:justify-end">
-            <Button size="sm" variant="outline" onClick={closeIncidenceModal}>
+            <Button 
+              size="sm" 
+              variant="outline" 
+              onClick={closeIncidenceModal}
+              disabled={isSavingIncidence}
+            >
               Cancelar
             </Button>
-            <Button size="sm" onClick={handleReportIncidence} className="bg-red-600 hover:bg-red-700">
-              Reportar Incidencia
+            <Button 
+              size="sm" 
+              onClick={handleReportIncidence} 
+              disabled={!issueForm.room || !issueForm.problem || !issueForm.priority || isSavingIncidence}
+              className="bg-red-600 hover:bg-red-700 disabled:bg-gray-300 disabled:cursor-not-allowed disabled:hover:bg-gray-300"
+            >
+              {isSavingIncidence ? (
+                <span className="flex items-center gap-2">
+                  <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Reportando...
+                </span>
+              ) : (
+                "Reportar Incidencia"
+              )}
             </Button>
           </div>
         </div>

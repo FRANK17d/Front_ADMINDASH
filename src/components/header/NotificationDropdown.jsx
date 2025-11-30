@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Dropdown } from "../ui/dropdown/Dropdown";
 import { DropdownItem } from "../ui/dropdown/DropdownItem";
 import { useAuth } from "../../context/AuthContext";
@@ -18,11 +18,81 @@ const formatTimeAgo = (timestamp) => {
   return `${Math.floor(diffInSeconds / 86400)} días ago`;
 };
 
+// Clave para localStorage (específica por usuario)
+const getStorageKey = (userId) => `notifications_${userId || 'guest'}`;
+
+// Cargar notificaciones desde localStorage
+const loadNotificationsFromStorage = (userId) => {
+  try {
+    const key = getStorageKey(userId);
+    const stored = localStorage.getItem(key);
+    if (stored) {
+      const notifications = JSON.parse(stored);
+      // Filtrar notificaciones antiguas (más de 7 días)
+      const sevenDaysAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
+      return notifications.filter(n => {
+        const notificationTime = new Date(n.timestamp).getTime();
+        return notificationTime > sevenDaysAgo;
+      });
+    }
+  } catch (error) {
+    console.error('Error cargando notificaciones desde localStorage:', error);
+  }
+  return [];
+};
+
+// Guardar notificaciones en localStorage
+const saveNotificationsToStorage = (userId, notifications) => {
+  try {
+    const key = getStorageKey(userId);
+    // Limitar a 50 notificaciones para no exceder el límite de localStorage
+    const notificationsToSave = notifications.slice(0, 50);
+    localStorage.setItem(key, JSON.stringify(notificationsToSave));
+  } catch (error) {
+    console.error('Error guardando notificaciones en localStorage:', error);
+    // Si hay error (por ejemplo, localStorage lleno), intentar limpiar notificaciones antiguas
+    try {
+      const sevenDaysAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
+      const filtered = notifications.filter(n => {
+        const notificationTime = new Date(n.timestamp).getTime();
+        return notificationTime > sevenDaysAgo;
+      }).slice(0, 30); // Reducir a 30 si hay problemas
+      localStorage.setItem(getStorageKey(userId), JSON.stringify(filtered));
+    } catch (e) {
+      console.error('Error crítico guardando notificaciones:', e);
+    }
+  }
+};
+
 export default function NotificationDropdown() {
   const { user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [notifying, setNotifying] = useState(false);
   const [notifications, setNotifications] = useState([]);
+  // Set para rastrear notificaciones procesadas y evitar duplicados
+  const processedNotificationsRef = useRef(new Set());
+  const isInitializedRef = useRef(false);
+
+  // Cargar notificaciones desde localStorage al montar o cuando cambia el usuario
+  useEffect(() => {
+    if (user?.uid && !isInitializedRef.current) {
+      const loadedNotifications = loadNotificationsFromStorage(user.uid);
+      setNotifications(loadedNotifications);
+      isInitializedRef.current = true;
+      console.log('NotificationDropdown: Notificaciones cargadas desde localStorage', loadedNotifications.length);
+    } else if (!user && isInitializedRef.current) {
+      // Si el usuario cierra sesión, limpiar
+      setNotifications([]);
+      isInitializedRef.current = false;
+    }
+  }, [user]);
+
+  // Guardar notificaciones en localStorage cada vez que cambien
+  useEffect(() => {
+    if (user?.uid && notifications.length > 0) {
+      saveNotificationsToStorage(user.uid, notifications);
+    }
+  }, [notifications, user]);
 
   function toggleDropdown() {
     setIsOpen(!isOpen);
@@ -61,21 +131,69 @@ export default function NotificationDropdown() {
         }
       }
       
-      const newNotification = {
-        id: Date.now(),
-        title: notification.title,
-        message: notification.message,
-        type: notification.notification_type,
-        data: notification.data,
-        timestamp: notification.timestamp || new Date().toISOString(),
-      };
+      // Crear un ID único para la notificación usando el ID del backend si está disponible
+      // Si no hay ID del backend, usar una combinación de tipo, datos y timestamp
+      const backendId = notification.data?.id;
+      const notificationId = backendId 
+        ? `${notification.notification_type || 'general'}_${backendId}`
+        : `${notification.notification_type || 'general'}_${notification.timestamp || Date.now()}_${notification.message?.substring(0, 30) || ''}`;
       
-      console.log('NotificationDropdown: Agregando notificación', newNotification);
-      setNotifications(prev => [newNotification, ...prev].slice(0, 20)); // Mantener solo las últimas 20
+      // Verificar si ya procesamos esta notificación
+      if (processedNotificationsRef.current.has(notificationId)) {
+        console.log('NotificationDropdown: Notificación duplicada ignorada', notificationId, notification);
+        return;
+      }
+      
+      // Verificar también si ya existe en la lista de notificaciones actual
+      setNotifications(prev => {
+        // Si hay un ID del backend, verificar si ya existe una notificación con ese ID
+        if (backendId) {
+          const exists = prev.some(n => 
+            n.type === notification.notification_type && 
+            n.data?.id === backendId
+          );
+          if (exists) {
+            console.log('NotificationDropdown: Notificación ya existe en la lista', backendId);
+            return prev; // No agregar duplicado
+          }
+        }
+        
+        // Si no hay ID del backend, verificar por mensaje y timestamp similar
+        const similarExists = prev.some(n => 
+          n.type === notification.notification_type &&
+          n.message === notification.message &&
+          Math.abs(new Date(n.timestamp).getTime() - new Date(notification.timestamp || Date.now()).getTime()) < 2000 // Dentro de 2 segundos
+        );
+        if (similarExists) {
+          console.log('NotificationDropdown: Notificación similar ya existe en la lista');
+          return prev; // No agregar duplicado
+        }
+        
+        // Marcar como procesada
+        processedNotificationsRef.current.add(notificationId);
+        
+        // Limpiar notificaciones procesadas antiguas (más de 5 minutos)
+        setTimeout(() => {
+          processedNotificationsRef.current.delete(notificationId);
+        }, 5 * 60 * 1000); // 5 minutos
+        
+        const newNotification = {
+          id: backendId ? `notif_${notification.notification_type}_${backendId}` : Date.now(),
+          title: notification.title,
+          message: notification.message,
+          type: notification.notification_type,
+          data: notification.data,
+          timestamp: notification.timestamp || new Date().toISOString(),
+        };
+        
+        console.log('NotificationDropdown: Agregando notificación', newNotification);
+        return [newNotification, ...prev].slice(0, 20); // Mantener solo las últimas 20
+      });
       setNotifying(true);
       
-      // Mostrar toast de notificación
+      // Mostrar toast de notificación con ID único para evitar duplicados
       toast.info(notification.message, {
+        toastId: `toast_${notificationId}`, // Esto previene toasts duplicados con el mismo ID
         position: "bottom-right",
         autoClose: 4000,
         hideProgressBar: false,

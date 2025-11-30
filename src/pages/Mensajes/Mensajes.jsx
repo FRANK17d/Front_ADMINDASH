@@ -18,7 +18,6 @@ const Mensajes = () => {
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
   const fileInputRef = useRef(null);
-  const pollingInterval = useRef(null);
 
   // Función para mostrar notificación del sistema
   const showNotification = (title, body, icon) => {
@@ -37,6 +36,68 @@ const Mensajes = () => {
       Notification.requestPermission();
     }
   }, []);
+
+  // Escuchar nuevos mensajes via WebSocket
+  useEffect(() => {
+    const handleNewMessage = (event) => {
+      const { message, sender_uid } = event.detail;
+      
+      // Si el mensaje es de la conversación activa, agregarlo
+      if (selectedEmployee && sender_uid === selectedEmployee.uid) {
+        const newMsg = {
+          id: message.id,
+          sender: 'employee',
+          sender_uid: message.sender_uid,
+          text: message.text,
+          message_type: message.message_type || 'text',
+          attachment: message.attachment,
+          attachment_name: message.attachment_name,
+          attachment_size: message.attachment_size,
+          timestamp: new Date(message.timestamp),
+        };
+        
+        setMessages(prev => [...prev, newMsg]);
+        
+        // Mostrar notificación
+        showNotification(
+          `Nuevo mensaje de ${selectedEmployee.name}`,
+          message.text || '📎 Archivo adjunto',
+          selectedEmployee.photo
+        );
+        
+        // Auto-scroll
+        setTimeout(() => {
+          messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+        }, 100);
+      } else {
+        // Si no es la conversación activa, incrementar badge
+        setEmployees(prev => prev.map(emp => {
+          if (emp.uid === sender_uid) {
+            return {
+              ...emp,
+              unreadCount: (emp.unreadCount || 0) + 1,
+              lastMessage: message.text || '📎 Archivo',
+              lastMessageTime: formatTime(new Date(message.timestamp))
+            };
+          }
+          return emp;
+        }));
+        
+        // Buscar nombre del remitente
+        const sender = employees.find(e => e.uid === sender_uid);
+        if (sender) {
+          showNotification(
+            `Nuevo mensaje de ${sender.name}`,
+            message.text || '📎 Archivo adjunto',
+            sender.photo
+          );
+        }
+      }
+    };
+
+    window.addEventListener('newMessage', handleNewMessage);
+    return () => window.removeEventListener('newMessage', handleNewMessage);
+  }, [selectedEmployee, employees]);
 
   // Función para obtener el nombre del rol
   const getRoleName = (role) => {
@@ -98,31 +159,15 @@ const Mensajes = () => {
     }
   };
 
-  // Polling para actualizar la lista de usuarios (cada 5 segundos)
-  useEffect(() => {
-    const userListInterval = setInterval(() => {
-      loadUsers();
-    }, 5000);
-
-    return () => {
-      clearInterval(userListInterval);
-    };
-  }, []);
 
   useEffect(() => {
     if (selectedEmployee) {
-      loadMessages();
-      
-      // Polling cada 3 segundos para actualizar mensajes
-      pollingInterval.current = setInterval(() => {
-        loadMessages();
-      }, 3000);
-      
-      return () => {
-        if (pollingInterval.current) {
-          clearInterval(pollingInterval.current);
-        }
-      };
+      loadMessages().then(() => {
+        // Solo hacer scroll al cambiar de chat
+        setTimeout(() => {
+          messagesEndRef.current?.scrollIntoView({ behavior: "auto" });
+        }, 100);
+      });
     }
   }, [selectedEmployee]);
 
@@ -167,23 +212,11 @@ const Mensajes = () => {
       
       setMessages(conversationMessages);
       setLastMessageCount(conversationMessages.length);
-      
-      // Auto-scroll al final
-      setTimeout(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-      }, 100);
     } catch (error) {
       console.error('Error cargando mensajes:', error);
     }
   };
 
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
 
   const handleSelectEmployee = (employee) => {
     setSelectedEmployee(employee);
@@ -399,9 +432,6 @@ const Mensajes = () => {
                         employee.avatar
                       )}
                     </div>
-                    {employee.status === "online" && (
-                      <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 border-2 border-white dark:border-gray-900 rounded-full"></div>
-                    )}
                   </div>
 
                   {/* Info */}
@@ -454,9 +484,6 @@ const Mensajes = () => {
                       selectedEmployee.avatar
                     )}
                   </div>
-                  {selectedEmployee.status === "online" && (
-                    <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white dark:border-gray-900 rounded-full"></div>
-                  )}
                 </div>
                 <div>
                   <h3 className="text-sm font-semibold text-gray-800 dark:text-white">
@@ -464,9 +491,6 @@ const Mensajes = () => {
                   </h3>
                   <p className="text-xs text-gray-500 dark:text-gray-400">
                     {selectedEmployee.role}
-                    {selectedEmployee.status === "online" && (
-                      <span className="ml-2 text-green-500">• En línea</span>
-                    )}
                   </p>
                 </div>
               </div>

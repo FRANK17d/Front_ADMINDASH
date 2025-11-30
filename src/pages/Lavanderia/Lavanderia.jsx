@@ -260,13 +260,39 @@ const Lavanderia = () => {
     }
   };
 
-  if (loading && stock.length === 0) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <LoadingSpinner />
+  // Componente de placeholder para las tarjetas
+  const CardSkeleton = () => (
+    <div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-900 dark:bg-black md:p-6 animate-pulse">
+      <div className="flex items-center justify-center w-12 h-12 bg-gray-200 dark:bg-gray-700 rounded-xl"></div>
+      <div className="flex items-end justify-between mt-5">
+        <div className="w-full">
+          <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-24 mb-2"></div>
+          <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-16"></div>
+        </div>
       </div>
-    );
-  }
+    </div>
+  );
+
+  // Componente de placeholder para las filas de la tabla
+  const TableRowSkeleton = () => (
+    <TableRow>
+      <TableCell className="py-3.5 px-2 sm:px-4">
+        <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-32 animate-pulse"></div>
+      </TableCell>
+      <TableCell className="py-3.5 px-2 sm:px-4 text-center">
+        <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-16 mx-auto animate-pulse"></div>
+      </TableCell>
+      <TableCell className="py-3.5 px-2 sm:px-4 text-center">
+        <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-16 mx-auto animate-pulse"></div>
+      </TableCell>
+      <TableCell className="py-3.5 px-2 sm:px-4 text-center">
+        <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-16 mx-auto animate-pulse"></div>
+      </TableCell>
+      <TableCell className="py-3.5 px-2 sm:px-4 text-center">
+        <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-16 mx-auto animate-pulse"></div>
+      </TableCell>
+    </TableRow>
+  );
 
   return (
     <div className="space-y-6">
@@ -297,26 +323,35 @@ const Lavanderia = () => {
 
       {/* Tarjetas de resumen */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {summaryCards.map((card) => (
-          <div
-            key={card.id}
-            className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-900 dark:bg-black md:p-6"
-          >
-            <div className={`flex items-center justify-center w-12 h-12 ${card.bgColor} rounded-xl`}>
-              <div className={card.iconColor}>{card.icon}</div>
-            </div>
-            <div className="flex items-end justify-between mt-5">
-              <div>
-                <span className="text-sm text-gray-500 dark:text-gray-400">
-                  {card.title}
-                </span>
-                <h4 className="mt-2 font-bold text-gray-800 text-title-sm dark:text-white/90">
-                  {card.amount}
-                </h4>
+        {loading && stock.length === 0 ? (
+          <>
+            <CardSkeleton />
+            <CardSkeleton />
+            <CardSkeleton />
+            <CardSkeleton />
+          </>
+        ) : (
+          summaryCards.map((card) => (
+            <div
+              key={card.id}
+              className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-900 dark:bg-black md:p-6"
+            >
+              <div className={`flex items-center justify-center w-12 h-12 ${card.bgColor} rounded-xl`}>
+                <div className={card.iconColor}>{card.icon}</div>
+              </div>
+              <div className="flex items-end justify-between mt-5">
+                <div>
+                  <span className="text-sm text-gray-500 dark:text-gray-400">
+                    {card.title}
+                  </span>
+                  <h4 className="mt-2 font-bold text-gray-800 text-title-sm dark:text-white/90">
+                    {card.amount}
+                  </h4>
+                </div>
               </div>
             </div>
-          </div>
-        ))}
+          ))
+        )}
       </div>
 
       {/* Tabla de Stock */}
@@ -378,75 +413,88 @@ const Lavanderia = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody className="divide-y divide-gray-100 dark:divide-gray-800">
-        {CATEGORIES.map((c) => {
-                    const s = stockMap[c.key] || { total: 0, disponible: 0, lavanderia: 0, danado: 0 };
-          return (
-                      <TableRow key={c.key}>
-                        <TableCell className="py-3.5 px-2 sm:px-4 font-medium text-gray-800 text-theme-sm dark:text-white/90">
-                          {c.label}
-                        </TableCell>
-                        <TableCell className="py-3.5 px-2 sm:px-4 text-center">
-                          <input
-                            type="number"
-                            min={0}
-                            value={editingValues[`${c.key}_total`] !== undefined ? editingValues[`${c.key}_total`] : (s.total || 0)}
-                            onChange={(e) => handleInputChange(c.key, "total", e.target.value)}
-                            onBlur={(e) => handleInputBlur(c.key, "total", e.target.value)}
-                            onKeyDown={(e) => handleInputKeyDown(e, c.key, "total")}
-                            disabled={isSaving}
-                            className="w-20 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-center text-gray-800 focus:border-orange-300 focus:outline-hidden focus:ring-3 focus:ring-orange-500/20 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-black dark:text-white dark:border-gray-700"
-                            title="Total de inventario del hotel"
-                          />
-                        </TableCell>
-                        <TableCell className="py-3.5 px-2 sm:px-4 text-center">
-                          <input
-                            type="number"
-                            min={0}
-                            max={s.total || 0}
-                            value={editingValues[`${c.key}_disponible`] !== undefined ? editingValues[`${c.key}_disponible`] : (s.disponible || 0)}
-                            onChange={(e) => {
-                              const val = parseInt(e.target.value || 0, 10);
-                              const maxVal = s.total || 0;
-                              if (val <= maxVal) {
-                                handleInputChange(c.key, "disponible", e.target.value);
-                              }
-                            }}
-                            onBlur={(e) => handleInputBlur(c.key, "disponible", e.target.value)}
-                            onKeyDown={(e) => handleInputKeyDown(e, c.key, "disponible")}
-                            disabled={isSaving}
-                            className="w-20 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-center text-gray-800 focus:border-orange-300 focus:outline-hidden focus:ring-3 focus:ring-orange-500/20 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-black dark:text-white dark:border-gray-700"
-                            title={`Máximo: ${(s.total || 0)} (total del inventario)`}
-                          />
-                        </TableCell>
-                        <TableCell className="py-3.5 px-2 sm:px-4 text-center">
-                          <input
-                            type="number"
-                            min={0}
-                            value={editingValues[`${c.key}_lavanderia`] !== undefined ? editingValues[`${c.key}_lavanderia`] : (s.lavanderia || 0)}
-                            onChange={(e) => handleInputChange(c.key, "lavanderia", e.target.value)}
-                            onBlur={(e) => handleInputBlur(c.key, "lavanderia", e.target.value)}
-                            onKeyDown={(e) => handleInputKeyDown(e, c.key, "lavanderia")}
-                            disabled={isSaving}
-                            className="w-20 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-center text-gray-800 focus:border-orange-300 focus:outline-hidden focus:ring-3 focus:ring-orange-500/20 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-black dark:text-white dark:border-gray-700"
-                            title={`Máximo: ${(s.total || 0) - (s.danado || 0)} (total - dañadas)`}
-                          />
-                        </TableCell>
-                        <TableCell className="py-3.5 px-2 sm:px-4 text-center">
-                          <input
-                            type="number"
-                            min={0}
-                            value={editingValues[`${c.key}_danado`] !== undefined ? editingValues[`${c.key}_danado`] : (s.danado || 0)}
-                            onChange={(e) => handleInputChange(c.key, "danado", e.target.value)}
-                            onBlur={(e) => handleInputBlur(c.key, "danado", e.target.value)}
-                            onKeyDown={(e) => handleInputKeyDown(e, c.key, "danado")}
-                            disabled={isSaving}
-                            className="w-20 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-center text-gray-800 focus:border-orange-300 focus:outline-hidden focus:ring-3 focus:ring-orange-500/20 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-black dark:text-white dark:border-gray-700"
-                            title={`Máximo: ${(s.total || 0) - (s.lavanderia || 0)} (total - sucias)`}
-                          />
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
+                  {loading && stock.length === 0 ? (
+                    <>
+                      <TableRowSkeleton />
+                      <TableRowSkeleton />
+                      <TableRowSkeleton />
+                      <TableRowSkeleton />
+                      <TableRowSkeleton />
+                      <TableRowSkeleton />
+                      <TableRowSkeleton />
+                      <TableRowSkeleton />
+                    </>
+                  ) : (
+                    CATEGORIES.map((c) => {
+                      const s = stockMap[c.key] || { total: 0, disponible: 0, lavanderia: 0, danado: 0 };
+                      return (
+                        <TableRow key={c.key}>
+                          <TableCell className="py-3.5 px-2 sm:px-4 font-medium text-gray-800 text-theme-sm dark:text-white/90">
+                            {c.label}
+                          </TableCell>
+                          <TableCell className="py-3.5 px-2 sm:px-4 text-center">
+                            <input
+                              type="number"
+                              min={0}
+                              value={editingValues[`${c.key}_total`] !== undefined ? editingValues[`${c.key}_total`] : (s.total || 0)}
+                              onChange={(e) => handleInputChange(c.key, "total", e.target.value)}
+                              onBlur={(e) => handleInputBlur(c.key, "total", e.target.value)}
+                              onKeyDown={(e) => handleInputKeyDown(e, c.key, "total")}
+                              disabled={isSaving}
+                              className="w-20 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-center text-gray-800 focus:border-orange-300 focus:outline-hidden focus:ring-3 focus:ring-orange-500/20 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-black dark:text-white dark:border-gray-700"
+                              title="Total de inventario del hotel"
+                            />
+                          </TableCell>
+                          <TableCell className="py-3.5 px-2 sm:px-4 text-center">
+                            <input
+                              type="number"
+                              min={0}
+                              max={s.total || 0}
+                              value={editingValues[`${c.key}_disponible`] !== undefined ? editingValues[`${c.key}_disponible`] : (s.disponible || 0)}
+                              onChange={(e) => {
+                                const val = parseInt(e.target.value || 0, 10);
+                                const maxVal = s.total || 0;
+                                if (val <= maxVal) {
+                                  handleInputChange(c.key, "disponible", e.target.value);
+                                }
+                              }}
+                              onBlur={(e) => handleInputBlur(c.key, "disponible", e.target.value)}
+                              onKeyDown={(e) => handleInputKeyDown(e, c.key, "disponible")}
+                              disabled={isSaving}
+                              className="w-20 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-center text-gray-800 focus:border-orange-300 focus:outline-hidden focus:ring-3 focus:ring-orange-500/20 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-black dark:text-white dark:border-gray-700"
+                              title={`Máximo: ${(s.total || 0)} (total del inventario)`}
+                            />
+                          </TableCell>
+                          <TableCell className="py-3.5 px-2 sm:px-4 text-center">
+                            <input
+                              type="number"
+                              min={0}
+                              value={editingValues[`${c.key}_lavanderia`] !== undefined ? editingValues[`${c.key}_lavanderia`] : (s.lavanderia || 0)}
+                              onChange={(e) => handleInputChange(c.key, "lavanderia", e.target.value)}
+                              onBlur={(e) => handleInputBlur(c.key, "lavanderia", e.target.value)}
+                              onKeyDown={(e) => handleInputKeyDown(e, c.key, "lavanderia")}
+                              disabled={isSaving}
+                              className="w-20 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-center text-gray-800 focus:border-orange-300 focus:outline-hidden focus:ring-3 focus:ring-orange-500/20 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-black dark:text-white dark:border-gray-700"
+                              title={`Máximo: ${(s.total || 0) - (s.danado || 0)} (total - dañadas)`}
+                            />
+                          </TableCell>
+                          <TableCell className="py-3.5 px-2 sm:px-4 text-center">
+                            <input
+                              type="number"
+                              min={0}
+                              value={editingValues[`${c.key}_danado`] !== undefined ? editingValues[`${c.key}_danado`] : (s.danado || 0)}
+                              onChange={(e) => handleInputChange(c.key, "danado", e.target.value)}
+                              onBlur={(e) => handleInputBlur(c.key, "danado", e.target.value)}
+                              onKeyDown={(e) => handleInputKeyDown(e, c.key, "danado")}
+                              disabled={isSaving}
+                              className="w-20 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-center text-gray-800 focus:border-orange-300 focus:outline-hidden focus:ring-3 focus:ring-orange-500/20 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-black dark:text-white dark:border-gray-700"
+                              title={`Máximo: ${(s.total || 0) - (s.lavanderia || 0)} (total - sucias)`}
+                            />
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
+                  )}
                 </TableBody>
               </Table>
                   </div>

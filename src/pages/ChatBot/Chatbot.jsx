@@ -142,6 +142,51 @@ export default function Chatbot() {
     });
   };
 
+  // Función para renderizar Markdown básico
+  const renderMarkdown = (text) => {
+    if (!text) return null;
+    
+    // Convertir **texto** a <strong>texto</strong>
+    // Convertir *texto* a <em>texto</em>
+    // Convertir `texto` a <code>texto</code>
+    const parts = [];
+    let remaining = text;
+    let key = 0;
+    
+    // Regex para encontrar patrones de Markdown
+    const regex = /(\*\*(.+?)\*\*|\*(.+?)\*|`(.+?)`)/g;
+    let lastIndex = 0;
+    let match;
+    
+    while ((match = regex.exec(text)) !== null) {
+      // Agregar texto antes del match
+      if (match.index > lastIndex) {
+        parts.push(text.slice(lastIndex, match.index));
+      }
+      
+      // Determinar qué tipo de formato es
+      if (match[2]) {
+        // **negrita**
+        parts.push(<strong key={key++} className="font-semibold">{match[2]}</strong>);
+      } else if (match[3]) {
+        // *cursiva*
+        parts.push(<em key={key++}>{match[3]}</em>);
+      } else if (match[4]) {
+        // `código`
+        parts.push(<code key={key++} className="bg-gray-200 dark:bg-gray-700 px-1 rounded text-orange-600 dark:text-orange-400">{match[4]}</code>);
+      }
+      
+      lastIndex = regex.lastIndex;
+    }
+    
+    // Agregar el texto restante
+    if (lastIndex < text.length) {
+      parts.push(text.slice(lastIndex));
+    }
+    
+    return parts.length > 0 ? parts : text;
+  };
+
   return (
     <div className="h-[calc(100vh-8rem)] flex flex-col">
       {/* Header */}
@@ -232,7 +277,7 @@ export default function Chatbot() {
                       }`}
                     >
                       <p className="text-sm whitespace-pre-line leading-relaxed">
-                        {message.text}
+                        {message.type === "bot" ? renderMarkdown(message.text) : message.text}
                       </p>
                     </div>
                     <span className="text-xs text-gray-400 dark:text-gray-500 mt-1 block">

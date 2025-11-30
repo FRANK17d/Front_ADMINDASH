@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link } from "react-router";
 import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
@@ -19,6 +19,8 @@ const schema = yup.object({
 export default function ForgotPassForm() {
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [countdown, setCountdown] = useState(0);
+  const intervalRef = useRef(null);
 
   const {
     register,
@@ -32,16 +34,39 @@ export default function ForgotPassForm() {
     },
   });
 
+  // Efecto para el contador de 60 segundos
+  useEffect(() => {
+    if (isSuccess && countdown > 0) {
+      intervalRef.current = setInterval(() => {
+        setCountdown((prev) => {
+          if (prev <= 1) {
+            clearInterval(intervalRef.current);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, [isSuccess, countdown]);
+
   const onSubmit = async (data) => {
     setIsLoading(true);
     setIsSuccess(false);
+    setCountdown(0);
 
     try {
       console.log("Enviando email de recuperación a:", data.email);
       await sendPasswordResetEmail(auth, data.email);
       
-      // Mostrar mensaje de éxito
+      // Mostrar mensaje de éxito e iniciar contador de 60 segundos
       setIsSuccess(true);
+      setCountdown(60);
       console.log("Email de recuperación enviado exitosamente");
       
     } catch (error) {
@@ -86,6 +111,11 @@ export default function ForgotPassForm() {
                 {isSuccess && (
                   <div className="p-3 text-sm text-green-600 bg-green-50 border border-green-200 rounded-lg dark:bg-green-900/20 dark:text-green-400 dark:border-green-800">
                     ¡Email enviado exitosamente! Revisa tu bandeja de entrada y sigue las instrucciones para restablecer tu contraseña.
+                    {countdown > 0 && (
+                      <p className="mt-2 text-xs">
+                        Puedes reenviar el correo en {countdown} segundos.
+                      </p>
+                    )}
                   </div>
                 )}
 
@@ -115,7 +145,7 @@ export default function ForgotPassForm() {
                 <div>
                   <button
                     type="submit"
-                    disabled={isLoading || isSuccess}
+                    disabled={isLoading || (isSuccess && countdown > 0)}
                     className="flex items-center justify-center w-full px-4 py-3 text-sm font-medium text-white transition rounded-lg bg-orange-500 shadow-theme-xs hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {isLoading ? (
@@ -126,8 +156,10 @@ export default function ForgotPassForm() {
                         </svg>
                         Enviando...
                       </span>
+                    ) : isSuccess && countdown > 0 ? (
+                      `Reenviar en ${countdown}s`
                     ) : isSuccess ? (
-                      "Email Enviado ✓"
+                      "Reenviar correo"
                     ) : (
                       "Enviar enlace de recuperación"
                     )}

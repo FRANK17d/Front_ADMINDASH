@@ -2,7 +2,7 @@ import { Navigate } from "react-router-dom";
 import { useAuth, ROLES } from "../../context/AuthContext";
 
 export default function PublicRoute({ children }) {
-  const { user, userRole, loading } = useAuth();
+  const { user, userRole, loading, isLoggingIn } = useAuth();
 
   // Mostrar un loader mientras se verifica la autenticación
   if (loading) {
@@ -13,7 +13,13 @@ export default function PublicRoute({ children }) {
     );
   }
 
-  if (user && userRole) {
+  // No redirigir si el login está en proceso (evita redirección prematura)
+  if (isLoggingIn) {
+    return children;
+  }
+
+  // Solo redirigir si hay usuario autenticado y NO está en proceso de login
+  if (user && userRole && !isLoggingIn) {
     const dashboardPath =
       userRole === ROLES.ADMIN
         ? '/admin/dashboard'

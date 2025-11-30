@@ -2,13 +2,15 @@ import api from "./client";
 
 const BASE = "/api/cajacobros";
 
-export async function listTodayTransactions() {
-  const res = await api.get(`${BASE}/transactions/today/`);
+export async function listTodayTransactions(date = null) {
+  const params = date ? { date } : {};
+  const res = await api.get(`${BASE}/transactions/today/`, { params });
   return res.data?.transactions || [];
 }
 
-export async function todayTotals() {
-  const res = await api.get(`${BASE}/totals/today/`);
+export async function todayTotals(date = null) {
+  const params = date ? { date } : {};
+  const res = await api.get(`${BASE}/totals/today/`, { params });
   return res.data?.totals || { methods: {}, total: 0 };
 }
 
