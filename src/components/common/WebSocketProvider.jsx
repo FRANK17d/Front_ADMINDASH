@@ -2,7 +2,26 @@ import { createContext, useContext, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useWebSocket } from '../../hooks/useWebSocket';
 
-const WS_URL = import.meta?.env?.VITE_WS_URL || "ws://localhost:8000/ws/presence/";
+// Construir URL de WebSocket basándose en la URL de la API
+const getWebSocketUrl = () => {
+  // Si hay una URL de WebSocket específica en las variables de entorno, usarla
+  if (import.meta?.env?.VITE_WS_URL) {
+    return import.meta.env.VITE_WS_URL;
+  }
+  
+  // Si no, construirla basándose en la URL de la API
+  const apiUrl = import.meta?.env?.VITE_API_URL || "http://localhost:8000";
+  
+  // Convertir http:// a ws:// y https:// a wss://
+  const wsUrl = apiUrl
+    .replace(/^http:/, 'ws:')
+    .replace(/^https:/, 'wss:');
+  
+  // Agregar la ruta del WebSocket
+  return `${wsUrl}/ws/presence/`;
+};
+
+const WS_URL = getWebSocketUrl();
 
 // Crear contexto para compartir el estado de WebSocket
 const WebSocketContext = createContext(null);
