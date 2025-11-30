@@ -9,16 +9,16 @@ import {
 import Badge from "../../ui/badge/Badge";
 import Input from "../../form/input/InputField";
 import Button from "../../ui/button/Button";
-import { PencilIcon, TrashBinIcon, PlusIcon, ChevronLeftIcon, AngleRightIcon } from "../../../icons";
+import { PencilIcon, TrashBinIcon, PlusIcon, ChevronLeftIcon, AngleRightIcon, LockIcon } from "../../../icons";
 import { useModal } from "../../../hooks/useModal";
 import { Modal } from "../../ui/modal";
 import Label from "../../form/Label";
-import { listUsers, createUser, updateUser, deleteUser } from "../../../api/users";
+import { listUsers, createUser, updateUser, deleteUser, toggleUserStatus } from "../../../api/users";
 import { useAuth } from "../../../context/AuthContext";
 import LoadingSpinner from "../../common/LoadingSpinner";
 import { toast } from 'react-toastify';
 
-// Genera una contraseña temporal robusta distinta para cada usuario creado
+// Genera una contraseña robusta distinta para cada usuario creado
 const generateTempPassword = () => {
   const uppercase = "ABCDEFGHJKLMNPQRSTUVWXYZ";
   const lowercase = "abcdefghijkmnopqrstuvwxyz";
@@ -54,6 +54,7 @@ export default function BasicTableOne() {
   const [creatingUser, setCreatingUser] = useState(false);
   const [editingUserLoading, setEditingUserLoading] = useState(false);
   const [deletingUser, setDeletingUser] = useState(false);
+  const [togglingUserStatus, setTogglingUserStatus] = useState(null); // ID del usuario siendo habilitado/inhabilitado
   const [error, setError] = useState("");
   const [successData, setSuccessData] = useState(null);
   const [createForm, setCreateForm] = useState({ 
@@ -79,16 +80,33 @@ export default function BasicTableOne() {
   };
 
   const mapApiUsersToRows = (users) => {
-    return (users || []).map(u => ({
-      id: u.uid,
-      name: u.display_name || (u.email ? u.email.split("@")[0] : "Usuario"),
-      role: roleApiToLabel(u.role || "receptionist"),
-      email: u.email,
-      salary: u.salary || "—",
-      entryDate: u.entry_date || "—",
-      status: u.disabled ? "Inactivo" : "Activo",
-      image: u.profile_photo_url || null,
-    }));
+    return (users || []).map(u => {
+      // Determinar el estado basado en disabled y email_verified
+      // Los administradores siempre muestran "Activo" (no necesitan verificar correo)
+      let status = "Activo";
+      const isAdmin = u.role === "admin";
+      
+      if (u.disabled) {
+        status = "Inhabilitado";
+      } else if (!isAdmin && u.email_verified === false) {
+        // Solo aplicar "Sin confirmar" si NO es admin y el correo no está verificado
+        status = "Sin confirmar";
+      }
+      // Si es admin y no está disabled, siempre será "Activo"
+      
+      return {
+        id: u.uid,
+        name: u.display_name || (u.email ? u.email.split("@")[0] : "Usuario"),
+        role: roleApiToLabel(u.role || "receptionist"),
+        roleApi: u.role || "receptionist", // Guardar el rol en formato API para verificar
+        email: u.email,
+        salary: u.salary || "—",
+        entryDate: u.entry_date || "—",
+        status: status,
+        disabled: u.disabled, // Guardar el estado disabled
+        image: u.profile_photo_url || null,
+      };
+    });
   };
 
   const refresh = async () => {
@@ -126,6 +144,16 @@ export default function BasicTableOne() {
 
   // Calcular número total de páginas
   const totalPages = Math.ceil(filteredData.length / itemsPerPage);
+
+  // Contar cuántos administradores hay en la lista
+  const adminCount = useMemo(() => {
+    return data.filter(user => user.roleApi === "admin").length;
+  }, [data]);
+
+  // Verificar si un usuario es el único administrador
+  const isOnlyAdmin = (user) => {
+    return user.roleApi === "admin" && adminCount === 1;
+  };
 
   // Funciones de manejo
   const handleSearch = (e) => {
@@ -301,6 +329,18 @@ export default function BasicTableOne() {
         setDeletingUser(false);
         return;
       }
+
+      // Verificar si es el único administrador
+      if (userToDelete && isOnlyAdmin(userToDelete)) {
+        const errorMessage = "No se puede eliminar el único administrador del sistema";
+        setError(errorMessage);
+        toast.error(errorMessage, {
+          position: "bottom-right",
+          autoClose: 4000,
+        });
+        setDeletingUser(false);
+        return;
+      }
       
       // Obtener el nombre del usuario antes de eliminarlo para el toast
       const userName = userToDelete?.name || "Usuario";
@@ -333,6 +373,67 @@ export default function BasicTableOne() {
   const handleOpenDeleteModal = (user) => {
     setUserToDelete(user);
     openDeleteModal();
+  };
+
+  const handleToggleUserStatus = async (user) => {
+    try {
+      if (!isAdmin) {
+        const errorMessage = "No tienes permisos para habilitar/inhabilitar usuarios";
+        setError(errorMessage);
+        toast.error(errorMessage, {
+          position: "bottom-right",
+          autoClose: 4000,
+        });
+        return;
+      }
+      
+      if (!user?.id) {
+        const errorMessage = "No se pudo identificar el usuario";
+        setError(errorMessage);
+        toast.error(errorMessage, {
+          position: "bottom-right",
+          autoClose: 4000,
+        });
+        return;
+      }
+
+      // Verificar que no sea administrador - usar el rol original de la API
+      const userRoleApi = user.roleApi || (user.role === "Administrador" ? "admin" : 
+                      user.role === "Hotelero" ? "housekeeping" : "receptionist");
+      
+      if (userRoleApi === "admin") {
+        const errorMessage = "No se puede habilitar/inhabilitar usuarios administradores";
+        setError(errorMessage);
+        toast.error(errorMessage, {
+          position: "bottom-right",
+          autoClose: 4000,
+        });
+        return;
+      }
+      
+      // Activar loading para este usuario específico
+      setTogglingUserStatus(user.id);
+      
+      await toggleUserStatus(user.id);
+      await refresh();
+      
+      const statusText = user.status === "Inhabilitado" ? "habilitado" : "inhabilitado";
+      toast.success(`Usuario "${user.name}" ${statusText} exitosamente`, {
+        position: "bottom-right",
+        autoClose: 3000,
+      });
+    } catch (e) {
+      console.error("Error al cambiar estado del usuario:", e);
+      const errorMessage = e.message || "No se pudo cambiar el estado del usuario";
+      setError(errorMessage);
+      toast.error(errorMessage, {
+        position: "bottom-right",
+        autoClose: 4000,
+      });
+    } finally {
+      // Desactivar loading
+      setTogglingUserStatus(null);
+    }
   };
 
   const handlePageChange = (page) => {
@@ -563,7 +664,7 @@ export default function BasicTableOne() {
           )}
           
           <form className="flex flex-col">
-            <div className="space-y-4 mb-6">ñ
+            <div className="space-y-4 mb-6">
               <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                 <div>
                   <Label>Nombre</Label>
@@ -731,6 +832,25 @@ export default function BasicTableOne() {
             </div>
           )}
 
+          {/* Mensaje de advertencia si es el único administrador */}
+          {userToDelete && isOnlyAdmin(userToDelete) && (
+            <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg dark:bg-yellow-900/20 dark:border-yellow-800">
+              <div className="flex items-start gap-3">
+                <svg className="w-5 h-5 text-yellow-600 dark:text-yellow-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <div>
+                  <p className="text-sm font-medium text-yellow-800 dark:text-yellow-300">
+                    No se puede eliminar el único administrador
+                  </p>
+                  <p className="text-xs text-yellow-700 dark:text-yellow-400 mt-1">
+                    El sistema requiere al menos un administrador. Crea otro administrador antes de eliminar este usuario.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="flex items-center gap-3 justify-end">
             <Button 
               size="sm" 
@@ -744,7 +864,7 @@ export default function BasicTableOne() {
             <Button 
               size="sm" 
               onClick={() => userToDelete && handleDeleteUser(userToDelete.id)} 
-              disabled={deletingUser}
+              disabled={deletingUser || (userToDelete && isOnlyAdmin(userToDelete))}
               className="bg-red-600 hover:bg-red-700 text-white dark:bg-red-700 dark:hover:bg-red-800"
             >
               {deletingUser ? (
@@ -765,47 +885,72 @@ export default function BasicTableOne() {
 
       {/* Tabla */}
       <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/5 dark:bg-white/3">
-        {loadingUsers && data.length === 0 ? (
-          <div className="flex items-center justify-center py-20">
-            <div className="flex flex-col items-center gap-4">
-              <LoadingSpinner size="lg" />
-              <p className="text-sm text-gray-500 dark:text-gray-400">Cargando usuarios...</p>
-            </div>
-          </div>
-        ) : (
-          <div className="max-w-full overflow-x-auto">
-            <Table>
-              {/* Table Header */}
-              <TableHeader className="border-b border-gray-100 dark:border-white/5">
-                <TableRow>
-                  <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
-                    Usuario
-                  </TableCell>
-                  <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
-                    Rol
-                  </TableCell>
-                  <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
-                    Correo
-                  </TableCell>
-                  <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-center text-theme-xs dark:text-gray-400">
-                    Salario
-                  </TableCell>
-                  <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-center text-theme-xs dark:text-gray-400">
-                    Fecha Entrada
-                  </TableCell>
-                  <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-center text-theme-xs dark:text-gray-400">
-                    Estado
-                  </TableCell>
-                  <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-center text-theme-xs dark:text-gray-400">
-                    Acciones
-                  </TableCell>
-                </TableRow>
-              </TableHeader>
+        <div className="max-w-full overflow-x-auto">
+          <Table>
+            {/* Table Header */}
+            <TableHeader className="border-b border-gray-100 dark:border-white/5">
+              <TableRow>
+                <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
+                  Usuario
+                </TableCell>
+                <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
+                  Rol
+                </TableCell>
+                <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
+                  Correo
+                </TableCell>
+                <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-center text-theme-xs dark:text-gray-400">
+                  Salario
+                </TableCell>
+                <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-center text-theme-xs dark:text-gray-400">
+                  Fecha Entrada
+                </TableCell>
+                <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-center text-theme-xs dark:text-gray-400">
+                  Estado
+                </TableCell>
+                <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-center text-theme-xs dark:text-gray-400">
+                  Acciones
+                </TableCell>
+              </TableRow>
+            </TableHeader>
 
-              {/* Table Body */}
-              <TableBody className="divide-y divide-gray-100 dark:divide-white/5">
-                {paginatedData.length > 0 ? (
-                  paginatedData.map((user) => (
+            {/* Table Body */}
+            <TableBody className="divide-y divide-gray-100 dark:divide-white/5">
+              {loadingUsers && data.length === 0 ? (
+                // Skeleton loader con placeholders
+                Array.from({ length: itemsPerPage }).map((_, index) => (
+                  <TableRow key={`skeleton-${index}`}>
+                    <TableCell className="px-5 py-4 sm:px-6 text-start">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-gray-200 rounded-full dark:bg-gray-700 animate-pulse"></div>
+                        <div className="h-4 w-32 bg-gray-200 rounded dark:bg-gray-700 animate-pulse"></div>
+                      </div>
+                    </TableCell>
+                    <TableCell className="px-4 py-3">
+                      <div className="h-4 w-24 bg-gray-200 rounded dark:bg-gray-700 animate-pulse"></div>
+                    </TableCell>
+                    <TableCell className="px-4 py-3">
+                      <div className="h-4 w-40 bg-gray-200 rounded dark:bg-gray-700 animate-pulse"></div>
+                    </TableCell>
+                    <TableCell className="px-4 py-3 text-center">
+                      <div className="h-4 w-16 bg-gray-200 rounded dark:bg-gray-700 animate-pulse mx-auto"></div>
+                    </TableCell>
+                    <TableCell className="px-4 py-3 text-center">
+                      <div className="h-4 w-24 bg-gray-200 rounded dark:bg-gray-700 animate-pulse mx-auto"></div>
+                    </TableCell>
+                    <TableCell className="px-4 py-3 text-center">
+                      <div className="h-6 w-20 bg-gray-200 rounded-full dark:bg-gray-700 animate-pulse mx-auto"></div>
+                    </TableCell>
+                    <TableCell className="px-4 py-3 text-center">
+                      <div className="flex items-center justify-center gap-2">
+                        <div className="w-8 h-8 bg-gray-200 rounded-lg dark:bg-gray-700 animate-pulse"></div>
+                        <div className="w-8 h-8 bg-gray-200 rounded-lg dark:bg-gray-700 animate-pulse"></div>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : paginatedData.length > 0 ? (
+                paginatedData.map((user) => (
                     <TableRow key={user.id}>
                       <TableCell className="px-5 py-4 sm:px-6 text-start">
                         <div className="flex items-center gap-3">
@@ -850,7 +995,13 @@ export default function BasicTableOne() {
                       <TableCell className="px-4 py-3 text-gray-500 text-center text-theme-sm dark:text-gray-400">
                         <Badge
                           size="sm"
-                          color={user.status === "Activo" ? "success" : "error"}
+                          color={
+                            user.status === "Activo" 
+                              ? "success" 
+                              : user.status === "Sin confirmar" 
+                              ? "warning" 
+                              : "error"
+                          }
                         >
                           {user.status}
                         </Badge>
@@ -865,11 +1016,33 @@ export default function BasicTableOne() {
                           >
                             <PencilIcon className="w-4 h-4 fill-current" />
                           </button>
+                          {/* Botón de habilitar/inhabilitar - solo para recepcionistas y hoteleros */}
+                          {(user.roleApi === "receptionist" || user.roleApi === "housekeeping") && (
+                            <button
+                              onClick={() => isAdmin && handleToggleUserStatus(user)}
+                              className={`p-2 rounded-lg transition-colors disabled:text-gray-400 disabled:cursor-not-allowed disabled:hover:bg-transparent ${
+                                user.disabled
+                                  ? "text-green-600 hover:text-green-800 hover:bg-green-50"
+                                  : "text-orange-600 hover:text-orange-800 hover:bg-orange-50"
+                              }`}
+                              title={user.disabled ? "Habilitar usuario" : "Inhabilitar usuario"}
+                              disabled={!isAdmin || togglingUserStatus === user.id}
+                            >
+                              {togglingUserStatus === user.id ? (
+                                <svg className="w-4 h-4 animate-spin fill-current" fill="none" viewBox="0 0 24 24">
+                                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                              ) : (
+                                <LockIcon className="w-4 h-4 fill-current" />
+                              )}
+                            </button>
+                          )}
                           <button
                             onClick={() => isAdmin && handleOpenDeleteModal(user)}
                             className="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg transition-colors disabled:text-gray-400 disabled:cursor-not-allowed disabled:hover:bg-transparent"
-                            title="Eliminar usuario"
-                            disabled={!isAdmin}
+                            title={isOnlyAdmin(user) ? "No se puede eliminar el único administrador" : "Eliminar usuario"}
+                            disabled={!isAdmin || isOnlyAdmin(user)}
                           >
                             <TrashBinIcon className="w-4 h-4 fill-current" />
                           </button>
@@ -887,7 +1060,6 @@ export default function BasicTableOne() {
               </TableBody>
             </Table>
           </div>
-        )}
       </div>
 
       {/* Paginación */}

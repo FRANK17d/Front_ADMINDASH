@@ -1,8 +1,27 @@
-import { useEffect } from 'react';
+import { createContext, useContext, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useWebSocket } from '../../hooks/useWebSocket';
 
 const WS_URL = import.meta?.env?.VITE_WS_URL || "ws://localhost:8000/ws/presence/";
+
+// Crear contexto para compartir el estado de WebSocket
+const WebSocketContext = createContext(null);
+
+/**
+ * Hook para acceder al estado de WebSocket desde cualquier componente
+ */
+export function useWebSocketContext() {
+  const context = useContext(WebSocketContext);
+  if (!context) {
+    // Si no hay contexto, retornar valores por defecto
+    return {
+      isConnected: false,
+      connectionStatus: 'disconnected',
+      isOnline: navigator.onLine
+    };
+  }
+  return context;
+}
 
 /**
  * Componente que mantiene la conexión WebSocket activa globalmente
@@ -10,7 +29,7 @@ const WS_URL = import.meta?.env?.VITE_WS_URL || "ws://localhost:8000/ws/presence
  */
 export default function WebSocketProvider({ children }) {
   const { user, loading } = useAuth();
-  const { isConnected, connectionStatus } = useWebSocket(WS_URL);
+  const { isConnected, connectionStatus, isOnline } = useWebSocket(WS_URL);
 
   useEffect(() => {
     if (!loading) {
@@ -22,7 +41,11 @@ export default function WebSocketProvider({ children }) {
     }
   }, [user, loading, isConnected, connectionStatus]);
 
-  // Este componente solo mantiene la conexión activa, no renderiza nada
-  return <>{children}</>;
+  // Proporcionar el estado de WebSocket a través del contexto
+  return (
+    <WebSocketContext.Provider value={{ isConnected, connectionStatus, isOnline }}>
+      {children}
+    </WebSocketContext.Provider>
+  );
 }
 

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { getTodayCheckinsCheckouts } from "../../api/dashboard";
 import { getMaintenanceIssues, getBlockedRooms, getSystemStatus } from "../../api/mantenimiento";
-import { listReservations } from "../../api/reservations";
+import { listReservations, getAllRooms } from "../../api/reservations";
 import CheckInOutCards from "../../components/home/CheckInOutCards";
 import Badge from "../../components/ui/badge/Badge";
 import { Link } from "react-router";
@@ -24,49 +24,92 @@ export default function HomeHousekeeping() {
     fetchDashboardData();
   }, []);
 
+  // Función para obtener la fecha de hoy en formato YYYY-MM-DD
+  const getTodayLocal = () => {
+    const d = new Date();
+    const off = d.getTimezoneOffset();
+    const local = new Date(d.getTime() - off * 60 * 1000);
+    return local.toISOString().slice(0, 10);
+  };
+
+  // Función para calcular el estado automático de una reserva (igual que en Reservas.jsx)
+  const getAutoStatus = (reservation) => {
+    const s = reservation?.status || "";
+    if (s === "Cancelada") return "Cancelada";
+    const ci = reservation?.checkIn;
+    const co = reservation?.checkOut;
+    if (!ci || !co) return s || "Confirmada";
+    const todayStr = getTodayLocal();
+    const nowHM = (() => { const d = new Date(); const hh = String(d.getHours()).padStart(2, "0"); const mm = String(d.getMinutes()).padStart(2, "0"); return `${hh}:${mm}`; })();
+    const arr = reservation?.arrivalTime || reservation?.arrival_time || "";
+    const arrHM = arr ? String(arr).slice(0, 5) : "";
+    if (todayStr < ci) return "Confirmada";
+    if (todayStr === ci) {
+      if (arrHM && nowHM < arrHM) return "Confirmada";
+      return "Check-in";
+    }
+    if (todayStr > ci && todayStr < co) return "Check-in";
+    if (todayStr >= co) return "Check-out";
+    return s || "Confirmada";
+  };
+
   const fetchDashboardData = async () => {
     setLoading(true);
     try {
-      const [reservations, issues, blocked, system] = await Promise.all([
+      const [reservations, issues, blocked, system, allRooms] = await Promise.all([
         listReservations(),
         getMaintenanceIssues(),
         getBlockedRooms(),
         getSystemStatus(),
+        getAllRooms(),
       ]);
 
-      // Calcular estadísticas de habitaciones
-      const today = new Date().toISOString().slice(0, 10);
-      const occupiedRooms = new Set();
-      const maintenanceRooms = new Set();
+      // Calcular total de habitaciones
+      const totalRooms = allRooms?.length || 0;
 
-      reservations.forEach((res) => {
-        if (res.status?.toLowerCase() === "cancelada") return;
-        const checkIn = res.checkIn;
-        const checkOut = res.checkOut;
-        if (checkIn && checkOut && today >= checkIn && today < checkOut) {
-          if (Array.isArray(res.rooms)) {
-            res.rooms.forEach((room) => occupiedRooms.add(room));
-          } else if (res.room) {
-            occupiedRooms.add(res.room);
+      // Calcular estadísticas (igual que en Reservas.jsx)
+      const today = getTodayLocal();
+      
+      // Ocupadas: contar reservas con status "Check-in" (igual que en Reservas)
+      const occupiedCount = reservations.filter((r) => getAutoStatus(r) === "Check-in").length;
+      
+      // Para calcular disponibles, necesitamos contar habitaciones realmente ocupadas
+      const occupiedRooms = new Set();
+      for (const r of reservations) {
+        if ((r.status || '').toLowerCase() === 'cancelada') continue;
+        const s = getAutoStatus(r);
+        if (s === 'Check-in') {
+          const roomsArr = Array.isArray(r.rooms) ? r.rooms : (r.room ? [r.room] : []);
+          for (const code of roomsArr) occupiedRooms.add(String(code));
+          continue;
+        }
+        const ci = r.checkIn;
+        const co = r.checkOut;
+        if (ci && co && today >= ci && today < co) {
+          const roomsArr = Array.isArray(r.rooms) ? r.rooms : (r.room ? [r.room] : []);
+          for (const code of roomsArr) occupiedRooms.add(String(code));
+        }
+      }
+
+      // Contar habitaciones bloqueadas que aún no han expirado
+      const blockedSet = new Set();
+      const todayDate = new Date(today + 'T00:00:00');
+      for (const blockedRoom of blocked) {
+        if (blockedRoom.blockedUntil || blockedRoom.blocked_until) {
+          const blockedUntil = blockedRoom.blockedUntil || blockedRoom.blocked_until;
+          const blockedUntilDate = new Date(blockedUntil + 'T00:00:00');
+          if (blockedUntilDate >= todayDate) {
+            blockedSet.add(String(blockedRoom.room));
           }
         }
-      });
-
-      issues.forEach((issue) => {
-        if (issue.room) {
-          maintenanceRooms.add(issue.room);
-        }
-      });
-
-      const totalRooms = 30; // Ajustar según el total real de habitaciones
-      const blockedRoomsSet = new Set(blocked.map((r) => r.room));
+      }
 
       setRoomStats({
         total: totalRooms,
-        available: totalRooms - occupiedRooms.size - maintenanceRooms.size - blockedRoomsSet.size,
-        occupied: occupiedRooms.size,
-        maintenance: maintenanceRooms.size,
-        blocked: blockedRoomsSet.size,
+        available: Math.max(totalRooms - occupiedRooms.size - blockedSet.size, 0),
+        occupied: occupiedCount, // Número de reservas con status "Check-in" (igual que Reservas)
+        maintenance: 0, // Ya no se usa
+        blocked: blockedSet.size,
       });
 
       // Incidencias pendientes (últimas 5)
@@ -103,8 +146,8 @@ export default function HomeHousekeeping() {
   if (loading) {
     return (
       <div className="space-y-6">
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5 md:gap-6">
-          {[1, 2, 3, 4, 5].map((i) => (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 md:gap-6">
+          {[1, 2, 3, 4].map((i) => (
             <div key={i} className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-900 dark:bg-black md:p-6">
               <div className="w-12 h-12 bg-gray-200 rounded-xl dark:bg-gray-700 animate-pulse"></div>
               <div className="flex items-end justify-between mt-5">
@@ -123,7 +166,7 @@ export default function HomeHousekeeping() {
   return (
     <div className="space-y-6">
       {/* Tarjetas de estado de habitaciones */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5 md:gap-6">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 md:gap-6">
         {/* Total Habitaciones */}
         <div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-900 dark:bg-black md:p-6">
           <div className="flex items-center justify-center w-12 h-12 bg-blue-100 rounded-xl dark:bg-blue-900/30">
@@ -170,23 +213,6 @@ export default function HomeHousekeeping() {
               <span className="text-sm text-gray-500 dark:text-gray-400">Ocupadas</span>
               <h4 className="mt-2 font-bold text-gray-800 text-title-sm dark:text-white/90">
                 {roomStats.occupied} Hab.
-              </h4>
-            </div>
-          </div>
-        </div>
-
-        {/* En Mantenimiento */}
-        <div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-900 dark:bg-black md:p-6">
-          <div className="flex items-center justify-center w-12 h-12 bg-yellow-100 rounded-xl dark:bg-yellow-900/30">
-            <svg className="text-yellow-600 size-6 dark:text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
-          </div>
-          <div className="flex items-end justify-between mt-5">
-            <div>
-              <span className="text-sm text-gray-500 dark:text-gray-400">Mantenimiento</span>
-              <h4 className="mt-2 font-bold text-gray-800 text-title-sm dark:text-white/90">
-                {roomStats.maintenance} Hab.
               </h4>
             </div>
           </div>

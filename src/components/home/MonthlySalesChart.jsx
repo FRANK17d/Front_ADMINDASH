@@ -4,7 +4,6 @@ import { Dropdown } from "../ui/dropdown/Dropdown";
 import { DropdownItem } from "../ui/dropdown/DropdownItem";
 import { MoreDotIcon } from "../../icons";
 import { getMonthlyRevenue } from "../../api/dashboard";
-import LoadingSpinner from "../common/LoadingSpinner";
 
 export default function MonthlySalesChart() {
   const [monthlyData, setMonthlyData] = useState([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
@@ -120,7 +119,27 @@ export default function MonthlySalesChart() {
   if (loading) {
     return (
       <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white px-5 pt-5 dark:border-gray-800 dark:bg-black sm:px-6 sm:pt-6">
-        <LoadingSpinner />
+        <div className="flex items-center justify-between mb-4">
+          <div className="h-6 w-40 bg-gray-200 rounded dark:bg-gray-700 animate-pulse"></div>
+          <div className="w-6 h-6 bg-gray-200 rounded dark:bg-gray-700 animate-pulse"></div>
+        </div>
+        <div className="w-full pb-2">
+          <div className="h-[350px] bg-gray-100 dark:bg-gray-800 rounded-lg animate-pulse flex items-end justify-between px-4 pb-4">
+            {/* Placeholder bars */}
+            <div className="flex items-end gap-2 w-full">
+              {[...Array(12)].map((_, i) => (
+                <div
+                  key={i}
+                  className="flex-1 bg-gray-300 dark:bg-gray-700 rounded-t"
+                  style={{
+                    height: `${Math.random() * 60 + 20}%`,
+                    animationDelay: `${i * 50}ms`
+                  }}
+                ></div>
+              ))}
+            </div>
+          </div>
+        </div>
       </div>
     );
   }

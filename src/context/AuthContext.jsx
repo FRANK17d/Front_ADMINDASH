@@ -15,6 +15,7 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [userRole, setUserRole] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
@@ -36,6 +37,7 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const login = async (email, password, rememberMe = false) => {
+    setIsLoggingIn(true);
     try {
       // Configurar persistencia basada en el checkbox
       const persistence = import.meta?.env?.DEV
@@ -52,6 +54,7 @@ export const AuthProvider = ({ children }) => {
       // Si no tiene rol asignado, hacer logout inmediatamente y lanzar error
       if (!role) {
         await signOut(auth);
+        setIsLoggingIn(false);
         throw new Error('NO_ROLE_ASSIGNED');
       }
 
@@ -61,11 +64,13 @@ export const AuthProvider = ({ children }) => {
           const profile = await getOwnProfile();
           if (profile && !profile.email_verified) {
             await signOut(auth);
+            setIsLoggingIn(false);
             throw new Error('EMAIL_NOT_VERIFIED');
           }
         } catch (error) {
           // Si hay error obteniendo el perfil, verificar si es el error de verificación
           if (error.message === 'EMAIL_NOT_VERIFIED') {
+            setIsLoggingIn(false);
             throw error;
           }
           // Si es otro error, continuar (puede ser que el perfil no exista aún)
@@ -73,8 +78,10 @@ export const AuthProvider = ({ children }) => {
         }
       }
 
+      setIsLoggingIn(false);
       return userCredential.user;
     } catch (error) {
+      setIsLoggingIn(false);
       throw error;
     }
   };
@@ -87,6 +94,7 @@ export const AuthProvider = ({ children }) => {
     user,
     userRole,
     loading,
+    isLoggingIn,
     login,
     logout,
     isAdmin: userRole === ROLES.ADMIN,

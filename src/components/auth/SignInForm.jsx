@@ -73,26 +73,35 @@ export default function SignInForm() {
       setShouldRedirect(true);
     } catch (error) {
       console.error("Error de login:", error);
+      console.error("Error code:", error.code);
+      console.error("Error message:", error.message);
       
       let errorMessage = "Error al iniciar sesión. Verifica tus credenciales.";
       
-      // Manejar error específico de usuario sin rol
-      if (error.message === 'NO_ROLE_ASSIGNED') {
+      // Primero verificar errores específicos de Firebase (tienen código)
+      if (error.code) {
+        if (error.code === 'auth/user-not-found') {
+          errorMessage = "Usuario no encontrado.";
+        } else if (error.code === 'auth/wrong-password') {
+          errorMessage = "Contraseña incorrecta.";
+        } else if (error.code === 'auth/invalid-email') {
+          errorMessage = "Email inválido.";
+        } else if (error.code === 'auth/too-many-requests') {
+          errorMessage = "Demasiados intentos. Intenta más tarde.";
+        } else if (error.code === 'auth/invalid-credential') {
+          errorMessage = "Credenciales inválidas. Verifica tu correo y contraseña.";
+        } else if (error.code === 'auth/network-request-failed') {
+          errorMessage = "Error de conexión. Verifica tu internet.";
+        } else if (error.code === 'auth/user-disabled') {
+          errorMessage = "Tu cuenta ha sido inhabilitada. Contacta al administrador para obtener acceso.";
+        }
+      }
+      // Luego verificar errores personalizados (solo tienen message)
+      else if (error.message === 'NO_ROLE_ASSIGNED') {
         errorMessage = "Usuario sin rol asignado. Contacta al administrador para obtener acceso.";
       }
-      // Manejar error de correo no verificado
       else if (error.message === 'EMAIL_NOT_VERIFIED') {
         errorMessage = "Debes verificar tu correo electrónico antes de iniciar sesión. Revisa tu bandeja de entrada y haz clic en el botón de verificación en el correo que recibiste.";
-      }
-      // Manejar errores específicos de Firebase
-      else if (error.code === 'auth/user-not-found') {
-        errorMessage = "Usuario no encontrado.";
-      } else if (error.code === 'auth/wrong-password') {
-        errorMessage = "Contraseña incorrecta.";
-      } else if (error.code === 'auth/invalid-email') {
-        errorMessage = "Email inválido.";
-      } else if (error.code === 'auth/too-many-requests') {
-        errorMessage = "Demasiados intentos. Intenta más tarde.";
       }
       
       setError("general", {
@@ -128,8 +137,8 @@ export default function SignInForm() {
               <div className="space-y-6">
                 {/* Error general */}
                 {errors.general && (
-                  <div className="p-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg dark:bg-red-900/20 dark:text-red-400 dark:border-red-800">
-                    <p className="mb-2">{errors.general.message}</p>
+                  <div className="p-3 py-2 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg dark:bg-red-900/20 dark:text-red-400 dark:border-red-800">
+                    <p className="mb-1">{errors.general.message}</p>
                   </div>
                 )}
 

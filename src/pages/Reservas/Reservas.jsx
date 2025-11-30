@@ -42,22 +42,30 @@ export default function Reservas() {
   const checkInInputRef = useRef(null);
   const checkOutInputRef = useRef(null);
   const arrivalTimeInputRef = useRef(null);
+  const departureTimeInputRef = useRef(null);
   const editCheckInInputRef = useRef(null);
   const editCheckOutInputRef = useRef(null);
   const editArrivalTimeInputRef = useRef(null);
+  const editDepartureTimeInputRef = useRef(null);
   const [reservationPendingDeletion, setReservationPendingDeletion] = useState(null);
   
   const [activeReservations, setActiveReservations] = useState([]);
   const [blockedRooms, setBlockedRooms] = useState([]);
-  const initialReservation = { channel: "Booking.com", guest: "", room: "", roomType: "", checkIn: "", checkOut: "", total: "", status: "Confirmada", paid: false, documentType: "DNI", documentNumber: "", arrivalTime: "", numPeople: 1, numAdults: 1, numChildren: 0, numRooms: 1, companions: [], documentInfo: null, address: "", department: "", province: "", district: "", taxpayerType: "", businessStatus: "", businessCondition: "" };
+  const [isLoadingReservations, setIsLoadingReservations] = useState(true);
+  const initialReservation = { channel: "Booking.com", guest: "", room: "", roomType: "", checkIn: "", checkOut: "", total: "", status: "Confirmada", paid: false, documentType: "DNI", documentNumber: "", arrivalTime: "", departureTime: "", numPeople: 1, numAdults: 1, numChildren: 0, numRooms: 1, companions: [], documentInfo: null, address: "", department: "", province: "", district: "", taxpayerType: "", businessStatus: "", businessCondition: "" };
   const [newReservation, setNewReservation] = useState(initialReservation);
   const [editReservation, setEditReservation] = useState(null);
   const [editOriginalReservation, setEditOriginalReservation] = useState(null);
-  const isCreateValid = Boolean(newReservation.checkIn && newReservation.checkOut && newReservation.room && (newReservation.guest || newReservation.documentNumber));
-  const [touched, setTouched] = useState({ checkIn: false, checkOut: false, room: false, guest: false, documentNumber: false });
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isSavingBreakfast, setIsSavingBreakfast] = useState(false);
+  const isCreateValid = Boolean(newReservation.checkIn && newReservation.checkOut && newReservation.room && newReservation.roomType && (newReservation.guest || newReservation.documentNumber));
+  const [touched, setTouched] = useState({ checkIn: false, checkOut: false, room: false, roomType: false, guest: false, documentNumber: false });
   const [isDocLookupLoading, setIsDocLookupLoading] = useState(false);
   const [companionLookupIndex, setCompanionLookupIndex] = useState(null);
   const [rooms, setRooms] = useState([]);
+  const [editRooms, setEditRooms] = useState([]);
   const [selectedReservationForAccount, setSelectedReservationForAccount] = useState(null);
   const [ledgerItems, setLedgerItems] = useState([]);
   const [newLedgerItem, setNewLedgerItem] = useState({ concept: "Alojamiento", date: "", comprobante: "", amount: "" });
@@ -214,6 +222,7 @@ export default function Reservas() {
     document.title = "Reservas - Administrador - Hotel Plaza Trujillo";
     (async () => {
       try {
+        setIsLoadingReservations(true);
         const [resvs, evts, blocked] = await Promise.all([
           listReservations(), 
           getCalendarEvents(),
@@ -224,6 +233,8 @@ export default function Reservas() {
         setBlockedRooms(blocked);
       } catch (e) {
         console.error(e);
+      } finally {
+        setIsLoadingReservations(false);
       }
     })();
   }, []);
@@ -281,11 +292,13 @@ export default function Reservas() {
       try {
         if (ci && co) {
           const av = await getAvailableRooms(ci, co);
-          setRooms(av.map((r) => ({ code: r.code, floor: r.floor, type: r.type })));
+          console.log('Habitaciones disponibles:', av);
+          setRooms(av && Array.isArray(av) ? av.map((r) => ({ code: r.code, floor: r.floor, type: r.type })) : []);
         } else {
           setRooms([]);
         }
       } catch (e) {
+        console.error('Error al obtener habitaciones disponibles:', e);
         setRooms([]);
       }
     })();
@@ -381,7 +394,44 @@ export default function Reservas() {
     ],
   };
 
-  
+  // Obtener habitaciones disponibles para el modal de editar
+  useEffect(() => {
+    const ci = editReservation?.checkIn;
+    const co = editReservation?.checkOut;
+    (async () => {
+      try {
+        if (ci && co) {
+          const av = await getAvailableRooms(ci, co);
+          const availableRooms = av && Array.isArray(av) ? av.map((r) => ({ code: r.code, floor: r.floor, type: r.type })) : [];
+          // Incluir la habitación actual si no está en la lista de disponibles (para mantenerla seleccionada)
+          const currentRoom = editReservation?.room;
+          if (currentRoom && !availableRooms.find(r => String(r.code) === String(currentRoom))) {
+            // Buscar la habitación en predefinedRooms para obtener su información
+            let foundRoom = null;
+            for (const floorKey in predefinedRooms) {
+              const floorRooms = predefinedRooms[floorKey];
+              if (Array.isArray(floorRooms)) {
+                const room = floorRooms.find(r => String(r.code) === String(currentRoom));
+                if (room) {
+                  foundRoom = { code: room.code, floor: Number(floorKey), type: room.type };
+                  break;
+                }
+              }
+            }
+            if (foundRoom) {
+              availableRooms.push(foundRoom);
+            }
+          }
+          setEditRooms(availableRooms);
+        } else {
+          setEditRooms([]);
+        }
+      } catch (e) {
+        console.error('Error al obtener habitaciones disponibles para editar:', e);
+        setEditRooms([]);
+      }
+    })();
+  }, [editReservation?.checkIn, editReservation?.checkOut, editReservation?.room]);
 
   useEffect(() => {
     setSelectedReservationForAccount(activeReservations[0] || null);
@@ -428,13 +478,66 @@ export default function Reservas() {
     const nowHM = (() => { const d = new Date(); const hh = String(d.getHours()).padStart(2, "0"); const mm = String(d.getMinutes()).padStart(2, "0"); return `${hh}:${mm}`; })();
     const arr = reservation?.arrivalTime || reservation?.arrival_time || "";
     const arrHM = arr ? String(arr).slice(0, 5) : "";
+    const dep = reservation?.departureTime || reservation?.departure_time || "";
+    const depHM = dep ? String(dep).slice(0, 5) : "";
+    
+    // Antes del check-in
     if (todayStr < ci) return "Confirmada";
-    if (todayStr === ci) {
-      if (arrHM && nowHM < arrHM) return "Confirmada";
-      return "Check-in";
+    
+    // Si hay hora de salida configurada, el estado depende de la fecha de checkout y la hora de salida
+    if (depHM) {
+      // Si estamos antes del día de checkout, no puede ser Check-out aún
+      if (todayStr < co) {
+        // Si estamos en el día de check-in o después, es Check-in
+        if (todayStr >= ci) {
+          // Verificar hora de llegada si es el día de check-in
+          if (todayStr === ci && arrHM && nowHM < arrHM) {
+            return "Confirmada";
+          }
+          return "Check-in";
+        }
+        return "Confirmada";
+      }
+      
+      // Si estamos en el día de checkout o después
+      if (todayStr >= co) {
+        // Si es el mismo día de checkout, comparar la hora actual con la hora de salida
+        if (todayStr === co) {
+          if (nowHM >= depHM) {
+            return "Check-out";
+          } else {
+            return "Check-in";
+          }
+        }
+        // Si ya pasó el día de checkout, es Check-out
+        return "Check-out";
+      }
     }
-    if (todayStr > ci && todayStr < co) return "Check-in";
-    return "Check-out";
+    
+    // Si NO hay hora de salida configurada, usar la lógica normal con fechas
+    // Si check-in y check-out son el mismo día
+    if (ci === co) {
+      if (todayStr < ci) return "Confirmada";
+      if (todayStr === ci) {
+        if (arrHM && nowHM < arrHM) return "Confirmada";
+        // En el mismo día, siempre es Check-in (no puede ser Check-out sin hora de salida)
+        return "Check-in";
+      }
+      // Después del día
+      if (todayStr > ci) return "Check-out";
+    } else {
+      // Días diferentes - lógica normal
+      // Día de check-in
+      if (todayStr === ci) {
+        if (arrHM && nowHM < arrHM) return "Confirmada";
+        return "Check-in";
+      }
+      // Entre check-in y check-out
+      if (todayStr > ci && todayStr < co) return "Check-in";
+      // Después del check-out
+      if (todayStr >= co) return "Check-out";
+    }
+    return "Check-in";
   }
 
   const getStatusSelectClasses = (status) => {
@@ -547,14 +650,23 @@ export default function Reservas() {
   const safeHistoryPage = Math.min(historyPage, totalHistoryPages);
   const paginatedHistory = historyList.slice((safeHistoryPage - 1) * historyPageSize, safeHistoryPage * historyPageSize);
 
+  const [reservationsSearch, setReservationsSearch] = useState("");
   const [reservationsPage, setReservationsPage] = useState(1);
   const reservationsPageSize = 4;
-  const totalReservationsPages = Math.max(1, Math.ceil(activeReservations.length / reservationsPageSize));
+  const filteredReservations = useMemo(() => {
+    const term = reservationsSearch.trim().toLowerCase();
+    if (!term) return activeReservations;
+    return activeReservations.filter((r) => 
+      String(r.guest || "").toLowerCase().includes(term) || 
+      String(r.documentNumber || "").toLowerCase().includes(term)
+    );
+  }, [activeReservations, reservationsSearch]);
+  const totalReservationsPages = Math.max(1, Math.ceil(filteredReservations.length / reservationsPageSize));
   const safeReservationsPage = Math.min(reservationsPage, totalReservationsPages);
   const paginatedReservations = useMemo(() => {
     const start = (safeReservationsPage - 1) * reservationsPageSize;
-    return activeReservations.slice(start, start + reservationsPageSize);
-  }, [activeReservations, safeReservationsPage]);
+    return filteredReservations.slice(start, start + reservationsPageSize);
+  }, [filteredReservations, safeReservationsPage]);
 
   const refreshAvailableRoomsCount = async () => {
     try {
@@ -601,6 +713,21 @@ export default function Reservas() {
       await refreshAvailableRoomsCount();
     })();
   }, [activeReservations, blockedRooms]);
+
+  // Calcular habitaciones ocupadas (solo Check-in)
+  const occupiedRoomsCount = useMemo(() => {
+    const today = getTodayLocal();
+    const occupied = new Set();
+    for (const r of activeReservations) {
+      if ((r.status || '').toLowerCase() === 'cancelada') continue;
+      const s = getAutoStatus(r);
+      if (s === 'Check-in') {
+        const roomsArr = Array.isArray(r.rooms) ? r.rooms : (r.room ? [r.room] : []);
+        for (const code of roomsArr) occupied.add(String(code));
+      }
+    }
+    return occupied.size;
+  }, [activeReservations]);
 
   const handleSetCancelled = async (reservation) => {
     try {
@@ -664,7 +791,7 @@ export default function Reservas() {
   const handleOpenEditReservation = (reservation) => {
     if (isHousekeeping) return; // Bloquear edición para hotelero
     const s = getAutoStatus(reservation);
-    if (s === "Cancelada" || s === "Check-out" || (reservation?.status || "") === "Cancelada" || (reservation?.status || "") === "Check-out") return;
+    if (s === "Cancelada" || (reservation?.status || "") === "Cancelada") return;
     const found = activeReservations.find((r) => r.id === reservation?.id || String(r.reservationId || "") === String(reservation?.reservationId || "")) || reservation;
     const today = new Date().toISOString().slice(0,10);
     setEditOriginalReservation(found);
@@ -677,6 +804,7 @@ export default function Reservas() {
       checkIn: found?.checkIn || today,
       checkOut: found?.checkOut || today,
       arrivalTime: (found?.arrivalTime || found?.arrival_time || "").slice(0,5),
+      departureTime: (found?.departureTime || found?.departure_time || "").slice(0,5),
       total: found?.total || "",
       paid: Boolean(found?.paid),
       channel: found?.channel || "",
@@ -803,37 +931,45 @@ export default function Reservas() {
     { americ: 0, contin: 0, adici: 0 }
   );
 
-  const saveBreakfastReport = () => {
-    const empleado = (breakfastForm.empleado || '').trim();
-    const fecha = breakfastForm.fecha || getTodayLocal();
-    if (!empleado || !fecha) {
-      closeBreakfastModal();
-      return;
-    }
-    const rows = breakfastRows.map((r) => ({
-      hab: String(r.hab || ''),
-      nombres: String(r.nombres || ''),
-      americ: Number(r.americ || 0),
-      contin: Number(r.contin || 0),
-      adici: Number(r.adici || 0),
-    }));
-    const payload = {
-      empleado,
-      fecha,
-      rows,
-      totals: {
-        americ: breakfastTotals.americ,
-        contin: breakfastTotals.contin,
-        adici: breakfastTotals.adici,
-      },
-      createdAt: new Date().toISOString(),
-    };
+  const saveBreakfastReport = async () => {
+    setIsSavingBreakfast(true);
     try {
+      const empleado = (breakfastForm.empleado || '').trim();
+      const fecha = breakfastForm.fecha || getTodayLocal();
+      if (!empleado || !fecha) {
+        closeBreakfastModal();
+        setIsSavingBreakfast(false);
+        return;
+      }
+      const rows = breakfastRows.map((r) => ({
+        hab: String(r.hab || ''),
+        nombres: String(r.nombres || ''),
+        americ: Number(r.americ || 0),
+        contin: Number(r.contin || 0),
+        adici: Number(r.adici || 0),
+      }));
+      const payload = {
+        empleado,
+        fecha,
+        rows,
+        totals: {
+          americ: breakfastTotals.americ,
+          contin: breakfastTotals.contin,
+          adici: breakfastTotals.adici,
+        },
+        createdAt: new Date().toISOString(),
+      };
       const existing = JSON.parse(localStorage.getItem('breakfastReports') || '[]');
       const next = Array.isArray(existing) ? existing : [];
       next.push(payload);
       localStorage.setItem('breakfastReports', JSON.stringify(next));
-    } catch (e) {}
+      generateBreakfastPDF(payload);
+      closeBreakfastModal();
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsSavingBreakfast(false);
+    }
     generateBreakfastPDF(payload);
     closeBreakfastModal();
   };
@@ -918,7 +1054,24 @@ export default function Reservas() {
 
       {/* Tarjetas de estado de habitaciones */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {[
+        {isLoadingReservations ? (
+          // Placeholders mientras carga
+          Array.from({ length: 4 }).map((_, index) => (
+            <div
+              key={index}
+              className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-900 dark:bg-black md:p-6 animate-pulse"
+            >
+              <div className="flex items-center justify-center w-12 h-12 bg-gray-200 dark:bg-gray-700 rounded-xl"></div>
+              <div className="flex items-end justify-between mt-5">
+                <div className="flex-1">
+                  <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-20 mb-2"></div>
+                  <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-16"></div>
+                </div>
+              </div>
+            </div>
+          ))
+        ) : (
+          [
           {
             id: 1,
             title: "Disponibles",
@@ -934,7 +1087,7 @@ export default function Reservas() {
           {
             id: 2,
             title: "Ocupadas",
-            count: activeReservations.filter((r) => getAutoStatus(r) === "Check-in").length,
+            count: occupiedRoomsCount,
             icon: (
               <svg className="size-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
@@ -995,7 +1148,8 @@ export default function Reservas() {
               </div>
             </div>
           </div>
-        ))}
+        ))
+        )}
       </div>
 
       {/* Tabla con Pestañas */}
@@ -1156,7 +1310,18 @@ export default function Reservas() {
                 No hay reservas registradas
               </div>
             ) : (
-              <div className="no-scrollbar overflow-x-auto">
+              <div className="space-y-4">
+                <div>
+                  <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-400">Buscar por huésped o documento de identidad</label>
+                  <input
+                    type="text"
+                    placeholder="Nombre del huésped o número de documento"
+                    value={reservationsSearch}
+                    onChange={(e) => { setReservationsSearch(e.target.value); setReservationsPage(1); }}
+                    className="h-11 w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-800 focus:border-orange-300 focus:outline-hidden focus:ring-3 focus:ring-orange-500/20 dark:bg-black dark:text-white dark:border-gray-700"
+                  />
+                </div>
+                <div className="no-scrollbar overflow-x-auto">
                 <div className="inline-block min-w-full align-middle">
                   <Table>
                     <TableHeader className="border-gray-100 dark:border-gray-800 border-y">
@@ -1274,9 +1439,9 @@ export default function Reservas() {
                               <>
                                 <button
                                   onClick={() => handleOpenEditReservation(reservation)}
-                                  className={`p-1.5 sm:p-2 rounded-lg transition-colors ${['Cancelada','Check-out'].includes(getAutoStatus(reservation)) ? 'text-orange-300 bg-transparent cursor-not-allowed' : 'text-orange-600 hover:text-orange-800 hover:bg-orange-50 cursor-pointer'}`}
+                                  className={`p-1.5 sm:p-2 rounded-lg transition-colors ${getAutoStatus(reservation) === 'Cancelada' ? 'text-orange-300 bg-transparent cursor-not-allowed' : 'text-orange-600 hover:text-orange-800 hover:bg-orange-50 cursor-pointer'}`}
                                   title="Editar"
-                                  disabled={['Cancelada','Check-out'].includes(getAutoStatus(reservation))}
+                                  disabled={getAutoStatus(reservation) === 'Cancelada'}
                                 >
                                   <PencilIcon className="w-4 h-4 fill-current" />
                                 </button>
@@ -1296,12 +1461,13 @@ export default function Reservas() {
                     ))}
                   </TableBody>
                 </Table>
+                </div>
               </div>
               <div className="flex items-center justify-between mt-4">
                 <div className="text-sm text-gray-700 dark:text-gray-400">
                   Página {safeReservationsPage} de {totalReservationsPages}
                 </div>
-                {activeReservations.length > reservationsPageSize && (
+                {filteredReservations.length > reservationsPageSize && (
                   <div className="flex items-center gap-2">
                     <Button size="sm" variant="outline" className="cursor-pointer" disabled={safeReservationsPage <= 1} onClick={() => setReservationsPage((p) => Math.max(p - 1, 1))}>Anterior</Button>
                     <Button size="sm" variant="outline" className="cursor-pointer" disabled={safeReservationsPage >= totalReservationsPages} onClick={() => setReservationsPage((p) => Math.min(p + 1, totalReservationsPages))}>Siguiente</Button>
@@ -1560,18 +1726,23 @@ export default function Reservas() {
                     <input type="text" className="h-11 w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-800 focus:border-orange-300 focus:outline-hidden focus:ring-3 focus:ring-orange-500/20 dark:bg-black dark:text-white dark:border-gray-700" value={newReservation.district} onChange={(e) => setNewReservation((p) => ({ ...p, district: e.target.value }))} />
                   </div>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4">
                   <div>
                     <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-400">Habitación <span className="text-red-600">*</span></label>
-                    <select disabled={!newReservation.checkIn || !newReservation.checkOut} className="h-11 w-full rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm text-gray-700 cursor-pointer focus:border-orange-300 focus:outline-hidden focus:ring-3 focus:ring-orange-500/20 dark:bg-black dark:text-white dark:border-gray-700 disabled:bg-gray-50 disabled:text-gray-400" value={newReservation.room || ""} onChange={(e) => setNewReservation((p) => ({ ...p, room: String(e.target.value || '').trim() }))} required onBlur={() => setTouched((p) => ({ ...p, room: true }))}>
+                    <select disabled={!newReservation.checkIn || !newReservation.checkOut} className="h-11 w-full rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm text-gray-700 cursor-pointer focus:border-orange-300 focus:outline-hidden focus:ring-3 focus:ring-orange-500/20 dark:bg-black dark:text-white dark:border-gray-700 disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed" value={newReservation.room || ""} onChange={(e) => setNewReservation((p) => ({ ...p, room: String(e.target.value || '').trim() }))} required onBlur={() => setTouched((p) => ({ ...p, room: true }))}>
                       {!newReservation.checkIn || !newReservation.checkOut ? (
                         <option value="">Selecciona fechas</option>
-                      ) : rooms && rooms.length > 0 ? (
-                        rooms.sort((a, b) => Number(a.floor) - Number(b.floor) || String(a.code).localeCompare(String(b.code))).map((r) => (
-                          <option key={String(r.code)} value={String(r.code)}>{`${String(r.code)} - Piso ${r.floor}`}</option>
-                        ))
                       ) : (
-                        <option value="">No hay habitaciones disponibles</option>
+                        <>
+                          <option value="">Selecciona hab</option>
+                          {rooms && Array.isArray(rooms) && rooms.length > 0 ? (
+                            rooms.sort((a, b) => Number(a.floor) - Number(b.floor) || String(a.code).localeCompare(String(b.code))).map((r) => (
+                              <option key={String(r.code)} value={String(r.code)}>{`${String(r.code)} - Piso ${r.floor}`}</option>
+                            ))
+                          ) : (
+                            <option value="">No hay habitaciones disponibles para estas fechas</option>
+                          )}
+                        </>
                       )}
                     </select>
                     {touched.room && !newReservation.room && newReservation.checkIn && newReservation.checkOut ? (
@@ -1579,14 +1750,77 @@ export default function Reservas() {
                     ) : null}
                   </div>
                   <div>
-                    <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-400">Tipo de Habitación</label>
-                    <select className="h-11 w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-800 cursor-pointer focus:border-orange-300 focus:outline-hidden focus:ring-3 focus:ring-orange-500/20 dark:bg-black dark:text-white dark:border-gray-700" value={newReservation.roomType || ""} onChange={(e) => setNewReservation((p) => ({ ...p, roomType: e.target.value }))}>
+                    <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-400">
+                      Tipo de Habitación <span className="text-red-600">*</span>
+                    </label>
+                    <select 
+                      className={`h-11 w-full rounded-lg border px-4 py-2.5 text-sm text-gray-800 cursor-pointer focus:outline-hidden focus:ring-3 focus:ring-orange-500/20 dark:bg-black dark:text-white ${
+                        touched.roomType && !newReservation.roomType
+                          ? "border-red-500 focus:border-red-500 dark:border-red-500"
+                          : "border-gray-300 focus:border-orange-300 dark:border-gray-700"
+                      }`}
+                      value={newReservation.roomType || ""} 
+                      onChange={(e) => {
+                        setNewReservation((p) => ({ ...p, roomType: e.target.value }));
+                        setTouched((t) => ({ ...t, roomType: true }));
+                      }}
+                      onBlur={() => setTouched((t) => ({ ...t, roomType: true }))}
+                    >
                       <option value="">Seleccionar</option>
                       <option>Simple</option>
                       <option>Doble</option>
                       <option>Triple</option>
                       <option>Matrimonial</option>
                     </select>
+                    {touched.roomType && !newReservation.roomType && (
+                      <p className="mt-1 text-sm text-red-600">Este campo es obligatorio</p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-400">
+                      Check-in <span className="text-red-600">*</span>
+                    </label>
+                    <div className="relative">
+                      <input
+                        ref={checkInInputRef}
+                        type="date"
+                        min={getTodayLocal()}
+                        className="h-11 w-full rounded-lg border border-gray-300 bg-white pl-4 pr-10 py-2.5 text-sm text-gray-800 focus:border-orange-300 focus:outline-hidden focus:ring-3 focus:ring-orange-500/20 dark:bg-black dark:text-white dark:border-gray-700"
+                        value={newReservation.checkIn}
+                        onChange={(e) => setNewReservation((p) => ({ ...p, checkIn: e.target.value, arrivalTime: "" }))}
+                        required
+                        onBlur={() => setTouched((p) => ({ ...p, checkIn: true }))}
+                      />
+                      {touched.checkIn && !newReservation.checkIn ? (
+                        <p className="mt-1 text-xs text-red-600">Campo obligatorio</p>
+                      ) : null}
+                      <button type="button" className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-md text-gray-600 hover:text-gray-800 cursor-pointer" onClick={() => { const el = checkInInputRef.current; if (!el) return; if (typeof el.showPicker === 'function') { el.showPicker(); } else { el.focus(); } }}>
+                        <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3M3 11h18M5 5h14a2 2 0 012 2v12a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2z"/></svg>
+                      </button>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-400">
+                      Check-out <span className="text-red-600">*</span>
+                    </label>
+                    <div className="relative">
+                      <input
+                        ref={checkOutInputRef}
+                        type="date"
+                        min={newReservation.checkIn || getTodayLocal()}
+                        className="h-11 w-full rounded-lg border border-gray-300 bg-white pl-4 pr-10 py-2.5 text-sm text-gray-800 focus:border-orange-300 focus:outline-hidden focus:ring-3 focus:ring-orange-500/20 dark:bg-black dark:text-white dark:border-gray-700"
+                        value={newReservation.checkOut}
+                        onChange={(e) => setNewReservation((p) => ({ ...p, checkOut: e.target.value, departureTime: "" }))}
+                        required
+                        onBlur={() => setTouched((p) => ({ ...p, checkOut: true }))}
+                      />
+                      {touched.checkOut && !newReservation.checkOut ? (
+                        <p className="mt-1 text-xs text-red-600">Campo obligatorio</p>
+                      ) : null}
+                      <button type="button" className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-md text-gray-600 hover:text-gray-800 cursor-pointer" onClick={() => { const el = checkOutInputRef.current; if (!el) return; if (typeof el.showPicker === 'function') { el.showPicker(); } else { el.focus(); } }}>
+                        <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3M3 11h18M5 5h14a2 2 0 012 2v12a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2z"/></svg>
+                      </button>
+                    </div>
                   </div>
                 </div>
                 
@@ -1604,61 +1838,58 @@ export default function Reservas() {
                 )}
               </div>
               
-              <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                 <div>
                   <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-400">
-                    Check-in <span className="text-red-600">*</span>
+                    Hora de llegada
                   </label>
                   <div className="relative">
-                    <input
-                      ref={checkInInputRef}
-                      type="date"
-                      min={getTodayLocal()}
-                      className="h-11 w-full rounded-lg border border-gray-300 bg-white pl-4 pr-10 py-2.5 text-sm text-gray-800 focus:border-orange-300 focus:outline-hidden focus:ring-3 focus:ring-orange-500/20 dark:bg-black dark:text-white dark:border-gray-700"
-                      value={newReservation.checkIn}
-                      onChange={(e) => setNewReservation((p) => ({ ...p, checkIn: e.target.value }))}
-                      required
-                      onBlur={() => setTouched((p) => ({ ...p, checkIn: true }))}
+                    <input 
+                      ref={arrivalTimeInputRef} 
+                      type="time" 
+                      disabled={!newReservation.checkIn}
+                      className="h-11 w-full rounded-lg border border-gray-300 bg-white pl-4 pr-10 py-2.5 text-sm text-gray-800 focus:border-orange-300 focus:outline-hidden focus:ring-3 focus:ring-orange-500/20 dark:bg-black dark:text-white dark:border-gray-700 disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed" 
+                      value={newReservation.arrivalTime} 
+                      onChange={(e) => setNewReservation((p) => ({ ...p, arrivalTime: e.target.value }))} 
                     />
-                    {touched.checkIn && !newReservation.checkIn ? (
-                      <p className="mt-1 text-xs text-red-600">Campo obligatorio</p>
-                    ) : null}
-                    <button type="button" className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-md text-gray-600 hover:text-gray-800 cursor-pointer" onClick={() => { const el = checkInInputRef.current; if (!el) return; if (typeof el.showPicker === 'function') { el.showPicker(); } else { el.focus(); } }}>
-                      <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3M3 11h18M5 5h14a2 2 0 012 2v12a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2z"/></svg>
-                    </button>
-                  </div>
-                </div>
-                <div>
-                  <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-400">
-                    Check-out <span className="text-red-600">*</span>
-                  </label>
-                  <div className="relative">
-                    <input
-                      ref={checkOutInputRef}
-                      type="date"
-                      min={newReservation.checkIn || getTodayLocal()}
-                      className="h-11 w-full rounded-lg border border-gray-300 bg-white pl-4 pr-10 py-2.5 text-sm text-gray-800 focus:border-orange-300 focus:outline-hidden focus:ring-3 focus:ring-orange-500/20 dark:bg-black dark:text-white dark:border-gray-700"
-                      value={newReservation.checkOut}
-                      onChange={(e) => setNewReservation((p) => ({ ...p, checkOut: e.target.value }))}
-                      required
-                      onBlur={() => setTouched((p) => ({ ...p, checkOut: true }))}
-                    />
-                    {touched.checkOut && !newReservation.checkOut ? (
-                      <p className="mt-1 text-xs text-red-600">Campo obligatorio</p>
-                    ) : null}
-                    <button type="button" className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-md text-gray-600 hover:text-gray-800 cursor-pointer" onClick={() => { const el = checkOutInputRef.current; if (!el) return; if (typeof el.showPicker === 'function') { el.showPicker(); } else { el.focus(); } }}>
-                      <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3M3 11h18M5 5h14a2 2 0 012 2v12a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2z"/></svg>
-                    </button>
-                  </div>
-                </div>
-                <div>
-                  <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-400">Hora de llegada</label>
-                  <div className="relative">
-                    <input ref={arrivalTimeInputRef} type="time" className="h-11 w-full rounded-lg border border-gray-300 bg-white pl-4 pr-10 py-2.5 text-sm text-gray-800 focus:border-orange-300 focus:outline-hidden focus:ring-3 focus:ring-orange-500/20 dark:bg-black dark:text-white dark:border-gray-700" value={newReservation.arrivalTime} onChange={(e) => setNewReservation((p) => ({ ...p, arrivalTime: e.target.value }))} />
-                    <button type="button" className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-md text-gray-600 hover:text-gray-800 cursor-pointer" onClick={() => { const el = arrivalTimeInputRef.current; if (!el) return; if (typeof el.showPicker === 'function') { el.showPicker(); } else { el.focus(); } }}>
+                    <button 
+                      type="button" 
+                      disabled={!newReservation.checkIn}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-md text-gray-600 hover:text-gray-800 cursor-pointer disabled:text-gray-400 disabled:cursor-not-allowed" 
+                      onClick={() => { const el = arrivalTimeInputRef.current; if (!el || !newReservation.checkIn) return; if (typeof el.showPicker === 'function') { el.showPicker(); } else { el.focus(); } }}
+                    >
                       <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3M12 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/></svg>
                     </button>
                   </div>
+                  {!newReservation.checkIn && (
+                    <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Selecciona primero la fecha de Check-in</p>
+                  )}
+                </div>
+                <div>
+                  <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-400">
+                    Hora de Salida
+                  </label>
+                  <div className="relative">
+                    <input 
+                      ref={departureTimeInputRef} 
+                      type="time" 
+                      disabled={!newReservation.checkOut}
+                      className="h-11 w-full rounded-lg border border-gray-300 bg-white pl-4 pr-10 py-2.5 text-sm text-gray-800 focus:border-orange-300 focus:outline-hidden focus:ring-3 focus:ring-orange-500/20 dark:bg-black dark:text-white dark:border-gray-700 disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed" 
+                      value={newReservation.departureTime} 
+                      onChange={(e) => setNewReservation((p) => ({ ...p, departureTime: e.target.value }))} 
+                    />
+                    <button 
+                      type="button" 
+                      disabled={!newReservation.checkOut}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-md text-gray-600 hover:text-gray-800 cursor-pointer disabled:text-gray-400 disabled:cursor-not-allowed" 
+                      onClick={() => { const el = departureTimeInputRef.current; if (!el || !newReservation.checkOut) return; if (typeof el.showPicker === 'function') { el.showPicker(); } else { el.focus(); } }}
+                    >
+                      <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3M12 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/></svg>
+                    </button>
+                  </div>
+                  {!newReservation.checkOut && (
+                    <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Selecciona primero la fecha de Check-out</p>
+                  )}
                 </div>
                 <div>
                   <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-400">Adultos</label>
@@ -1780,8 +2011,13 @@ export default function Reservas() {
             <Button size="sm" variant="outline" className="cursor-pointer" onClick={() => { setNewReservation(initialReservation); setTouched({ checkIn: false, checkOut: false, room: false, guest: false, documentNumber: false }); closeCreateModal(); }}>
               Cancelar
             </Button>
-            <Button size="sm" className="bg-orange-500 hover:bg-orange-600 cursor-pointer disabled:bg-orange-300 disabled:cursor-not-allowed" disabled={!isCreateValid || isHousekeeping} onClick={async () => {
+            <Button 
+              size="sm" 
+              className="bg-orange-500 hover:bg-orange-600 cursor-pointer disabled:bg-orange-300 disabled:cursor-not-allowed disabled:opacity-50" 
+              disabled={!isCreateValid || isHousekeeping || isCreating} 
+              onClick={async () => {
               try {
+                setIsCreating(true);
                 await createReservation(newReservation);
                 const [resvs, evts] = await Promise.all([listReservations(), getCalendarEvents()]);
                 setActiveReservations(resvs);
@@ -1807,9 +2043,21 @@ export default function Reservas() {
                   position: "bottom-right",
                   autoClose: 4000,
                 });
+              } finally {
+                setIsCreating(false);
               }
             }}>
-              Crear Reserva/Venta
+              {isCreating ? (
+                <span className="inline-flex items-center gap-2">
+                  <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" opacity="0.25" />
+                    <path d="M4 12a8 8 0 018-8" stroke="currentColor" strokeWidth="4" />
+                  </svg>
+                  Creando...
+                </span>
+              ) : (
+                "Crear Reserva/Venta"
+              )}
             </Button>
           </div>
         </div>
@@ -1829,27 +2077,56 @@ export default function Reservas() {
           {editReservation && (
             <div className="px-2 space-y-6">
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-400">Huésped</label>
                   <input type="text" className="h-11 w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-800 focus:border-orange-300 focus:outline-hidden focus:ring-3 focus:ring-orange-500/20 dark:bg-black dark:text-white dark:border-gray-700" value={editReservation.guest} onChange={(e) => setEditReservation((p) => ({ ...p, guest: e.target.value }))} />
                 </div>
                 <div>
-                  <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-400">Habitación</label>
-                  <input type="text" className="h-11 w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-800 focus:border-orange-300 focus:outline-hidden focus:ring-3 focus:ring-orange-500/20 dark:bg-black dark:text-white dark:border-gray-700" value={editReservation.room} onChange={(e) => setEditReservation((p) => ({ ...p, room: e.target.value }))} />
+                  <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-400">Habitación <span className="text-red-600">*</span></label>
+                  <select disabled={!editReservation.checkIn || !editReservation.checkOut} className="h-11 w-full rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm text-gray-700 cursor-pointer focus:border-orange-300 focus:outline-hidden focus:ring-3 focus:ring-orange-500/20 dark:bg-black dark:text-white dark:border-gray-700 disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed" value={editReservation.room || ""} onChange={(e) => setEditReservation((p) => ({ ...p, room: String(e.target.value || '').trim() }))} required>
+                    {!editReservation.checkIn || !editReservation.checkOut ? (
+                      <option value="">Selecciona fechas</option>
+                    ) : (
+                      <>
+                        <option value="">Selecciona hab</option>
+                        {editRooms && Array.isArray(editRooms) && editRooms.length > 0 ? (
+                          editRooms.sort((a, b) => Number(a.floor) - Number(b.floor) || String(a.code).localeCompare(String(b.code))).map((r) => (
+                            <option key={String(r.code)} value={String(r.code)}>{`${String(r.code)} - Piso ${r.floor}`}</option>
+                          ))
+                        ) : (
+                          <option value="">No hay habitaciones disponibles para estas fechas</option>
+                        )}
+                      </>
+                    )}
+                  </select>
+                </div>
+                <div>
+                  <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-400">
+                    Tipo de Habitación <span className="text-red-600">*</span>
+                  </label>
+                  <select 
+                    className={`h-11 w-full rounded-lg border px-4 py-2.5 text-sm text-gray-800 cursor-pointer focus:outline-hidden focus:ring-3 focus:ring-orange-500/20 dark:bg-black dark:text-white ${
+                      !editReservation.roomType
+                        ? "border-red-500 focus:border-red-500 dark:border-red-500"
+                        : "border-gray-300 focus:border-orange-300 dark:border-gray-700"
+                    }`}
+                    value={editReservation.roomType || ""} 
+                    onChange={(e) => setEditReservation((p) => ({ ...p, roomType: e.target.value }))}
+                    required
+                  >
+                    <option value="">Seleccionar</option>
+                    <option>Simple</option>
+                    <option>Doble</option>
+                    <option>Triple</option>
+                    <option>Matrimonial</option>
+                  </select>
+                  {!editReservation.roomType && (
+                    <p className="mt-1 text-sm text-red-600">Este campo es obligatorio</p>
+                  )}
                 </div>
               </div>
-              <div>
-                <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-400">Tipo de Habitación</label>
-                <select className="h-11 w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-800 cursor-pointer focus:border-orange-300 focus:outline-hidden focus:ring-3 focus:ring-orange-500/20 dark:bg-black dark:text-white dark:border-gray-700" value={editReservation.roomType || ""} onChange={(e) => setEditReservation((p) => ({ ...p, roomType: e.target.value }))}>
-                  <option value="">Seleccionar</option>
-                  <option>Simple</option>
-                  <option>Doble</option>
-                  <option>Triple</option>
-                  <option>Matrimonial</option>
-                </select>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div>
                   <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-400">Check-in</label>
                   <div className="relative">
@@ -1859,7 +2136,7 @@ export default function Reservas() {
                       min={getTodayLocal()}
                       className="h-11 w-full rounded-lg border border-gray-300 bg-white pl-4 pr-10 py-2.5 text-sm text-gray-800 focus:border-orange-300 focus:outline-hidden focus:ring-3 focus:ring-orange-500/20 dark:bg-black dark:text-white dark:border-gray-700"
                       value={editReservation.checkIn}
-                      onChange={(e) => setEditReservation((p) => ({ ...p, checkIn: e.target.value }))}
+                      onChange={(e) => setEditReservation((p) => ({ ...p, checkIn: e.target.value, arrivalTime: "" }))}
                     />
                     <button type="button" className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-md text-gray-600 hover:text-gray-800 cursor-pointer" onClick={() => { const el = editCheckInInputRef.current; if (!el) return; if (typeof el.showPicker === 'function') { el.showPicker(); } else { el.focus(); } }}>
                       <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3M3 11h18M5 5h14a2 2 0 012 2v12a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2z"/></svg>
@@ -1875,24 +2152,69 @@ export default function Reservas() {
                       min={editReservation.checkIn || getTodayLocal()}
                       className="h-11 w-full rounded-lg border border-gray-300 bg-white pl-4 pr-10 py-2.5 text-sm text-gray-800 focus:border-orange-300 focus:outline-hidden focus:ring-3 focus:ring-orange-500/20 dark:bg-black dark:text-white dark:border-gray-700"
                       value={editReservation.checkOut}
-                      onChange={(e) => setEditReservation((p) => ({ ...p, checkOut: e.target.value }))}
+                      onChange={(e) => setEditReservation((p) => ({ ...p, checkOut: e.target.value, departureTime: "" }))}
                     />
                     <button type="button" className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-md text-gray-600 hover:text-gray-800 cursor-pointer" onClick={() => { const el = editCheckOutInputRef.current; if (!el) return; if (typeof el.showPicker === 'function') { el.showPicker(); } else { el.focus(); } }}>
                       <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3M3 11h18M5 5h14a2 2 0 012 2v12a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2z"/></svg>
                     </button>
                   </div>
                 </div>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                  <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-400">Hora de llegada</label>
+                  <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-400">
+                    Hora de llegada
+                  </label>
                   <div className="relative">
-                    <input ref={editArrivalTimeInputRef} type="time" step="60" className="h-11 w-full rounded-lg border border-gray-300 bg-white pl-4 pr-10 py-2.5 text-sm text-gray-800 focus:border-orange-300 focus:outline-hidden focus:ring-3 focus:ring-orange-500/20 dark:bg-black dark:text-white dark:border-gray-700" value={String(editReservation.arrivalTime || "")} onChange={(e) => setEditReservation((p) => ({ ...p, arrivalTime: e.target.value }))} />
-                    <button type="button" className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-md text-gray-600 hover:text-gray-800 cursor-pointer" onClick={() => { const el = editArrivalTimeInputRef.current; if (!el) return; if (typeof el.showPicker === 'function') { el.showPicker(); } else { el.focus(); } }}>
+                    <input 
+                      ref={editArrivalTimeInputRef} 
+                      type="time" 
+                      step="60" 
+                      disabled={!editReservation.checkIn}
+                      className="h-11 w-full rounded-lg border border-gray-300 bg-white pl-4 pr-10 py-2.5 text-sm text-gray-800 focus:border-orange-300 focus:outline-hidden focus:ring-3 focus:ring-orange-500/20 dark:bg-black dark:text-white dark:border-gray-700 disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed" 
+                      value={String(editReservation.arrivalTime || "")} 
+                      onChange={(e) => setEditReservation((p) => ({ ...p, arrivalTime: e.target.value }))} 
+                    />
+                    <button 
+                      type="button" 
+                      disabled={!editReservation.checkIn}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-md text-gray-600 hover:text-gray-800 cursor-pointer disabled:text-gray-400 disabled:cursor-not-allowed" 
+                      onClick={() => { const el = editArrivalTimeInputRef.current; if (!el || !editReservation.checkIn) return; if (typeof el.showPicker === 'function') { el.showPicker(); } else { el.focus(); } }}
+                    >
                       <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3M12 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/></svg>
                     </button>
                   </div>
+                  {!editReservation.checkIn && (
+                    <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Selecciona primero la fecha de Check-in</p>
+                  )}
                 </div>
+                <div>
+                  <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-400">
+                    Hora de Salida
+                  </label>
+                  <div className="relative">
+                    <input 
+                      ref={editDepartureTimeInputRef} 
+                      type="time" 
+                      step="60" 
+                      disabled={!editReservation.checkOut}
+                      className="h-11 w-full rounded-lg border border-gray-300 bg-white pl-4 pr-10 py-2.5 text-sm text-gray-800 focus:border-orange-300 focus:outline-hidden focus:ring-3 focus:ring-orange-500/20 dark:bg-black dark:text-white dark:border-gray-700 disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed" 
+                      value={String(editReservation.departureTime || "")} 
+                      onChange={(e) => setEditReservation((p) => ({ ...p, departureTime: e.target.value }))} 
+                    />
+                    <button 
+                      type="button" 
+                      disabled={!editReservation.checkOut}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-md text-gray-600 hover:text-gray-800 cursor-pointer disabled:text-gray-400 disabled:cursor-not-allowed" 
+                      onClick={() => { const el = editDepartureTimeInputRef.current; if (!el || !editReservation.checkOut) return; if (typeof el.showPicker === 'function') { el.showPicker(); } else { el.focus(); } }}
+                    >
+                      <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3M12 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/></svg>
+                    </button>
+                  </div>
+                  {!editReservation.checkOut && (
+                    <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Selecciona primero la fecha de Check-out</p>
+                  )}
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                 <div>
                   <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-400">Total (S/)</label>
                   <input type="text" inputMode="decimal" className="h-11 w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-800 focus:border-orange-300 focus:outline-hidden focus:ring-3 focus:ring-orange-500/20 dark:bg-black dark:text-white dark:border-gray-700" value={String(editReservation.total || "")} onChange={(e) => {
@@ -1935,20 +2257,33 @@ export default function Reservas() {
               </Button>
             )}
             {!isHousekeeping && (
-              <Button size="sm" className="bg-orange-500 hover:bg-orange-600 cursor-pointer" onClick={async () => {
+              <Button 
+                size="sm" 
+                className="bg-orange-500 hover:bg-orange-600 cursor-pointer disabled:bg-orange-300 disabled:cursor-not-allowed disabled:opacity-50" 
+                disabled={isSavingEdit}
+                onClick={async () => {
               try {
+                if (!editReservation.roomType) {
+                  toast.error("El tipo de habitación es obligatorio", {
+                    position: "bottom-right",
+                    autoClose: 4000,
+                  });
+                  return;
+                }
+                setIsSavingEdit(true);
                 const identifier = editReservation?.reservationId || editReservation?.id;
                 if (!identifier) {
                   toast.error("No se pudo identificar la reserva a editar", {
                     position: "bottom-right",
                     autoClose: 4000,
                   });
+                  setIsSavingEdit(false);
                   return;
                 }
                 
                 const guestName = editReservation?.guest || "Reserva";
                 const payload = {};
-                const keys = ["guest","room","roomType","checkIn","checkOut","arrivalTime","total","paid","channel","address","department","province","district"];
+                const keys = ["guest","room","roomType","checkIn","checkOut","arrivalTime","departureTime","total","paid","channel","address","department","province","district"];
                 for (const k of keys) {
                   if (!editOriginalReservation) { payload[k] = editReservation[k]; continue; }
                   if (k === "arrivalTime") {
@@ -1957,6 +2292,32 @@ export default function Reservas() {
                     if (newVal !== origVal) {
                       payload["arrivalTime"] = newVal;
                       payload["arrival_time"] = newVal;
+                    }
+                  } else if (k === "departureTime") {
+                    // Formatear el nuevo valor
+                    let newVal = editReservation.departureTime || "";
+                    if (newVal && /^\d{2}:\d{2}$/.test(newVal)) {
+                      newVal = `${newVal}:00`;
+                    }
+                    // Obtener el valor original (puede venir como departureTime o departure_time)
+                    const origDepTime = editOriginalReservation.departureTime || editOriginalReservation.departure_time || "";
+                    // Normalizar el valor original para comparar
+                    let origVal = "";
+                    if (origDepTime) {
+                      const origStr = String(origDepTime);
+                      if (/^\d{2}:\d{2}/.test(origStr)) {
+                        origVal = origStr.slice(0,5) + ":00";
+                      } else {
+                        origVal = origStr;
+                      }
+                    }
+                    // Comparar valores normalizados (sin espacios)
+                    const newValClean = newVal.trim();
+                    const origValClean = origVal.trim();
+                    if (newValClean !== origValClean) {
+                      payload["departureTime"] = newValClean || null;
+                      payload["departure_time"] = newValClean || null;
+                      console.log("Enviando departureTime:", newValClean, "original:", origValClean);
                     }
                   } else {
                     if (editReservation[k] !== editOriginalReservation[k]) payload[k] = editReservation[k];
@@ -1987,9 +2348,21 @@ export default function Reservas() {
                   position: "bottom-right",
                   autoClose: 4000,
                 });
+              } finally {
+                setIsSavingEdit(false);
               }
             }}>
-              Guardar Cambios
+              {isSavingEdit ? (
+                <span className="inline-flex items-center gap-2">
+                  <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" opacity="0.25" />
+                    <path d="M4 12a8 8 0 018-8" stroke="currentColor" strokeWidth="4" />
+                  </svg>
+                  Guardando...
+                </span>
+              ) : (
+                "Guardar Cambios"
+              )}
             </Button>
             )}
           </div>
@@ -2007,12 +2380,35 @@ export default function Reservas() {
           ) : null}
           <div className="flex items-center gap-3 justify-end pt-2">
             <Button size="sm" variant="outline" className="cursor-pointer" onClick={() => { setReservationPendingDeletion(null); closeConfirmModal(); }}>Cancelar</Button>
-            <Button size="sm" className="bg-red-600 hover:bg-red-700 text-white cursor-pointer" onClick={async () => {
+            <Button 
+              size="sm" 
+              className="bg-red-600 hover:bg-red-700 text-white cursor-pointer disabled:bg-red-300 disabled:cursor-not-allowed disabled:opacity-50" 
+              disabled={isDeleting}
+              onClick={async () => {
               if (!reservationPendingDeletion) return;
-              await handleDeleteReservation(reservationPendingDeletion);
-              setReservationPendingDeletion(null);
-              closeConfirmModal();
-            }}>Eliminar</Button>
+              try {
+                setIsDeleting(true);
+                await handleDeleteReservation(reservationPendingDeletion);
+                setReservationPendingDeletion(null);
+                closeConfirmModal();
+              } catch (e) {
+                console.error(e);
+              } finally {
+                setIsDeleting(false);
+              }
+            }}>
+              {isDeleting ? (
+                <span className="inline-flex items-center gap-2">
+                  <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" opacity="0.25" />
+                    <path d="M4 12a8 8 0 018-8" stroke="currentColor" strokeWidth="4" />
+                  </svg>
+                  Eliminando...
+                </span>
+              ) : (
+                "Eliminar"
+              )}
+            </Button>
           </div>
         </div>
       </Modal>
@@ -2316,7 +2712,24 @@ export default function Reservas() {
           </div>
           <div className="flex items-center gap-3 px-2 mt-6 lg:justify-end">
             <Button size="sm" variant="outline" className="cursor-pointer" onClick={closeBreakfastModal}>Cancelar</Button>
-            <Button size="sm" className="bg-orange-500 hover:bg-orange-600 cursor-pointer" onClick={saveBreakfastReport}>Guardar Reporte</Button>
+            <Button 
+              size="sm" 
+              className="bg-orange-500 hover:bg-orange-600 cursor-pointer disabled:bg-orange-300 disabled:cursor-not-allowed disabled:opacity-50" 
+              disabled={isSavingBreakfast}
+              onClick={saveBreakfastReport}
+            >
+              {isSavingBreakfast ? (
+                <span className="inline-flex items-center gap-2">
+                  <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" opacity="0.25" />
+                    <path d="M4 12a8 8 0 018-8" stroke="currentColor" strokeWidth="4" />
+                  </svg>
+                  Guardando...
+                </span>
+              ) : (
+                "Guardar Reporte"
+              )}
+            </Button>
           </div>
         </div>
       </Modal>

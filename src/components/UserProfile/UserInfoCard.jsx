@@ -1,11 +1,9 @@
 import { useAuth, ROLES } from "../../context/AuthContext";
-import { useWebSocket } from "../../hooks/useWebSocket";
-
-const WS_URL = import.meta?.env?.VITE_WS_URL || "ws://localhost:8000/ws/presence/";
+import { useWebSocketContext } from "../common/WebSocketProvider";
 
 export default function UserInfoCard() {
   const { user, userRole } = useAuth();
-  const { isConnected, connectionStatus, isOnline: isBrowserOnline } = useWebSocket(WS_URL);
+  const { isConnected, connectionStatus, isOnline: isBrowserOnline } = useWebSocketContext();
   
   // Determinar si está online basado en WebSocket y conexión del navegador
   const isOnline = isConnected && connectionStatus === 'connected' && isBrowserOnline;

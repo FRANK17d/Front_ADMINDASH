@@ -30,22 +30,38 @@ const CajaCobros = () => {
   const [totals, setTotals] = useState({ methods: { Yape: 0, Efectivo: 0, Tarjeta: 0, Transferencia: 0 }, total: 0 });
   const [clientsSummary, setClientsSummary] = useState({ clients: [], total: 0 });
   const [clientsList, setClientsList] = useState([]);
+  const [arqueDate, setArqueDate] = useState(new Date().toISOString().split('T')[0]);
+  const [loadingArque, setLoadingArque] = useState(false);
+  const [transactionsDate, setTransactionsDate] = useState(new Date().toISOString().split('T')[0]);
+  const [loadingTransactions, setLoadingTransactions] = useState(false);
+
+  const loadTransactions = async (date) => {
+    if (!date) return;
+    setLoadingTransactions(true);
+    try {
+      const tx = await listTodayTransactions(date);
+      setTransactions(Array.isArray(tx) ? tx : []);
+      setCurrentPage(1);
+      const t = await todayTotals(date);
+      setTotals(t || { methods: { Yape: 0, Efectivo: 0, Tarjeta: 0, Transferencia: 0 }, total: 0 });
+    } catch (e) {
+      console.error('Error cargando transacciones:', e);
+      setTransactions([]);
+      setTotals({ methods: { Yape: 0, Efectivo: 0, Tarjeta: 0, Transferencia: 0 }, total: 0 });
+    } finally {
+      setLoadingTransactions(false);
+    }
+  };
 
   useEffect(() => {
     document.title = "Caja y Cobros - Administrador - Hotel Plaza Trujillo";
-    (async () => {
-      try {
-        const tx = await listTodayTransactions();
-        setTransactions(tx);
-        setCurrentPage(1);
-        const t = await todayTotals();
-        setTotals(t);
-      } catch (e) {
-        setTransactions([]);
-        setTotals({ methods: { Yape: 0, Efectivo: 0, Tarjeta: 0, Transferencia: 0 }, total: 0 });
-      }
-    })();
   }, []);
+
+  useEffect(() => {
+    if (transactionsDate) {
+      loadTransactions(transactionsDate);
+    }
+  }, [transactionsDate]);
 
   useEffect(() => {
     const pages = Math.ceil((transactions || []).length / PAGE_SIZE) || 1;
@@ -172,11 +188,27 @@ const CajaCobros = () => {
   };
 
   const handleArqueCaja = async () => {
-    try {
-      const t = await todayTotals();
-      setTotals(t);
-    } catch (e) {}
+    setArqueDate(new Date().toISOString().split('T')[0]);
     openArqueModal();
+    await loadArqueTotals(new Date().toISOString().split('T')[0]);
+  };
+
+  const loadArqueTotals = async (date) => {
+    setLoadingArque(true);
+    try {
+      const t = await todayTotals(date);
+      setTotals(t || { methods: { Yape: 0, Efectivo: 0, Tarjeta: 0, Transferencia: 0 }, total: 0 });
+    } catch (e) {
+      setTotals({ methods: { Yape: 0, Efectivo: 0, Tarjeta: 0, Transferencia: 0 }, total: 0 });
+    } finally {
+      setLoadingArque(false);
+    }
+  };
+
+  const handleArqueDateChange = async (e) => {
+    const newDate = e.target.value;
+    setArqueDate(newDate);
+    await loadArqueTotals(newDate);
   };
 
   const handleEmitReceipt = async (transaction) => {
@@ -237,10 +269,7 @@ const CajaCobros = () => {
         amount: amt,
         reservationCode: newPayment.reservationCode || null,
       });
-      const tx = await listTodayTransactions();
-      setTransactions(tx);
-      const t = await todayTotals();
-      setTotals(t);
+      await loadTransactions(transactionsDate);
       
       // Obtener el nombre del cliente para el toast
       const guestName = newPayment.guest || "Cliente";
@@ -429,12 +458,36 @@ const CajaCobros = () => {
       {/* Tabla de transacciones del día */}
       <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-black">
         <div className="p-5 sm:p-6">
-          <h3 className="text-lg font-semibold text-gray-800 dark:text-white/90 mb-4">
-            Transacciones de Hoy
-          </h3>
-          <p className="text-gray-500 text-theme-sm dark:text-gray-400 mb-4">
-            Lista de todas las transacciones realizadas el día de hoy
-          </p>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 gap-4">
+            <div>
+              <h3 className="text-lg font-semibold text-gray-800 dark:text-white/90 mb-2">
+                {transactionsDate === new Date().toISOString().split('T')[0] 
+                  ? 'Transacciones de Hoy' 
+                  : (() => {
+                      const [year, month, day] = transactionsDate.split('-').map(Number);
+                      const date = new Date(year, month - 1, day);
+                      return `Transacciones del ${date.toLocaleDateString('es-PE', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}`;
+                    })()}
+              </h3>
+              <p className="text-gray-500 text-theme-sm dark:text-gray-400">
+                {transactionsDate === new Date().toISOString().split('T')[0]
+                  ? 'Lista de todas las transacciones realizadas el día de hoy'
+                  : 'Lista de todas las transacciones realizadas en la fecha seleccionada'}
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-400 whitespace-nowrap">
+                Seleccionar fecha:
+              </label>
+              <input
+                type="date"
+                value={transactionsDate}
+                onChange={(e) => setTransactionsDate(e.target.value)}
+                max={new Date().toISOString().split('T')[0]}
+                className="h-10 px-4 rounded-lg border border-gray-300 bg-white text-sm text-gray-800 focus:border-orange-300 focus:outline-none focus:ring-2 focus:ring-orange-500/20 dark:bg-black dark:text-white dark:border-gray-700"
+              />
+            </div>
+          </div>
           <div className="overflow-x-auto">
             <div className="inline-block min-w-full align-middle">
               <Table>
@@ -475,10 +528,35 @@ const CajaCobros = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody className="divide-y divide-gray-100 dark:divide-gray-800">
-                  {transactions.length === 0 ? (
+                  {loadingTransactions ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="py-10 px-4 text-center text-gray-500 dark:text-gray-400">
-                        No hay transacciones
+                      <TableCell colSpan={7} className="py-10 px-4 text-center">
+                        <div className="flex flex-col items-center gap-2">
+                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500"></div>
+                          <p className="text-gray-500 dark:text-gray-400">Cargando transacciones...</p>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ) : transactions.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={7} className="py-10 px-4 text-center">
+                        <div className="flex flex-col items-center gap-2">
+                          <svg className="w-12 h-12 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                          </svg>
+                          <p className="text-gray-500 dark:text-gray-400 font-medium">
+                            {transactionsDate === new Date().toISOString().split('T')[0]
+                              ? 'No hay transacciones registradas hoy'
+                              : `No hay transacciones registradas el ${(() => {
+                                  const [year, month, day] = transactionsDate.split('-').map(Number);
+                                  const date = new Date(year, month - 1, day);
+                                  return date.toLocaleDateString('es-PE', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+                                })()}`}
+                          </p>
+                          <p className="text-sm text-gray-400 dark:text-gray-500">
+                            Selecciona otra fecha para ver más transacciones
+                          </p>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ) : (
@@ -670,7 +748,34 @@ const CajaCobros = () => {
         <div className="no-scrollbar relative w-full max-w-[600px] overflow-y-auto rounded-3xl bg-white p-4 dark:bg-black lg:p-11">
           <div className="px-2 pr-14">
             <h4 className="mb-2 text-2xl font-semibold text-gray-800 dark:text-white/90">Arque de Caja</h4>
+            <div className="flex items-center gap-3 mt-4 mb-4">
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-400 whitespace-nowrap">
+                Seleccionar fecha:
+              </label>
+              <input
+                type="date"
+                value={arqueDate}
+                onChange={handleArqueDateChange}
+                max={new Date().toISOString().split('T')[0]}
+                className="h-10 px-4 rounded-lg border border-gray-300 bg-white text-sm text-gray-800 focus:border-orange-300 focus:outline-none focus:ring-2 focus:ring-orange-500/20 dark:bg-black dark:text-white dark:border-gray-700"
+              />
+            </div>
+            {arqueDate !== new Date().toISOString().split('T')[0] && (
+              <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">
+                {(() => {
+                  const [year, month, day] = arqueDate.split('-').map(Number);
+                  const date = new Date(year, month - 1, day);
+                  return `Arque del ${date.toLocaleDateString('es-PE', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}`;
+                })()}
+              </p>
+            )}
           </div>
+          {loadingArque ? (
+            <div className="px-2 py-8 text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500 mx-auto"></div>
+              <p className="text-gray-500 dark:text-gray-400 mt-2">Cargando arque de caja...</p>
+            </div>
+          ) : (
           <div className="px-2 space-y-3">
             <div className="flex items-center justify-between p-2 rounded-lg bg-gray-50 dark:bg-gray-800/50">
               <span className="text-sm text-gray-600 dark:text-gray-400">Efectivo</span>
@@ -693,6 +798,7 @@ const CajaCobros = () => {
               <span className="text-sm font-semibold text-gray-800 dark:text-white/90">{formatCurrency(Number(totals.total || 0))}</span>
             </div>
           </div>
+          )}
           <div className="flex items-center gap-3 px-2 mt-6 lg:justify-end">
             <Button size="sm" variant="outline" onClick={closeArqueModal}>Cerrar</Button>
           </div>

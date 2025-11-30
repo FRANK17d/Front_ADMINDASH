@@ -63,6 +63,17 @@ export async function deleteUser(uid) {
   }
 }
 
+export async function toggleUserStatus(uid) {
+  try {
+    const res = await api.patch(`${AUTH_BASE}/admin/users/${uid}/toggle-status/`);
+    return res.data;
+  } catch (error) {
+    const status = error?.response?.status;
+    const msg = error?.response?.data?.error || `TOGGLE_USER_STATUS_FAILED:${status ?? "UNKNOWN"}`;
+    throw new Error(msg);
+  }
+}
+
 export async function updateOwnProfile({ display_name, profile_photo_url }) {
   try {
     const res = await api.patch(`${AUTH_BASE}/profile/update/`, {
