@@ -5,7 +5,7 @@ import BasicTableOne from "../../components/tables/BasicTables/BasicTableOne";
 export default function BasicTables() {
 
   useEffect(() => {
-    document.title = "Usuarios - Administrador - Hotel Plaza Trujillo";
+    document.title = "Usuarios - Hotel Plaza Trujillo";
   }, []);
 
   return (

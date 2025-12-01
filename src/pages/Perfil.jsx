@@ -7,7 +7,7 @@ import ComponentCard from '../components/common/ComponentCard';
 
 const Perfil = () => {
     useEffect(() => {
-        document.title = 'Perfil - Administrador - Hotel Plaza Trujillo'
+        document.title = 'Perfil - Hotel Plaza Trujillo'
     }, [])
   return (
     <>

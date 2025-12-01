@@ -54,7 +54,7 @@ const CajaCobros = () => {
   };
 
   useEffect(() => {
-    document.title = "Caja y Cobros - Administrador - Hotel Plaza Trujillo";
+    document.title = "Caja y Cobros - Hotel Plaza Trujillo";
   }, []);
 
   useEffect(() => {

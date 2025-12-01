@@ -124,7 +124,7 @@ const Mensajes = () => {
   };
 
   useEffect(() => {
-    document.title = "Mensajes - Administrador - Hotel Plaza Trujillo";
+    document.title = "Mensajes - Hotel Plaza Trujillo";
     loadUsers();
   }, []);
 

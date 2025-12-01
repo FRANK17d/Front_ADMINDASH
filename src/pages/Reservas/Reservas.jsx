@@ -219,7 +219,7 @@ export default function Reservas() {
 
 
   useEffect(() => {
-    document.title = "Reservas - Administrador - Hotel Plaza Trujillo";
+    document.title = "Reservas - Hotel Plaza Trujillo";
     (async () => {
       try {
         setIsLoadingReservations(true);

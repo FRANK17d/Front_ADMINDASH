@@ -45,7 +45,7 @@ const Lavanderia = () => {
   };
 
   useEffect(() => {
-    document.title = "Lavandería - Administrador - Hotel Plaza Trujillo";
+    document.title = "Lavandería - Hotel Plaza Trujillo";
     fetchAll();
   }, []);
 

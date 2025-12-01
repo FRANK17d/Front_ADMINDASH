@@ -98,7 +98,7 @@ export default function Mantenimiento() {
   };
 
   useEffect(() => {
-    document.title = "Mantenimiento Técnico - Administrador - Hotel Plaza Trujillo";
+    document.title = "Mantenimiento Técnico - Hotel Plaza Trujillo";
     fetchAll();
   }, []);
 

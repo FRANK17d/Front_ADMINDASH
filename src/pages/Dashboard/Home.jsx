@@ -9,7 +9,7 @@ import CheckInOutCards from "../../components/home/CheckInOutCards";
 
 export default function Home() {
   useEffect(() => {
-    document.title = "Dashboard - Administrador - Hotel Plaza Trujillo";
+    document.title = "Dashboard - Hotel Plaza Trujillo";
   }, []);
 
   return (

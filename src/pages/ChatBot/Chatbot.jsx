@@ -28,7 +28,7 @@ export default function Chatbot() {
   ];
 
   useEffect(() => {
-    document.title = "Chatbot IA - Administrador - Hotel Plaza Trujillo";
+    document.title = "Chatbot IA - Hotel Plaza Trujillo";
     // Cargar historial de conversaciones al montar el componente
     loadChatHistory();
   }, []);
