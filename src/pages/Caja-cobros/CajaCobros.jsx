@@ -16,6 +16,15 @@ import { listTodayTransactions, todayTotals, createPayment, emitReceipt, todayCl
 import { toast } from 'react-toastify';
 
 const CajaCobros = () => {
+  // Función helper para obtener la fecha local en formato YYYY-MM-DD
+  const getLocalDateString = () => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   const [transactions, setTransactions] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const PAGE_SIZE = 4;
@@ -30,9 +39,9 @@ const CajaCobros = () => {
   const [totals, setTotals] = useState({ methods: { Yape: 0, Efectivo: 0, Tarjeta: 0, Transferencia: 0 }, total: 0 });
   const [clientsSummary, setClientsSummary] = useState({ clients: [], total: 0 });
   const [clientsList, setClientsList] = useState([]);
-  const [arqueDate, setArqueDate] = useState(new Date().toISOString().split('T')[0]);
+  const [arqueDate, setArqueDate] = useState(getLocalDateString());
   const [loadingArque, setLoadingArque] = useState(false);
-  const [transactionsDate, setTransactionsDate] = useState(new Date().toISOString().split('T')[0]);
+  const [transactionsDate, setTransactionsDate] = useState(getLocalDateString());
   const [loadingTransactions, setLoadingTransactions] = useState(false);
 
   const loadTransactions = async (date) => {
@@ -188,9 +197,10 @@ const CajaCobros = () => {
   };
 
   const handleArqueCaja = async () => {
-    setArqueDate(new Date().toISOString().split('T')[0]);
+    const today = getLocalDateString();
+    setArqueDate(today);
     openArqueModal();
-    await loadArqueTotals(new Date().toISOString().split('T')[0]);
+    await loadArqueTotals(today);
   };
 
   const loadArqueTotals = async (date) => {
@@ -223,9 +233,10 @@ const CajaCobros = () => {
         direccion = found.direccion || "";
       }
     } catch (e) {}
+    const today = getLocalDateString();
     setReceiptForm({
       numero: String(962 + transaction.id).padStart(5, "0"),
-      fecha: new Date().toISOString().slice(0, 10),
+      fecha: today,
       senores: transaction.guest,
       direccion,
       dni,
@@ -233,7 +244,7 @@ const CajaCobros = () => {
       importe: transaction.amount,
       total: transaction.amount,
       son: "",
-      canceladoFecha: new Date().toISOString().slice(0, 10),
+      canceladoFecha: today,
     });
     openReceiptModal();
   };
@@ -461,7 +472,7 @@ const CajaCobros = () => {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 gap-4">
             <div>
               <h3 className="text-lg font-semibold text-gray-800 dark:text-white/90 mb-2">
-                {transactionsDate === new Date().toISOString().split('T')[0] 
+                {transactionsDate === getLocalDateString() 
                   ? 'Transacciones de Hoy' 
                   : (() => {
                       const [year, month, day] = transactionsDate.split('-').map(Number);
@@ -470,7 +481,7 @@ const CajaCobros = () => {
                     })()}
               </h3>
               <p className="text-gray-500 text-theme-sm dark:text-gray-400">
-                {transactionsDate === new Date().toISOString().split('T')[0]
+                {transactionsDate === getLocalDateString()
                   ? 'Lista de todas las transacciones realizadas el día de hoy'
                   : 'Lista de todas las transacciones realizadas en la fecha seleccionada'}
               </p>
@@ -483,7 +494,7 @@ const CajaCobros = () => {
                 type="date"
                 value={transactionsDate}
                 onChange={(e) => setTransactionsDate(e.target.value)}
-                max={new Date().toISOString().split('T')[0]}
+                max={getLocalDateString()}
                 className="h-10 px-4 rounded-lg border border-gray-300 bg-white text-sm text-gray-800 focus:border-orange-300 focus:outline-none focus:ring-2 focus:ring-orange-500/20 dark:bg-black dark:text-white dark:border-gray-700"
               />
             </div>
@@ -545,7 +556,7 @@ const CajaCobros = () => {
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                           </svg>
                           <p className="text-gray-500 dark:text-gray-400 font-medium">
-                            {transactionsDate === new Date().toISOString().split('T')[0]
+                            {transactionsDate === getLocalDateString()
                               ? 'No hay transacciones registradas hoy'
                               : `No hay transacciones registradas el ${(() => {
                                   const [year, month, day] = transactionsDate.split('-').map(Number);
@@ -756,11 +767,11 @@ const CajaCobros = () => {
                 type="date"
                 value={arqueDate}
                 onChange={handleArqueDateChange}
-                max={new Date().toISOString().split('T')[0]}
+                max={getLocalDateString()}
                 className="h-10 px-4 rounded-lg border border-gray-300 bg-white text-sm text-gray-800 focus:border-orange-300 focus:outline-none focus:ring-2 focus:ring-orange-500/20 dark:bg-black dark:text-white dark:border-gray-700"
               />
             </div>
-            {arqueDate !== new Date().toISOString().split('T')[0] && (
+            {arqueDate !== getLocalDateString() && (
               <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">
                 {(() => {
                   const [year, month, day] = arqueDate.split('-').map(Number);
