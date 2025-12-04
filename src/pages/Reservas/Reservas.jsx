@@ -2315,6 +2315,9 @@ export default function Reservas() {
                 }
                 setActiveReservations(resvs);
                 
+                // Refrescar conteo de habitaciones disponibles
+                await refreshAvailableRoomsCount();
+                
                 // Mostrar toast de éxito
                 toast.success(`Reserva de "${guestName}" actualizada exitosamente`, {
                   position: "bottom-right",
