@@ -45,8 +45,12 @@ export async function lookupDocument(type, number) {
   return res.data || {};
 }
 
-export async function getAvailableRooms(checkIn, checkOut) {
-  const res = await api.get(`${BASE}/rooms/available/`, { params: { check_in: checkIn, check_out: checkOut } });
+export async function getAvailableRooms(checkIn, checkOut, excludeReservation = null) {
+  const params = { check_in: checkIn, check_out: checkOut };
+  if (excludeReservation) {
+    params.exclude_reservation = excludeReservation;
+  }
+  const res = await api.get(`${BASE}/rooms/available/`, { params });
   return res.data?.rooms || [];
 }
 

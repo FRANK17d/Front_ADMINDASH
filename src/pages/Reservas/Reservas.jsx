@@ -398,30 +398,13 @@ export default function Reservas() {
   useEffect(() => {
     const ci = editReservation?.checkIn;
     const co = editReservation?.checkOut;
+    const reservationId = editReservation?.reservationId || editReservation?.id;
     (async () => {
       try {
         if (ci && co) {
-          const av = await getAvailableRooms(ci, co);
+          // Pasar el ID de la reserva para excluirla del cálculo de disponibilidad
+          const av = await getAvailableRooms(ci, co, reservationId);
           const availableRooms = av && Array.isArray(av) ? av.map((r) => ({ code: r.code, floor: r.floor, type: r.type })) : [];
-          // Incluir la habitación actual si no está en la lista de disponibles (para mantenerla seleccionada)
-          const currentRoom = editReservation?.room;
-          if (currentRoom && !availableRooms.find(r => String(r.code) === String(currentRoom))) {
-            // Buscar la habitación en predefinedRooms para obtener su información
-            let foundRoom = null;
-            for (const floorKey in predefinedRooms) {
-              const floorRooms = predefinedRooms[floorKey];
-              if (Array.isArray(floorRooms)) {
-                const room = floorRooms.find(r => String(r.code) === String(currentRoom));
-                if (room) {
-                  foundRoom = { code: room.code, floor: Number(floorKey), type: room.type };
-                  break;
-                }
-              }
-            }
-            if (foundRoom) {
-              availableRooms.push(foundRoom);
-            }
-          }
           setEditRooms(availableRooms);
         } else {
           setEditRooms([]);
@@ -431,7 +414,7 @@ export default function Reservas() {
         setEditRooms([]);
       }
     })();
-  }, [editReservation?.checkIn, editReservation?.checkOut, editReservation?.room]);
+  }, [editReservation?.checkIn, editReservation?.checkOut, editReservation?.reservationId, editReservation?.id]);
 
   useEffect(() => {
     setSelectedReservationForAccount(activeReservations[0] || null);
