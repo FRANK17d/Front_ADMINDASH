@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef, useMemo } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
  
 import { PlusIcon, PencilIcon, TrashBinIcon, EyeIcon } from "../../icons";
 import { Calendar, momentLocalizer } from "react-big-calendar";
@@ -19,6 +20,7 @@ import { Modal } from "../../components/ui/modal";
 import { useModal } from "../../hooks/useModal";
 import { listReservations, getCalendarEvents, getCalendarNotes, setCalendarNote, deleteCalendarNote, createReservation, lookupDocument, getAvailableRooms, deleteReservation, updateReservation } from "../../api/reservations";
 import { getBlockedRooms } from "../../api/mantenimiento";
+import { updateWebReservationRequest } from "../../api/webReservations";
 import { useAuth, ROLES } from "../../context/AuthContext";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -27,6 +29,8 @@ import { toast } from 'react-toastify';
 export default function Reservas() {
   const { user, userRole } = useAuth();
   const isHousekeeping = userRole === ROLES.HOUSEKEEPING;
+  const location = useLocation();
+  const navigate = useNavigate();
   const { isOpen: isCreateModalOpen, openModal: openCreateModal, closeModal: closeCreateModal } = useModal();
   const { isOpen: isViewModalOpen, openModal: openViewModal, closeModal: closeViewModal } = useModal();
   const { isOpen: isEditModalOpen, openModal: openEditModal, closeModal: closeEditModal } = useModal();
@@ -74,6 +78,72 @@ export default function Reservas() {
   const [dayNotes, setDayNotes] = useState({});
   const [noteDate, setNoteDate] = useState(null);
   const [noteText, setNoteText] = useState("");
+  const [webRequestId, setWebRequestId] = useState(null);
+
+  // Procesar query params de reservas web
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const fromWeb = params.get('fromWeb');
+    
+    if (fromWeb === 'true') {
+      const requestId = params.get('requestId');
+      const guestName = params.get('guestName');
+      const documentType = params.get('documentType');
+      const documentNumber = params.get('documentNumber');
+      const phone = params.get('phone');
+      const address = params.get('address');
+      const department = params.get('department');
+      const province = params.get('province');
+      const district = params.get('district');
+      const checkIn = params.get('checkIn');
+      const checkOut = params.get('checkOut');
+      const numAdults = params.get('numAdults');
+      const numChildren = params.get('numChildren');
+      const numPeople = params.get('numPeople');
+      const numRooms = params.get('numRooms');
+      const arrivalTime = params.get('arrivalTime');
+      const departureTime = params.get('departureTime');
+      const roomType = params.get('roomType');
+      const rooms = params.get('rooms');
+      const totalAmount = params.get('totalAmount');
+
+      // Prellenar formulario
+      setNewReservation({
+        ...initialReservation,
+        channel: 'Web',
+        guest: guestName || '',
+        documentType: documentType || 'DNI',
+        documentNumber: documentNumber || '',
+        phone: phone || '',
+        address: address || '',
+        department: department || '',
+        province: province || '',
+        district: district || '',
+        checkIn: checkIn || '',
+        checkOut: checkOut || '',
+        numAdults: parseInt(numAdults) || 1,
+        numChildren: parseInt(numChildren) || 0,
+        numPeople: parseInt(numPeople) || 1,
+        numRooms: parseInt(numRooms) || 1,
+        arrivalTime: arrivalTime || '14:00',
+        departureTime: departureTime || '12:00',
+        roomType: roomType || '',
+        room: rooms || '',
+        total: parseFloat(totalAmount) || 0,
+        status: 'Confirmada',
+        paid: false
+      });
+
+      // Guardar requestId para actualizar después
+      setWebRequestId(requestId);
+
+      // Abrir modal de creación
+      openCreateModal();
+
+      // Limpiar query params de la URL
+      navigate(location.pathname, { replace: true });
+    }
+  }, [location.search]);
 
   useEffect(() => {
     (async () => {
@@ -2002,6 +2072,23 @@ export default function Reservas() {
               try {
                 setIsCreating(true);
                 await createReservation(newReservation);
+                
+                // Si viene de una reserva web, actualizar su estado a "processed" (será convertido a "registered")
+                if (webRequestId) {
+                  try {
+                    await updateWebReservationRequest(webRequestId, {
+                      status: 'processed',
+                      processedBy: user?.email || 'staff',
+                      notes: `Registrada por ${user?.email || 'staff'} el ${new Date().toLocaleString('es-PE')}`
+                    });
+                  } catch (webError) {
+                    console.error('Error actualizando estado de reserva web:', webError);
+                    // No bloqueamos el flujo si falla la actualización
+                  }
+                  // Limpiar el webRequestId
+                  setWebRequestId(null);
+                }
+                
                 const [resvs, evts] = await Promise.all([listReservations(), getCalendarEvents()]);
                 setActiveReservations(resvs);
                 setEvents(evts);
