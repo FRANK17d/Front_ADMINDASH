@@ -2,7 +2,7 @@ import axios from 'axios';
 
 // Usar la misma configuración de base URL que el resto de la app
 const API_URL = import.meta.env.PROD 
-  ? 'https://backspring-wrc6.onrender.com/api'
+  ? 'https://backspringg.onrender.com/api'
   : (import.meta.env.VITE_API_URL || 'http://localhost:8080/api');
 
 const api = axios.create({ 
