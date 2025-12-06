@@ -71,6 +71,12 @@ const AppSidebar = () => {
       icon: <ChatBotIcon />,
       name: "ChatBot",
       path: `${routePrefix}/chatbot`,
+    },
+    {
+      icon: <MailIcon />,
+      name: "Reservas Web",
+      path: `${routePrefix}/reservas-web`,
+      allowedRoles: [ROLES.ADMIN, ROLES.RECEPTIONIST],
     }
   ];
 

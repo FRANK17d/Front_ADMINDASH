@@ -12,6 +12,7 @@ import Users from './pages/Users/Users'
 import ForgotPass from './pages/AuthPages/ForgotPass'
 import Chatbot from './pages/ChatBot/Chatbot'
 import Reservas from './pages/Reservas/Reservas'
+import ReserWeb from './pages/ReserWeb/ReserWeb'
 import CajaCobros from './pages/Caja-cobros/CajaCobros'
 import Lavanderia from './pages/Lavanderia/Lavanderia'
 import Mantenimiento from './pages/Mantenimiento/Mantenimiento'
@@ -109,6 +110,14 @@ function App() {
               } 
             />
             <Route 
+              path="/admin/reservas-web" 
+              element={
+                <RoleRoute allowedRoles={[ROLES.ADMIN]}>
+                  <ReserWeb />
+                </RoleRoute>
+              } 
+            />
+            <Route 
               path="/admin/perfil" 
               element={
                 <RoleRoute allowedRoles={[ROLES.ADMIN]}>
@@ -164,6 +173,14 @@ function App() {
               element={
                 <RoleRoute allowedRoles={[ROLES.RECEPTIONIST]}>
                   <Chatbot />
+                </RoleRoute>
+              } 
+            />
+            <Route 
+              path="/recepcionista/reservas-web" 
+              element={
+                <RoleRoute allowedRoles={[ROLES.RECEPTIONIST]}>
+                  <ReserWeb />
                 </RoleRoute>
               } 
             />
