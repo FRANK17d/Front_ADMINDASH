@@ -1,12 +1,10 @@
 import { useAuth, ROLES } from "../../context/AuthContext";
-import { useWebSocketContext } from "../common/WebSocketProvider";
 
 export default function UserInfoCard() {
   const { user, userRole } = useAuth();
-  const { isConnected, connectionStatus, isOnline: isBrowserOnline } = useWebSocketContext();
   
-  // Determinar si está online basado en WebSocket y conexión del navegador
-  const isOnline = isConnected && connectionStatus === 'connected' && isBrowserOnline;
+  // Usuario siempre online (sin WebSocket)
+  const isOnline = true;
   
   const getRoleName = (role) => {
     switch(role) {
@@ -61,22 +59,10 @@ export default function UserInfoCard() {
                   Estado
                 </p>
                 <p className="text-sm font-medium text-gray-800 dark:text-white/90">
-                  {connectionStatus === 'connecting' ? (
-                    <span className="inline-flex items-center gap-1.5 py-1 px-2.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400">
-                      <span className="w-1.5 h-1.5 rounded-full bg-yellow-600 dark:bg-yellow-400 animate-pulse"></span>
-                      Conectando...
-                    </span>
-                  ) : isOnline ? (
-                    <span className="inline-flex items-center gap-1.5 py-1 px-2.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
-                      <span className="w-1.5 h-1.5 rounded-full bg-green-600 dark:bg-green-400 animate-pulse"></span>
-                      En línea
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-1.5 py-1 px-2.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400">
-                      <span className="w-1.5 h-1.5 rounded-full bg-red-600 dark:bg-red-400"></span>
-                      Desconectado
-                    </span>
-                  )}
+                  <span className="inline-flex items-center gap-1.5 py-1 px-2.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
+                    <span className="w-1.5 h-1.5 rounded-full bg-green-600 dark:bg-green-400 animate-pulse"></span>
+                    En línea
+                  </span>
                 </p>
               </div>
             </div>

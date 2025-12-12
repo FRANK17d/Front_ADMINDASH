@@ -2,7 +2,7 @@ import React from "react";
 
 // Table Component
 const Table = ({ children, className }) => {
-  return <table className={`min-w-full  ${className}`}>{children}</table>;
+  return <table className={`w-full  ${className}`}>{children}</table>;
 };
 
 // TableHeader Component

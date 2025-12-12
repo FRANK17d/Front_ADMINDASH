@@ -22,12 +22,12 @@ export default function PublicRoute({ children }) {
   if (user && userRole && !isLoggingIn) {
     const dashboardPath =
       userRole === ROLES.ADMIN
-        ? '/admin/dashboard'
+        ? '/admin/pasajeros'
         : userRole === ROLES.RECEPTIONIST
-        ? '/recepcionista/dashboard'
+        ? '/recepcionista/pasajeros'
         : userRole === ROLES.HOUSEKEEPING
-        ? '/hoteler/dashboard'
-        : '/admin/dashboard';
+        ? '/hoteler/pasajeros'
+        : '/admin/pasajeros';
     return <Navigate to={dashboardPath} replace />;
   }
 

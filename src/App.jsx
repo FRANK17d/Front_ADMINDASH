@@ -5,19 +5,12 @@ import ProtectedRoute from './components/common/ProtectedRoute'
 import PublicRoute from './components/common/PublicRoute'
 import RoleRoute from './components/common/RoleRoute'
 import AppLayout from './layout/AppLayout'
-import Home from './pages/Dashboard/Home'
-import HomeHousekeeping from './pages/Dashboard/HomeHousekeeping'
 import SignIn from './pages/AuthPages/SignIn'
 import Users from './pages/Users/Users'
 import ForgotPass from './pages/AuthPages/ForgotPass'
 import Chatbot from './pages/ChatBot/Chatbot'
 import Reservas from './pages/Reservas/Reservas'
-import ReserWeb from './pages/ReserWeb/ReserWeb'
-import CajaCobros from './pages/Caja-cobros/CajaCobros'
-import Lavanderia from './pages/Lavanderia/Lavanderia'
-import Mantenimiento from './pages/Mantenimiento/Mantenimiento'
 import Perfil from './pages/Perfil'
-import Mensajes from './pages/Mensajes/Mensajes'
 import { ToastContainer } from 'react-toastify'
 import 'react-toastify/dist/ReactToastify.css'
 
@@ -54,50 +47,10 @@ function App() {
           }>
             {/* Rutas para ADMIN */}
             <Route 
-              path="/admin/dashboard" 
-              element={
-                <RoleRoute allowedRoles={[ROLES.ADMIN]}>
-                  <Home />
-                </RoleRoute>
-              } 
-            />
-            <Route 
-              path='/admin/reservas' 
+              path='/admin/pasajeros' 
               element={
                 <RoleRoute allowedRoles={[ROLES.ADMIN]}>
                   <Reservas/>
-                </RoleRoute>
-              }
-            />
-            <Route 
-              path='/admin/caja-cobros' 
-              element={
-                <RoleRoute allowedRoles={[ROLES.ADMIN]}>
-                  <CajaCobros/>
-                </RoleRoute>
-              }
-            />
-            <Route 
-              path='/admin/lavanderia' 
-              element={
-                <RoleRoute allowedRoles={[ROLES.ADMIN]}>
-                  <Lavanderia/>
-                </RoleRoute>
-              }
-            />
-            <Route 
-              path='/admin/caja-cobros' 
-              element={
-                <RoleRoute allowedRoles={[ROLES.ADMIN]}>
-                  <CajaCobros/>
-                </RoleRoute>
-              }
-            />
-            <Route 
-              path='/admin/mantenimiento' 
-              element={
-                <RoleRoute allowedRoles={[ROLES.ADMIN]}>
-                  <Mantenimiento/>
                 </RoleRoute>
               }
             />
@@ -110,26 +63,10 @@ function App() {
               } 
             />
             <Route 
-              path="/admin/reservas-web" 
-              element={
-                <RoleRoute allowedRoles={[ROLES.ADMIN]}>
-                  <ReserWeb />
-                </RoleRoute>
-              } 
-            />
-            <Route 
               path="/admin/perfil" 
               element={
                 <RoleRoute allowedRoles={[ROLES.ADMIN]}>
                   <Perfil />
-                </RoleRoute>
-              } 
-            />
-            <Route 
-              path="/admin/mensajes" 
-              element={
-                <RoleRoute allowedRoles={[ROLES.ADMIN]}>
-                  <Mensajes />
                 </RoleRoute>
               } 
             />
@@ -144,15 +81,7 @@ function App() {
 
           {/* Rutas para RECEPCIONISTA - Protegidas */}
             <Route 
-              path="/recepcionista/dashboard" 
-              element={
-                <RoleRoute allowedRoles={[ROLES.RECEPTIONIST]}>
-                  <Home />
-                </RoleRoute>
-              } 
-            />
-            <Route 
-              path='/recepcionista/reservas' 
+              path='/recepcionista/pasajeros' 
               element={
                 <RoleRoute allowedRoles={[ROLES.RECEPTIONIST]}>
                   <Reservas/>
@@ -160,27 +89,10 @@ function App() {
               }
             />
             <Route 
-              path='/recepcionista/caja-cobros' 
-              element={
-                <RoleRoute allowedRoles={[ROLES.RECEPTIONIST]}>
-                  <CajaCobros/>
-                </RoleRoute>
-              }
-            />
-            
-            <Route 
               path="/recepcionista/chatbot" 
               element={
                 <RoleRoute allowedRoles={[ROLES.RECEPTIONIST]}>
                   <Chatbot />
-                </RoleRoute>
-              } 
-            />
-            <Route 
-              path="/recepcionista/reservas-web" 
-              element={
-                <RoleRoute allowedRoles={[ROLES.RECEPTIONIST]}>
-                  <ReserWeb />
                 </RoleRoute>
               } 
             />
@@ -192,45 +104,13 @@ function App() {
                 </RoleRoute>
               } 
             />
-            <Route 
-              path="/recepcionista/mensajes" 
-              element={
-                <RoleRoute allowedRoles={[ROLES.RECEPTIONIST]}>
-                  <Mensajes />
-                </RoleRoute>
-              } 
-            />
 
             {/* Rutas para HOUSEKEEPING - Protegidas */}
             <Route 
-              path="/hoteler/dashboard" 
-              element={
-                <RoleRoute allowedRoles={[ROLES.HOUSEKEEPING]}>
-                  <HomeHousekeeping />
-                </RoleRoute>
-              } 
-            />
-            <Route 
-              path='/hoteler/reservas' 
+              path='/hoteler/pasajeros' 
               element={
                 <RoleRoute allowedRoles={[ROLES.HOUSEKEEPING]}>
                   <Reservas/>
-                </RoleRoute>
-              }
-            />
-            <Route 
-              path='/hoteler/lavanderia' 
-              element={
-                <RoleRoute allowedRoles={[ROLES.HOUSEKEEPING]}>
-                  <Lavanderia/>
-                </RoleRoute>
-              }
-            />
-            <Route 
-              path='/hoteler/mantenimiento' 
-              element={
-                <RoleRoute allowedRoles={[ROLES.HOUSEKEEPING]}>
-                  <Mantenimiento/>
                 </RoleRoute>
               }
             />
@@ -239,14 +119,6 @@ function App() {
               element={
                 <RoleRoute allowedRoles={[ROLES.HOUSEKEEPING]}>
                   <Chatbot />
-                </RoleRoute>
-              } 
-            />
-            <Route 
-              path="/hoteler/mensajes" 
-              element={
-                <RoleRoute allowedRoles={[ROLES.HOUSEKEEPING]}>
-                  <Mensajes />
                 </RoleRoute>
               } 
             />

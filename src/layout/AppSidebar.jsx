@@ -29,9 +29,9 @@ const AppSidebar = () => {
   // Configurar los items del menú con rutas dinámicas
   const navItems = [
     {
-      icon: <GridIcon />,
-      name: "Dashboard",
-      path: `${routePrefix}/dashboard`,
+      icon: <CalenderIcon/>,
+      name: "Pasajeros",
+      path: `${routePrefix}/pasajeros`,
     },
     {
       icon: <UserIcon />,
@@ -40,43 +40,9 @@ const AppSidebar = () => {
       allowedRoles: [ROLES.ADMIN],
     },
     {
-      icon: <CalenderIcon/>,
-      name: "Reservas",
-      path: `${routePrefix}/reservas`,
-    },
-    {
-      icon: <DollarLineIcon/>,
-      name: "Caja de Cobros",
-      path: `${routePrefix}/caja-cobros`,
-      allowedRoles: [ROLES.ADMIN, ROLES.RECEPTIONIST],
-    },
-    {
-      icon: <TaskIcon/>,
-      name: "Lavanderia",
-      path: `${routePrefix}/lavanderia`,
-      allowedRoles: [ROLES.ADMIN, ROLES.HOUSEKEEPING],
-    },
-    {
-      icon: <PlugInIcon/>,
-      name: "Mantenimiento",
-      path: `${routePrefix}/mantenimiento`,
-      allowedRoles: [ROLES.ADMIN, ROLES.HOUSEKEEPING],
-    },
-    {
-      icon: <MailIcon/>,
-      name: "Mensajes",
-      path: `${routePrefix}/mensajes`,
-    },
-    {
       icon: <ChatBotIcon />,
       name: "ChatBot",
       path: `${routePrefix}/chatbot`,
-    },
-    {
-      icon: <MailIcon />,
-      name: "Reservas Web",
-      path: `${routePrefix}/reservas-web`,
-      allowedRoles: [ROLES.ADMIN, ROLES.RECEPTIONIST],
     }
   ];
 
@@ -285,7 +251,7 @@ const AppSidebar = () => {
           !isExpanded && !isHovered ? "lg:justify-center" : "justify-start"
         }`}
       >
-        <Link to="/" className="hidden lg:block" onClick={() => { if (isMobileOpen) toggleMobileSidebar(); }}>
+        <Link to="/admin/pasajeros" className="hidden lg:block" onClick={() => { if (isMobileOpen) toggleMobileSidebar(); }}>
           {isExpanded || isHovered || isMobileOpen ? (
             <>
               <img

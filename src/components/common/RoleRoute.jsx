@@ -17,10 +17,10 @@ export default function RoleRoute({ children, allowedRoles }) {
   if (!allowedRoles.includes(userRole)) {
     const dashboardPath =
       userRole === 'receptionist'
-        ? '/recepcionista/dashboard'
+        ? '/recepcionista/pasajeros'
         : userRole === 'housekeeping'
-        ? '/hoteler/dashboard'
-        : '/admin/dashboard';
+        ? '/hoteler/pasajeros'
+        : '/admin/pasajeros';
     return <Navigate to={dashboardPath} replace />;
   }
 

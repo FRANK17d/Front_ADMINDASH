@@ -69,8 +69,6 @@ export default function NotificationDropdown() {
   const [isOpen, setIsOpen] = useState(false);
   const [notifying, setNotifying] = useState(false);
   const [notifications, setNotifications] = useState([]);
-  // Set para rastrear notificaciones procesadas y evitar duplicados
-  const processedNotificationsRef = useRef(new Set());
   const isInitializedRef = useRef(false);
 
   // Cargar notificaciones desde localStorage al montar o cuando cambia el usuario
@@ -106,111 +104,6 @@ export default function NotificationDropdown() {
     toggleDropdown();
     setNotifying(false);
   };
-
-  useEffect(() => {
-    // Escuchar notificaciones generales desde WebSocket
-    const handleGeneralNotification = (event) => {
-      console.log('NotificationDropdown: Notificación recibida', event.detail);
-      const notification = event.detail;
-      
-      // Filtrar: no mostrar notificaciones creadas por el usuario actual
-      if (user && notification.created_by_uid) {
-        const currentUserUid = user.uid;
-        const createdByUid = notification.created_by_uid;
-        
-        console.log('NotificationDropdown: Comparando UIDs', {
-          currentUserUid,
-          createdByUid,
-          sonIguales: String(currentUserUid) === String(createdByUid)
-        });
-        
-        // Si la notificación fue creada por el usuario actual, ignorarla
-        if (String(currentUserUid) === String(createdByUid)) {
-          console.log('NotificationDropdown: Notificación filtrada (creada por el mismo usuario)');
-          return;
-        }
-      }
-      
-      // Crear un ID único para la notificación usando el ID del backend si está disponible
-      // Si no hay ID del backend, usar una combinación de tipo, datos y timestamp
-      const backendId = notification.data?.id;
-      const notificationId = backendId 
-        ? `${notification.notification_type || 'general'}_${backendId}`
-        : `${notification.notification_type || 'general'}_${notification.timestamp || Date.now()}_${notification.message?.substring(0, 30) || ''}`;
-      
-      // Verificar si ya procesamos esta notificación
-      if (processedNotificationsRef.current.has(notificationId)) {
-        console.log('NotificationDropdown: Notificación duplicada ignorada', notificationId, notification);
-        return;
-      }
-      
-      // Verificar también si ya existe en la lista de notificaciones actual
-      setNotifications(prev => {
-        // Si hay un ID del backend, verificar si ya existe una notificación con ese ID
-        if (backendId) {
-          const exists = prev.some(n => 
-            n.type === notification.notification_type && 
-            n.data?.id === backendId
-          );
-          if (exists) {
-            console.log('NotificationDropdown: Notificación ya existe en la lista', backendId);
-            return prev; // No agregar duplicado
-          }
-        }
-        
-        // Si no hay ID del backend, verificar por mensaje y timestamp similar
-        const similarExists = prev.some(n => 
-          n.type === notification.notification_type &&
-          n.message === notification.message &&
-          Math.abs(new Date(n.timestamp).getTime() - new Date(notification.timestamp || Date.now()).getTime()) < 2000 // Dentro de 2 segundos
-        );
-        if (similarExists) {
-          console.log('NotificationDropdown: Notificación similar ya existe en la lista');
-          return prev; // No agregar duplicado
-        }
-        
-        // Marcar como procesada
-        processedNotificationsRef.current.add(notificationId);
-        
-        // Limpiar notificaciones procesadas antiguas (más de 5 minutos)
-        setTimeout(() => {
-          processedNotificationsRef.current.delete(notificationId);
-        }, 5 * 60 * 1000); // 5 minutos
-        
-        const newNotification = {
-          id: backendId ? `notif_${notification.notification_type}_${backendId}` : Date.now(),
-          title: notification.title,
-          message: notification.message,
-          type: notification.notification_type,
-          data: notification.data,
-          timestamp: notification.timestamp || new Date().toISOString(),
-        };
-        
-        console.log('NotificationDropdown: Agregando notificación', newNotification);
-        return [newNotification, ...prev].slice(0, 20); // Mantener solo las últimas 20
-      });
-      setNotifying(true);
-      
-      // Mostrar toast de notificación con ID único para evitar duplicados
-      toast.info(notification.message, {
-        toastId: `toast_${notificationId}`, // Esto previene toasts duplicados con el mismo ID
-        position: "bottom-right",
-        autoClose: 4000,
-        hideProgressBar: false,
-        closeOnClick: true,
-        pauseOnHover: true,
-        draggable: true,
-      });
-    };
-    
-    window.addEventListener('generalNotification', handleGeneralNotification);
-    console.log('NotificationDropdown: Listener de notificaciones registrado');
-    
-    return () => {
-      window.removeEventListener('generalNotification', handleGeneralNotification);
-      console.log('NotificationDropdown: Listener de notificaciones removido');
-    };
-  }, [user]);
   return (
     <div className="relative">
       <button

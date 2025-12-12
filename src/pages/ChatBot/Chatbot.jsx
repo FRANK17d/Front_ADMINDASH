@@ -8,7 +8,7 @@ export default function Chatbot() {
     {
       id: 1,
       type: "bot",
-      text: "¡Hola! 👋 Soy tu asistente virtual del Hotel Plaza. Puedo ayudarte con información sobre ingresos, ocupación, reservas y más. ¿En qué puedo asistirte hoy?",
+      text: "¡Hola! 👋 Soy tu asistente sobre PASAJEROS. Puedo ayudarte a buscar por nombre o documento, ver check-ins y check-outs de hoy, ingresos por estadías y más.",
       timestamp: new Date(),
     },
   ]);
@@ -19,12 +19,12 @@ export default function Chatbot() {
   const messagesEndRef = useRef(null);
 
   const suggestedQuestions = [
-    "¿Cuáles son las ganancias del mes?",
-    "¿Cuál es la tasa de ocupación actual?",
-    "¿Cuántas reservas tenemos hoy?",
-    "Muéstrame los ingresos de esta semana",
-    "¿Qué habitaciones están disponibles?",
-    "Resumen de check-ins de hoy",
+    "¿Cuántos pasajeros tenemos registrados?",
+    "Resumen de check-ins y check-outs de hoy",
+    "¿Cuáles son los ingresos de este mes por estadías?",
+    "Lista de huéspedes actuales en el hotel",
+    "Pasajeros próximos a hacer check-in",
+    "Top nacionalidades de los pasajeros",
   ];
 
   useEffect(() => {
