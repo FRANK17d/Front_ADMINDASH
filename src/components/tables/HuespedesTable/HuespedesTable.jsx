@@ -64,6 +64,56 @@ export default function HuespedesTable({ onCountChange }) {
   
   const itemsPerPage = 5;
 
+  const sanitizePayload = (form) => {
+    const payload = {};
+    Object.entries(form).forEach(([key, value]) => {
+      if (value === undefined || value === null) return;
+      if (key === "tarifa_noche") {
+        const v = typeof value === "string" ? value.trim() : value;
+        if (v === "" || v === null) return;
+        const num = parseFloat(v);
+        if (!Number.isNaN(num)) payload[key] = num;
+        return;
+      }
+      if (key === "adultos" || key === "ninos") {
+        const v = typeof value === "string" ? value.trim() : value;
+        if (v === "" || v === null) return;
+        const num = parseInt(v, 10);
+        if (!Number.isNaN(num)) payload[key] = num;
+        return;
+      }
+      if (typeof value === "string") {
+        const v = value.trim();
+        if (v === "") return;
+        payload[key] = v;
+        return;
+      }
+      payload[key] = value;
+    });
+    return payload;
+  };
+
+  const extractErrorMessages = (err) => {
+    const messages = [];
+    const data = err?.response?.data || {};
+    const errors = data?.errors ?? data?.error ?? data?.message;
+    if (err?.message === 'NOT_AUTHENTICATED') {
+      messages.push('No autenticado. Inicie sesión para continuar');
+    } else if (typeof errors === 'object' && errors) {
+      Object.entries(errors).forEach(([field, detail]) => {
+        const text = Array.isArray(detail) ? detail.join(', ') : String(detail);
+        messages.push(`${field}: ${text}`);
+      });
+    } else if (typeof errors === 'string') {
+      messages.push(errors);
+    } else if (err?.message) {
+      messages.push(err.message);
+    } else {
+      messages.push('No se pudo crear el huésped');
+    }
+    return messages;
+  };
+
   const handleLookupDocumentoCreate = async () => {
     try {
       if (!createForm.numero_documento || !["DNI", "CE"].includes(createForm.tipo_documento)) return;
@@ -212,7 +262,25 @@ export default function HuespedesTable({ onCountChange }) {
       setError("");
       setCreatingHuesped(true);
 
-      const res = await createHuesped(createForm);
+      const nombre = (createForm.nombres_apellidos || '').trim();
+      const documento = (createForm.numero_documento || '').trim();
+      const faltantes = [];
+      if (!documento) faltantes.push('Número de Documento');
+      if (!nombre) faltantes.push('Nombres y Apellidos Completos');
+      if (faltantes.length) {
+        const msg = `Complete: ${faltantes.join(' y ')}`;
+        setError(`Campos obligatorios faltantes: ${faltantes.join(', ')}`);
+        toast.warn(msg, { position: 'bottom-right', autoClose: 2500 });
+        return;
+      }
+
+      const payload = sanitizePayload(createForm);
+      if (Object.keys(payload).length === 0) {
+        toast.warn("Ingrese al menos un dato para registrar", { position: "bottom-right", autoClose: 2500 });
+        return;
+      }
+
+      const res = await createHuesped(payload);
       
       if (res.success) {
         toast.success(`Huésped "${createForm.nombres_apellidos}" registrado exitosamente`, {
@@ -248,10 +316,9 @@ export default function HuespedesTable({ onCountChange }) {
         await refresh();
       }
     } catch (e) {
-      console.error(e);
-      const errorMessage = e.response?.data?.errors || e.message || "No se pudo crear el huésped";
-      setError(errorMessage);
-      toast.error(errorMessage, {
+      const msgs = extractErrorMessages(e);
+      setError(msgs.join(' | '));
+      toast.error(msgs[0] || 'No se pudo crear el huésped', {
         position: "bottom-right",
         autoClose: 4000,
       });
@@ -295,10 +362,10 @@ export default function HuespedesTable({ onCountChange }) {
       setError("");
       setEditingHuespedLoading(true);
 
-      const res = await createHuesped(editForm);
+      const res = await updateHuesped(editingHuesped.id, sanitizePayload(editForm));
 
       if (res.success) {
-        toast.success(`Huésped "${editForm.nombres_apellidos}" registrado como versión actualizada`, {
+        toast.success(`Huésped "${editForm.nombres_apellidos}" actualizado exitosamente`, {
           position: "bottom-right",
           autoClose: 3000,
         });
@@ -457,23 +524,21 @@ export default function HuespedesTable({ onCountChange }) {
                     </select>
                   </div>
                   <div>
-                    <Label htmlFor="numero_documento">Número de Documento *</Label>
+                    <Label htmlFor="numero_documento">Número de Documento</Label>
                     <Input
                       id="numero_documento"
                       value={createForm.numero_documento}
                       onChange={(e) => setCreateForm({ ...createForm, numero_documento: e.target.value })}
                       onBlur={handleLookupDocumentoCreate}
-                      required
                     />
                   </div>
                 </div>
                 <div>
-                  <Label htmlFor="nombres_apellidos">Nombres y Apellidos Completos *</Label>
+                  <Label htmlFor="nombres_apellidos">Nombres y Apellidos Completos</Label>
                   <Input
                     id="nombres_apellidos"
                     value={createForm.nombres_apellidos}
                     onChange={(e) => setCreateForm({ ...createForm, nombres_apellidos: e.target.value })}
-                    required
                   />
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -524,33 +589,30 @@ export default function HuespedesTable({ onCountChange }) {
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="fecha_nacimiento">Fecha de Nacimiento *</Label>
+                    <Label htmlFor="fecha_nacimiento">Fecha de Nacimiento</Label>
                     <Input
                       id="fecha_nacimiento"
                       type="date"
                       value={createForm.fecha_nacimiento}
                       onChange={(e) => setCreateForm({ ...createForm, fecha_nacimiento: e.target.value })}
-                      required
                     />
                   </div>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="nacionalidad">Nacionalidad *</Label>
+                    <Label htmlFor="nacionalidad">Nacionalidad</Label>
                     <Input
                       id="nacionalidad"
                       value={createForm.nacionalidad}
                       onChange={(e) => setCreateForm({ ...createForm, nacionalidad: e.target.value })}
-                      required
                     />
                   </div>
                   <div>
-                    <Label htmlFor="procedencia">Procedencia *</Label>
+                    <Label htmlFor="procedencia">Procedencia</Label>
                     <Input
                       id="procedencia"
                       value={createForm.procedencia}
                       onChange={(e) => setCreateForm({ ...createForm, procedencia: e.target.value })}
-                      required
                     />
                   </div>
                 </div>
@@ -564,23 +626,21 @@ export default function HuespedesTable({ onCountChange }) {
               </h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="check_in">Check-in *</Label>
+                  <Label htmlFor="check_in">Check-in</Label>
                   <Input
                     id="check_in"
                     type="date"
                     value={createForm.check_in}
                     onChange={(e) => setCreateForm({ ...createForm, check_in: e.target.value })}
-                    required
                   />
                 </div>
                 <div>
-                  <Label htmlFor="check_out">Check-out *</Label>
+                  <Label htmlFor="check_out">Check-out</Label>
                   <Input
                     id="check_out"
                     type="date"
                     value={createForm.check_out}
                     onChange={(e) => setCreateForm({ ...createForm, check_out: e.target.value })}
-                    required
                   />
                 </div>
               </div>
@@ -615,25 +675,23 @@ export default function HuespedesTable({ onCountChange }) {
               </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                  <Label htmlFor="tarifa_noche">Tarifa por Noche (S/.) *</Label>
+                  <Label htmlFor="tarifa_noche">Tarifa por Noche (S/.)</Label>
                   <Input
                     id="tarifa_noche"
                     type="number"
                     step="0.01"
                     value={createForm.tarifa_noche}
                     onChange={(e) => setCreateForm({ ...createForm, tarifa_noche: e.target.value })}
-                    required
                   />
                 </div>
                 <div>
-                  <Label htmlFor="adultos">Adultos *</Label>
+                  <Label htmlFor="adultos">Adultos</Label>
                   <Input
                     id="adultos"
                     type="number"
                     min="1"
                     value={createForm.adultos}
                     onChange={(e) => setCreateForm({ ...createForm, adultos: parseInt(e.target.value) || 1 })}
-                    required
                   />
                 </div>
                 <div>
