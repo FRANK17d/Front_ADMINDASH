@@ -11,12 +11,6 @@ export default function SidebarWidget() {
         <p className="mb-4 text-gray-500 text-theme-sm dark:text-gray-400">
           Sistema de administración para la gestión integral del hotel.
         </p>
-        <a
-          href="/admin/dashboard"
-          className="flex items-center justify-center p-3 font-medium text-white rounded-lg bg-orange-500 text-theme-sm hover:bg-orange-600"
-        >
-          Ir al Dashboard
-        </a>
       </div>
     </div>
   );
