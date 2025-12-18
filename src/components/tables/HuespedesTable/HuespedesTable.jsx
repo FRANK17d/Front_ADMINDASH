@@ -31,6 +31,46 @@ const formatDateLocal = (dateString) => {
   return `${day}/${month}/${year}`;
 };
 
+// Función helper para formatear hora en formato AM/PM
+const formatTimeAMPM = (timeString) => {
+  if (!timeString) return '';
+  const [hours, minutes] = timeString.split(':');
+  if (!hours || !minutes) return timeString;
+
+  let hour = parseInt(hours, 10);
+  const ampm = hour >= 12 ? 'PM' : 'AM';
+  hour = hour % 12;
+  hour = hour ? hour : 12; // Si es 0, mostrar 12
+
+  return `${hour}:${minutes} ${ampm}`;
+};
+
+// Función helper para parsear hora 24h a componentes 12h (hora, minutos, ampm)
+const parseTime12h = (timeString) => {
+  if (!timeString) return { hour: '12', minute: '', ampm: 'PM' };
+  const [hours, minutes] = timeString.split(':');
+  if (!hours || !minutes) return { hour: '12', minute: '', ampm: 'PM' };
+
+  let hour = parseInt(hours, 10);
+  const ampm = hour >= 12 ? 'PM' : 'AM';
+  hour = hour % 12;
+  hour = hour ? hour : 12;
+
+  return {
+    hour: String(hour).padStart(2, '0'),
+    minute: minutes.slice(0, 2),
+    ampm
+  };
+};
+
+// Función helper para construir hora 24h desde componentes 12h
+const buildTime24h = (hour, minute, ampm) => {
+  let h = parseInt(hour, 10);
+  if (ampm === 'PM' && h !== 12) h += 12;
+  if (ampm === 'AM' && h === 12) h = 0;
+  return `${String(h).padStart(2, '0')}:${minute}`;
+};
+
 export default function HuespedesTable({ onCountChange }) {
   const { isOpen: isCreateModalOpen, openModal: openCreateModal, closeModal: closeCreateModal } = useModal();
   const { isOpen: isEditModalOpen, openModal: openEditModal, closeModal: closeEditModal } = useModal();
@@ -65,7 +105,9 @@ export default function HuespedesTable({ onCountChange }) {
     nacionalidad: "Peruana",
     procedencia: "",
     check_in: "",
+    hora_entrada: "",
     check_out: "",
+    hora_salida: "",
     tipo_habitacion: "SIMPLE",
     numero_habitacion: "111",
     tarifa_noche: "",
@@ -360,7 +402,9 @@ export default function HuespedesTable({ onCountChange }) {
       nacionalidad: huesped.nacionalidad,
       procedencia: huesped.procedencia,
       check_in: huesped.check_in,
+      hora_entrada: huesped.hora_entrada || "",
       check_out: huesped.check_out,
+      hora_salida: huesped.hora_salida || "",
       tipo_habitacion: huesped.tipo_habitacion,
       numero_habitacion: huesped.numero_habitacion,
       tarifa_noche: huesped.tarifa_noche,
@@ -685,6 +729,52 @@ export default function HuespedesTable({ onCountChange }) {
                     className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 dark:bg-gray-800 dark:text-white"
                     calendarClassName="dark:bg-gray-800"
                   />
+                  <div className="mt-2">
+                    <Label>Hora de Entrada</Label>
+                    <div className="flex gap-2 items-center">
+                      <select
+                        value={parseTime12h(createForm.hora_entrada).hour}
+                        onChange={(e) => {
+                          const parsed = parseTime12h(createForm.hora_entrada);
+                          setCreateForm({ ...createForm, hora_entrada: buildTime24h(e.target.value, parsed.minute, parsed.ampm) });
+                        }}
+                        className="w-20 px-2 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 dark:bg-gray-800 dark:text-white"
+                      >
+                        {['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'].map(h => (
+                          <option key={h} value={h}>{h}</option>
+                        ))}
+                      </select>
+                      <span className="text-gray-500 dark:text-gray-400 font-bold">:</span>
+                      <input
+                        type="text"
+                        maxLength="2"
+                        defaultValue={parseTime12h(createForm.hora_entrada).minute}
+                        key={`min-entrada-${createForm.hora_entrada}`}
+                        onBlur={(e) => {
+                          let val = e.target.value.replace(/\D/g, '').slice(0, 2);
+                          if (!val) val = '00';
+                          if (parseInt(val) > 59) val = '59';
+                          val = val.padStart(2, '0');
+                          e.target.value = val;
+                          const parsed = parseTime12h(createForm.hora_entrada);
+                          setCreateForm({ ...createForm, hora_entrada: buildTime24h(parsed.hour, val, parsed.ampm) });
+                        }}
+                        className="w-14 px-2 py-2 text-center border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 dark:bg-gray-800 dark:text-white"
+                        placeholder="00"
+                      />
+                      <select
+                        value={parseTime12h(createForm.hora_entrada).ampm}
+                        onChange={(e) => {
+                          const parsed = parseTime12h(createForm.hora_entrada);
+                          setCreateForm({ ...createForm, hora_entrada: buildTime24h(parsed.hour, parsed.minute, e.target.value) });
+                        }}
+                        className="w-20 px-2 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 dark:bg-gray-800 dark:text-white font-medium"
+                      >
+                        <option value="AM">AM</option>
+                        <option value="PM">PM</option>
+                      </select>
+                    </div>
+                  </div>
                 </div>
                 <div>
                   <div className="flex items-center justify-between mb-1">
@@ -736,6 +826,52 @@ export default function HuespedesTable({ onCountChange }) {
                       Huésped llega y se va el mismo día
                     </p>
                   )}
+                  <div className="mt-2">
+                    <Label>Hora de Salida</Label>
+                    <div className="flex gap-2 items-center">
+                      <select
+                        value={parseTime12h(createForm.hora_salida).hour}
+                        onChange={(e) => {
+                          const parsed = parseTime12h(createForm.hora_salida);
+                          setCreateForm({ ...createForm, hora_salida: buildTime24h(e.target.value, parsed.minute, parsed.ampm) });
+                        }}
+                        className="w-20 px-2 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 dark:bg-gray-800 dark:text-white"
+                      >
+                        {['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'].map(h => (
+                          <option key={h} value={h}>{h}</option>
+                        ))}
+                      </select>
+                      <span className="text-gray-500 dark:text-gray-400 font-bold">:</span>
+                      <input
+                        type="text"
+                        maxLength="2"
+                        defaultValue={parseTime12h(createForm.hora_salida).minute}
+                        key={`min-salida-${createForm.hora_salida}`}
+                        onBlur={(e) => {
+                          let val = e.target.value.replace(/\D/g, '').slice(0, 2);
+                          if (!val) val = '00';
+                          if (parseInt(val) > 59) val = '59';
+                          val = val.padStart(2, '0');
+                          e.target.value = val;
+                          const parsed = parseTime12h(createForm.hora_salida);
+                          setCreateForm({ ...createForm, hora_salida: buildTime24h(parsed.hour, val, parsed.ampm) });
+                        }}
+                        className="w-14 px-2 py-2 text-center border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 dark:bg-gray-800 dark:text-white"
+                        placeholder="00"
+                      />
+                      <select
+                        value={parseTime12h(createForm.hora_salida).ampm}
+                        onChange={(e) => {
+                          const parsed = parseTime12h(createForm.hora_salida);
+                          setCreateForm({ ...createForm, hora_salida: buildTime24h(parsed.hour, parsed.minute, e.target.value) });
+                        }}
+                        className="w-20 px-2 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 dark:bg-gray-800 dark:text-white font-medium"
+                      >
+                        <option value="AM">AM</option>
+                        <option value="PM">PM</option>
+                      </select>
+                    </div>
+                  </div>
                 </div>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1072,6 +1208,52 @@ export default function HuespedesTable({ onCountChange }) {
                         className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 dark:bg-gray-800 dark:text-white"
                         calendarClassName="dark:bg-gray-800"
                       />
+                      <div className="mt-2">
+                        <Label>Hora de Entrada</Label>
+                        <div className="flex gap-2 items-center">
+                          <select
+                            value={parseTime12h(editForm.hora_entrada || '').hour}
+                            onChange={(e) => {
+                              const parsed = parseTime12h(editForm.hora_entrada || '');
+                              setEditForm({ ...editForm, hora_entrada: buildTime24h(e.target.value, parsed.minute, parsed.ampm) });
+                            }}
+                            className="w-20 px-2 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 dark:bg-gray-800 dark:text-white"
+                          >
+                            {['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'].map(h => (
+                              <option key={h} value={h}>{h}</option>
+                            ))}
+                          </select>
+                          <span className="text-gray-500 dark:text-gray-400 font-bold">:</span>
+                          <input
+                            type="text"
+                            maxLength="2"
+                            defaultValue={parseTime12h(editForm.hora_entrada || '').minute}
+                            key={`edit-min-entrada-${editForm.hora_entrada}`}
+                            onBlur={(e) => {
+                              let val = e.target.value.replace(/\D/g, '').slice(0, 2);
+                              if (!val) val = '00';
+                              if (parseInt(val) > 59) val = '59';
+                              val = val.padStart(2, '0');
+                              e.target.value = val;
+                              const parsed = parseTime12h(editForm.hora_entrada || '');
+                              setEditForm({ ...editForm, hora_entrada: buildTime24h(parsed.hour, val, parsed.ampm) });
+                            }}
+                            className="w-14 px-2 py-2 text-center border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 dark:bg-gray-800 dark:text-white"
+                            placeholder="00"
+                          />
+                          <select
+                            value={parseTime12h(editForm.hora_entrada || '').ampm}
+                            onChange={(e) => {
+                              const parsed = parseTime12h(editForm.hora_entrada || '');
+                              setEditForm({ ...editForm, hora_entrada: buildTime24h(parsed.hour, parsed.minute, e.target.value) });
+                            }}
+                            className="w-20 px-2 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 dark:bg-gray-800 dark:text-white font-medium"
+                          >
+                            <option value="AM">AM</option>
+                            <option value="PM">PM</option>
+                          </select>
+                        </div>
+                      </div>
                     </div>
                     <div>
                       <div className="flex items-center justify-between mb-1">
@@ -1123,6 +1305,52 @@ export default function HuespedesTable({ onCountChange }) {
                           Huésped llega y se va el mismo día
                         </p>
                       )}
+                      <div className="mt-2">
+                        <Label>Hora de Salida</Label>
+                        <div className="flex gap-2 items-center">
+                          <select
+                            value={parseTime12h(editForm.hora_salida || '').hour}
+                            onChange={(e) => {
+                              const parsed = parseTime12h(editForm.hora_salida || '');
+                              setEditForm({ ...editForm, hora_salida: buildTime24h(e.target.value, parsed.minute, parsed.ampm) });
+                            }}
+                            className="w-20 px-2 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 dark:bg-gray-800 dark:text-white"
+                          >
+                            {['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'].map(h => (
+                              <option key={h} value={h}>{h}</option>
+                            ))}
+                          </select>
+                          <span className="text-gray-500 dark:text-gray-400 font-bold">:</span>
+                          <input
+                            type="text"
+                            maxLength="2"
+                            defaultValue={parseTime12h(editForm.hora_salida || '').minute}
+                            key={`edit-min-salida-${editForm.hora_salida}`}
+                            onBlur={(e) => {
+                              let val = e.target.value.replace(/\D/g, '').slice(0, 2);
+                              if (!val) val = '00';
+                              if (parseInt(val) > 59) val = '59';
+                              val = val.padStart(2, '0');
+                              e.target.value = val;
+                              const parsed = parseTime12h(editForm.hora_salida || '');
+                              setEditForm({ ...editForm, hora_salida: buildTime24h(parsed.hour, val, parsed.ampm) });
+                            }}
+                            className="w-14 px-2 py-2 text-center border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 dark:bg-gray-800 dark:text-white"
+                            placeholder="00"
+                          />
+                          <select
+                            value={parseTime12h(editForm.hora_salida || '').ampm}
+                            onChange={(e) => {
+                              const parsed = parseTime12h(editForm.hora_salida || '');
+                              setEditForm({ ...editForm, hora_salida: buildTime24h(parsed.hour, parsed.minute, e.target.value) });
+                            }}
+                            className="w-20 px-2 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 dark:bg-gray-800 dark:text-white font-medium"
+                          >
+                            <option value="AM">AM</option>
+                            <option value="PM">PM</option>
+                          </select>
+                        </div>
+                      </div>
                     </div>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1319,7 +1547,7 @@ export default function HuespedesTable({ onCountChange }) {
                   <div className="flex justify-between">
                     <span className="text-gray-600 dark:text-gray-400">Fecha de Nacimiento:</span>
                     <span className="font-medium text-gray-900 dark:text-white">
-                      {new Date(viewingHuesped.fecha_nacimiento).toLocaleDateString('es-ES')}
+                      {formatDateLocal(viewingHuesped.fecha_nacimiento)}
                     </span>
                   </div>
                   <div className="flex justify-between">
@@ -1342,12 +1570,22 @@ export default function HuespedesTable({ onCountChange }) {
                     <span className="text-gray-600 dark:text-gray-400">Check-in:</span>
                     <span className="font-medium text-gray-900 dark:text-white">
                       {formatDateLocal(viewingHuesped.check_in)}
+                      {viewingHuesped.hora_entrada && (
+                        <span className="ml-2 text-blue-600 dark:text-blue-400">
+                          {formatTimeAMPM(viewingHuesped.hora_entrada)}
+                        </span>
+                      )}
                     </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600 dark:text-gray-400">Check-out:</span>
                     <span className="font-medium text-gray-900 dark:text-white">
                       {formatDateLocal(viewingHuesped.check_out)}
+                      {viewingHuesped.hora_salida && (
+                        <span className="ml-2 text-blue-600 dark:text-blue-400">
+                          {formatTimeAMPM(viewingHuesped.hora_salida)}
+                        </span>
+                      )}
                     </span>
                   </div>
                   <div className="flex justify-between">
@@ -1575,13 +1813,25 @@ export default function HuespedesTable({ onCountChange }) {
                     </div>
                   </TableCell>
                   <TableCell className="px-4 py-3 text-gray-500 text-center text-theme-sm dark:text-gray-400">
-                    {formatDateLocal(huesped.check_in)}
+                    <div className="flex flex-col items-center">
+                      <span>{formatDateLocal(huesped.check_in)}</span>
+                      {huesped.hora_entrada && (
+                        <span className="text-xs text-blue-600 dark:text-blue-400">
+                          {formatTimeAMPM(huesped.hora_entrada)}
+                        </span>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell className="px-4 py-3 text-center text-theme-sm">
                     <div className="flex flex-col items-center gap-1">
                       <span className="text-gray-500 dark:text-gray-400">
                         {formatDateLocal(huesped.check_out)}
                       </span>
+                      {huesped.hora_salida && (
+                        <span className="text-xs text-blue-600 dark:text-blue-400">
+                          {formatTimeAMPM(huesped.hora_salida)}
+                        </span>
+                      )}
                       {huesped.is_day_use && (
                         <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400">
                           DAY USE
