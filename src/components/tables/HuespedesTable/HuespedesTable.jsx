@@ -15,6 +15,12 @@ import { Modal } from "../../ui/modal";
 import Label from "../../form/Label";
 import { getHuespedes, createHuesped, updateHuesped, deleteHuesped, lookupDocumento } from "../../../api/huespedes";
 import { toast } from 'react-toastify';
+import DatePicker, { registerLocale } from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
+import es from 'date-fns/locale/es';
+
+// Registrar locale español para el DatePicker
+registerLocale('es', es);
 
 // Función helper para formatear fechas sin problemas de zona horaria
 const formatDateLocal = (dateString) => {
@@ -555,11 +561,28 @@ export default function HuespedesTable({ onCountChange }) {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
                     <Label htmlFor="fecha_nacimiento">Fecha de Nacimiento</Label>
-                    <Input
+                    <DatePicker
                       id="fecha_nacimiento"
-                      type="date"
-                      value={createForm.fecha_nacimiento}
-                      onChange={(e) => setCreateForm({ ...createForm, fecha_nacimiento: e.target.value })}
+                      selected={createForm.fecha_nacimiento ? new Date(createForm.fecha_nacimiento + 'T00:00:00') : null}
+                      onChange={(date) => {
+                        if (date) {
+                          const formatted = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+                          setCreateForm({ ...createForm, fecha_nacimiento: formatted });
+                        } else {
+                          setCreateForm({ ...createForm, fecha_nacimiento: '' });
+                        }
+                      }}
+                      locale="es"
+                      showYearDropdown
+                      showMonthDropdown
+                      dropdownMode="select"
+                      yearDropdownItemNumber={100}
+                      scrollableYearDropdown
+                      maxDate={new Date()}
+                      dateFormat="dd/MM/yyyy"
+                      placeholderText="Seleccionar fecha"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 dark:bg-gray-800 dark:text-white"
+                      calendarClassName="dark:bg-gray-800"
                     />
                   </div>
                   <div>
@@ -637,19 +660,30 @@ export default function HuespedesTable({ onCountChange }) {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="check_in">Check-in</Label>
-                  <Input
+                  <DatePicker
                     id="check_in"
-                    type="date"
-                    value={createForm.check_in}
-                    onChange={(e) => {
-                      const newCheckIn = e.target.value;
-                      // Solo mantener sincronizado si ya es DAY USE (ambas fechas iguales)
-                      if (createForm.check_in && createForm.check_out && createForm.check_in === createForm.check_out) {
-                        setCreateForm({ ...createForm, check_in: newCheckIn, check_out: newCheckIn });
+                    selected={createForm.check_in ? new Date(createForm.check_in + 'T00:00:00') : null}
+                    onChange={(date) => {
+                      if (date) {
+                        const formatted = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+                        // Solo mantener sincronizado si ya es DAY USE (ambas fechas iguales)
+                        if (createForm.check_in && createForm.check_out && createForm.check_in === createForm.check_out) {
+                          setCreateForm({ ...createForm, check_in: formatted, check_out: formatted });
+                        } else {
+                          setCreateForm({ ...createForm, check_in: formatted });
+                        }
                       } else {
-                        setCreateForm({ ...createForm, check_in: newCheckIn });
+                        setCreateForm({ ...createForm, check_in: '' });
                       }
                     }}
+                    locale="es"
+                    showMonthDropdown
+                    showYearDropdown
+                    dropdownMode="select"
+                    dateFormat="dd/MM/yyyy"
+                    placeholderText="Seleccionar fecha"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 dark:bg-gray-800 dark:text-white"
+                    calendarClassName="dark:bg-gray-800"
                   />
                 </div>
                 <div>
@@ -675,12 +709,26 @@ export default function HuespedesTable({ onCountChange }) {
                       <span className="text-xs font-medium text-orange-600 dark:text-orange-400">DAY USE</span>
                     </label>
                   </div>
-                  <Input
+                  <DatePicker
                     id="check_out"
-                    type="date"
-                    value={createForm.check_out}
-                    onChange={(e) => setCreateForm({ ...createForm, check_out: e.target.value })}
-                    min={createForm.check_in || undefined}
+                    selected={createForm.check_out ? new Date(createForm.check_out + 'T00:00:00') : null}
+                    onChange={(date) => {
+                      if (date) {
+                        const formatted = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+                        setCreateForm({ ...createForm, check_out: formatted });
+                      } else {
+                        setCreateForm({ ...createForm, check_out: '' });
+                      }
+                    }}
+                    locale="es"
+                    showMonthDropdown
+                    showYearDropdown
+                    dropdownMode="select"
+                    minDate={createForm.check_in ? new Date(createForm.check_in + 'T00:00:00') : null}
+                    dateFormat="dd/MM/yyyy"
+                    placeholderText="Seleccionar fecha"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 dark:bg-gray-800 dark:text-white"
+                    calendarClassName="dark:bg-gray-800"
                   />
                   {createForm.check_in && createForm.check_in === createForm.check_out && (
                     <p className="mt-1 text-xs text-orange-600 dark:text-orange-400 flex items-center gap-1">
@@ -898,11 +946,28 @@ export default function HuespedesTable({ onCountChange }) {
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-2">
                       <div>
                         <Label htmlFor="edit_fecha_nacimiento">Fecha de Nacimiento</Label>
-                        <Input
+                        <DatePicker
                           id="edit_fecha_nacimiento"
-                          type="date"
-                          value={editForm.fecha_nacimiento}
-                          onChange={(e) => setEditForm({ ...editForm, fecha_nacimiento: e.target.value })}
+                          selected={editForm.fecha_nacimiento ? new Date(editForm.fecha_nacimiento + 'T00:00:00') : null}
+                          onChange={(date) => {
+                            if (date) {
+                              const formatted = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+                              setEditForm({ ...editForm, fecha_nacimiento: formatted });
+                            } else {
+                              setEditForm({ ...editForm, fecha_nacimiento: '' });
+                            }
+                          }}
+                          locale="es"
+                          showYearDropdown
+                          showMonthDropdown
+                          dropdownMode="select"
+                          yearDropdownItemNumber={100}
+                          scrollableYearDropdown
+                          maxDate={new Date()}
+                          dateFormat="dd/MM/yyyy"
+                          placeholderText="Seleccionar fecha"
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 dark:bg-gray-800 dark:text-white"
+                          calendarClassName="dark:bg-gray-800"
                         />
                       </div>
                       <div>
@@ -982,19 +1047,30 @@ export default function HuespedesTable({ onCountChange }) {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <Label htmlFor="edit_check_in">Check-in</Label>
-                      <Input
+                      <DatePicker
                         id="edit_check_in"
-                        type="date"
-                        value={editForm.check_in}
-                        onChange={(e) => {
-                          const newCheckIn = e.target.value;
-                          // Solo mantener sincronizado si ya es DAY USE (ambas fechas iguales)
-                          if (editForm.check_in && editForm.check_out && editForm.check_in === editForm.check_out) {
-                            setEditForm({ ...editForm, check_in: newCheckIn, check_out: newCheckIn });
+                        selected={editForm.check_in ? new Date(editForm.check_in + 'T00:00:00') : null}
+                        onChange={(date) => {
+                          if (date) {
+                            const formatted = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+                            // Solo mantener sincronizado si ya es DAY USE (ambas fechas iguales)
+                            if (editForm.check_in && editForm.check_out && editForm.check_in === editForm.check_out) {
+                              setEditForm({ ...editForm, check_in: formatted, check_out: formatted });
+                            } else {
+                              setEditForm({ ...editForm, check_in: formatted });
+                            }
                           } else {
-                            setEditForm({ ...editForm, check_in: newCheckIn });
+                            setEditForm({ ...editForm, check_in: '' });
                           }
                         }}
+                        locale="es"
+                        showMonthDropdown
+                        showYearDropdown
+                        dropdownMode="select"
+                        dateFormat="dd/MM/yyyy"
+                        placeholderText="Seleccionar fecha"
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 dark:bg-gray-800 dark:text-white"
+                        calendarClassName="dark:bg-gray-800"
                       />
                     </div>
                     <div>
@@ -1020,12 +1096,26 @@ export default function HuespedesTable({ onCountChange }) {
                           <span className="text-xs font-medium text-orange-600 dark:text-orange-400">DAY USE</span>
                         </label>
                       </div>
-                      <Input
+                      <DatePicker
                         id="edit_check_out"
-                        type="date"
-                        value={editForm.check_out}
-                        onChange={(e) => setEditForm({ ...editForm, check_out: e.target.value })}
-                        min={editForm.check_in || undefined}
+                        selected={editForm.check_out ? new Date(editForm.check_out + 'T00:00:00') : null}
+                        onChange={(date) => {
+                          if (date) {
+                            const formatted = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+                            setEditForm({ ...editForm, check_out: formatted });
+                          } else {
+                            setEditForm({ ...editForm, check_out: '' });
+                          }
+                        }}
+                        locale="es"
+                        showMonthDropdown
+                        showYearDropdown
+                        dropdownMode="select"
+                        minDate={editForm.check_in ? new Date(editForm.check_in + 'T00:00:00') : null}
+                        dateFormat="dd/MM/yyyy"
+                        placeholderText="Seleccionar fecha"
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 dark:bg-gray-800 dark:text-white"
+                        calendarClassName="dark:bg-gray-800"
                       />
                       {editForm.check_in && editForm.check_in === editForm.check_out && (
                         <p className="mt-1 text-xs text-orange-600 dark:text-orange-400 flex items-center gap-1">
