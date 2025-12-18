@@ -16,12 +16,21 @@ import Label from "../../form/Label";
 import { getHuespedes, createHuesped, updateHuesped, deleteHuesped, lookupDocumento } from "../../../api/huespedes";
 import { toast } from 'react-toastify';
 
+// Función helper para formatear fechas sin problemas de zona horaria
+const formatDateLocal = (dateString) => {
+  if (!dateString) return '';
+  // Parsear la fecha como string directamente para evitar problemas de zona horaria
+  const [year, month, day] = dateString.split('-');
+  if (!year || !month || !day) return dateString;
+  return `${day}/${month}/${year}`;
+};
+
 export default function HuespedesTable({ onCountChange }) {
   const { isOpen: isCreateModalOpen, openModal: openCreateModal, closeModal: closeCreateModal } = useModal();
   const { isOpen: isEditModalOpen, openModal: openEditModal, closeModal: closeEditModal } = useModal();
   const { isOpen: isDeleteModalOpen, openModal: openDeleteModal, closeModal: closeDeleteModal } = useModal();
   const { isOpen: isViewModalOpen, openModal: openViewModal, closeModal: closeViewModal } = useModal();
-  
+
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [editingHuesped, setEditingHuesped] = useState(null);
@@ -34,7 +43,7 @@ export default function HuespedesTable({ onCountChange }) {
   const [deletingHuesped, setDeletingHuesped] = useState(false);
   const [error, setError] = useState("");
   const [lookupLoading, setLookupLoading] = useState(false);
-  
+
   const [createForm, setCreateForm] = useState({
     canal_venta: "RECEPCION",
     tipo_comprobante: "BOLETA",
@@ -61,7 +70,7 @@ export default function HuespedesTable({ onCountChange }) {
   });
 
   const [editForm, setEditForm] = useState({});
-  
+
   const itemsPerPage = 5;
 
   const sanitizePayload = (form) => {
@@ -281,7 +290,7 @@ export default function HuespedesTable({ onCountChange }) {
       }
 
       const res = await createHuesped(payload);
-      
+
       if (res.success) {
         toast.success(`Huésped "${createForm.nombres_apellidos}" registrado exitosamente`, {
           position: "bottom-right",
@@ -396,12 +405,12 @@ export default function HuespedesTable({ onCountChange }) {
       await deleteHuesped(id);
 
       const huespedName = huespedToDelete?.nombres_apellidos || "Huésped";
-      
+
       toast.success(`Huésped "${huespedName}" eliminado exitosamente`, {
         position: "bottom-right",
         autoClose: 3000,
       });
-      
+
       closeDeleteModal();
       setHuespedToDelete(null);
       await refresh();
@@ -433,12 +442,12 @@ export default function HuespedesTable({ onCountChange }) {
       {/* Barra de búsqueda y botón crear */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div className="w-full sm:w-80">
-            <Input
+          <Input
             placeholder="Buscar por nombre, documento o RUC..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full"
-            />
+          />
         </div>
         <Button
           onClick={openCreateModal}
@@ -541,6 +550,36 @@ export default function HuespedesTable({ onCountChange }) {
                     onChange={(e) => setCreateForm({ ...createForm, nombres_apellidos: e.target.value })}
                   />
                 </div>
+
+                {/* Nuevos campos reubicados */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <Label htmlFor="fecha_nacimiento">Fecha de Nacimiento</Label>
+                    <Input
+                      id="fecha_nacimiento"
+                      type="date"
+                      value={createForm.fecha_nacimiento}
+                      onChange={(e) => setCreateForm({ ...createForm, fecha_nacimiento: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="nacionalidad">Nacionalidad</Label>
+                    <Input
+                      id="nacionalidad"
+                      value={createForm.nacionalidad}
+                      onChange={(e) => setCreateForm({ ...createForm, nacionalidad: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="procedencia">Procedencia</Label>
+                    <Input
+                      id="procedencia"
+                      value={createForm.procedencia}
+                      onChange={(e) => setCreateForm({ ...createForm, procedencia: e.target.value })}
+                    />
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="numero_ruc">Número de RUC (Opcional)</Label>
@@ -587,35 +626,6 @@ export default function HuespedesTable({ onCountChange }) {
                     onChange={(e) => setCreateForm({ ...createForm, direccion_completa: e.target.value })}
                   />
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="fecha_nacimiento">Fecha de Nacimiento</Label>
-                    <Input
-                      id="fecha_nacimiento"
-                      type="date"
-                      value={createForm.fecha_nacimiento}
-                      onChange={(e) => setCreateForm({ ...createForm, fecha_nacimiento: e.target.value })}
-                    />
-                  </div>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="nacionalidad">Nacionalidad</Label>
-                    <Input
-                      id="nacionalidad"
-                      value={createForm.nacionalidad}
-                      onChange={(e) => setCreateForm({ ...createForm, nacionalidad: e.target.value })}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="procedencia">Procedencia</Label>
-                    <Input
-                      id="procedencia"
-                      value={createForm.procedencia}
-                      onChange={(e) => setCreateForm({ ...createForm, procedencia: e.target.value })}
-                    />
-                  </div>
-                </div>
               </div>
             </div>
 
@@ -631,17 +641,50 @@ export default function HuespedesTable({ onCountChange }) {
                     id="check_in"
                     type="date"
                     value={createForm.check_in}
-                    onChange={(e) => setCreateForm({ ...createForm, check_in: e.target.value })}
+                    onChange={(e) => {
+                      const newCheckIn = e.target.value;
+                      // Solo mantener sincronizado si ya es DAY USE (ambas fechas iguales)
+                      if (createForm.check_in && createForm.check_out && createForm.check_in === createForm.check_out) {
+                        setCreateForm({ ...createForm, check_in: newCheckIn, check_out: newCheckIn });
+                      } else {
+                        setCreateForm({ ...createForm, check_in: newCheckIn });
+                      }
+                    }}
                   />
                 </div>
                 <div>
-                  <Label htmlFor="check_out">Check-out</Label>
+                  <div className="flex items-center justify-between mb-1">
+                    <Label htmlFor="check_out">Check-out</Label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={createForm.check_in && createForm.check_in === createForm.check_out}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            // Establecer fecha de hoy (zona horaria local) en ambos campos
+                            const now = new Date();
+                            const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+                            setCreateForm({ ...createForm, check_in: today, check_out: today });
+                          }
+                        }}
+                        className="w-4 h-4 rounded border-gray-300 text-orange-500 focus:ring-orange-500"
+                      />
+                      <span className="text-xs font-medium text-orange-600 dark:text-orange-400">DAY USE</span>
+                    </label>
+                  </div>
                   <Input
                     id="check_out"
                     type="date"
                     value={createForm.check_out}
                     onChange={(e) => setCreateForm({ ...createForm, check_out: e.target.value })}
+                    min={createForm.check_in || undefined}
                   />
+                  {createForm.check_in && createForm.check_in === createForm.check_out && (
+                    <p className="mt-1 text-xs text-orange-600 dark:text-orange-400 flex items-center gap-1">
+                      <span className="inline-block w-2 h-2 bg-orange-500 rounded-full"></span>
+                      Huésped llega y se va el mismo día
+                    </p>
+                  )}
                 </div>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -667,7 +710,7 @@ export default function HuespedesTable({ onCountChange }) {
                     onChange={(e) => setCreateForm({ ...createForm, numero_habitacion: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 dark:bg-gray-800 dark:text-white"
                   >
-                    {['111','112','113','210','211','212','213','214','215','310','311','312','313','314','315'].map(num => (
+                    {['111', '112', '113', '210', '211', '212', '213', '214', '215', '310', '311', '312', '313', '314', '315'].map(num => (
                       <option key={num} value={num}>{num}</option>
                     ))}
                   </select>
@@ -675,7 +718,11 @@ export default function HuespedesTable({ onCountChange }) {
               </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                  <Label htmlFor="tarifa_noche">Tarifa por Noche (S/.)</Label>
+                  <Label htmlFor="tarifa_noche">
+                    {createForm.check_in && createForm.check_in === createForm.check_out
+                      ? 'Tarifa DAY USE (S/.)'
+                      : 'Tarifa por Noche (S/.)'}
+                  </Label>
                   <Input
                     id="tarifa_noche"
                     type="number"
@@ -734,18 +781,18 @@ export default function HuespedesTable({ onCountChange }) {
           </div>
 
           <div className="flex items-center gap-3 justify-end mt-6">
-            <Button 
-              size="sm" 
-              variant="outline" 
-              onClick={closeCreateModal} 
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={closeCreateModal}
               disabled={creatingHuesped}
               className="border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-black dark:text-white dark:hover:bg-gray-900"
             >
               Cancelar
             </Button>
-            <Button 
-              size="sm" 
-              onClick={handleCreateHuesped} 
+            <Button
+              size="sm"
+              onClick={handleCreateHuesped}
               disabled={creatingHuesped}
               className="bg-orange-500 hover:bg-orange-600 text-white"
             >
@@ -808,15 +855,8 @@ export default function HuespedesTable({ onCountChange }) {
                 <h4 className="text-lg font-semibold text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-700 pb-2">
                   Información Personal
                 </h4>
+                <div>
                 <div className="grid grid-cols-1 gap-4">
-                  <div>
-                    <Label htmlFor="edit_nombres_apellidos">Nombres y Apellidos Completos</Label>
-                    <Input
-                      id="edit_nombres_apellidos"
-                      value={editForm.nombres_apellidos}
-                      onChange={(e) => setEditForm({ ...editForm, nombres_apellidos: e.target.value })}
-                    />
-                  </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <Label htmlFor="edit_tipo_documento">Tipo de Documento</Label>
@@ -841,7 +881,46 @@ export default function HuespedesTable({ onCountChange }) {
                       />
                     </div>
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  
+                  <div>
+                    <Label htmlFor="edit_nombres_apellidos">Nombres y Apellidos Completos</Label>
+                    <Input
+                      id="edit_nombres_apellidos"
+                      value={editForm.nombres_apellidos}
+                      onChange={(e) => setEditForm({ ...editForm, nombres_apellidos: e.target.value })}
+                    />
+                  </div>
+                  
+                  {/* Bloque reubicado con separación extra */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-2">
+                    <div>
+                      <Label htmlFor="edit_fecha_nacimiento">Fecha de Nacimiento</Label>
+                      <Input
+                        id="edit_fecha_nacimiento"
+                        type="date"
+                        value={editForm.fecha_nacimiento}
+                        onChange={(e) => setEditForm({ ...editForm, fecha_nacimiento: e.target.value })}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="edit_nacionalidad">Nacionalidad</Label>
+                      <Input
+                        id="edit_nacionalidad"
+                        value={editForm.nacionalidad}
+                        onChange={(e) => setEditForm({ ...editForm, nacionalidad: e.target.value })}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="edit_procedencia">Procedencia</Label>
+                      <Input
+                        id="edit_procedencia"
+                        value={editForm.procedencia}
+                        onChange={(e) => setEditForm({ ...editForm, procedencia: e.target.value })}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
                     <div>
                       <Label htmlFor="edit_numero_ruc">Número de RUC (Opcional)</Label>
                       <Input
@@ -861,6 +940,7 @@ export default function HuespedesTable({ onCountChange }) {
                       />
                     </div>
                   </div>
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <Label htmlFor="edit_estado">Estado RUC</Label>
@@ -879,6 +959,7 @@ export default function HuespedesTable({ onCountChange }) {
                       />
                     </div>
                   </div>
+
                   <div>
                     <Label htmlFor="edit_direccion_completa">Dirección Completa</Label>
                     <Input
@@ -887,607 +968,641 @@ export default function HuespedesTable({ onCountChange }) {
                       onChange={(e) => setEditForm({ ...editForm, direccion_completa: e.target.value })}
                     />
                   </div>
+                </div>
+              </div>
+
+                {/* Información de Hospedaje */}
+                <div className="space-y-4">
+                  <h4 className="text-lg font-semibold text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-700 pb-2">
+                    Información de Hospedaje
+                  </h4>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <Label htmlFor="edit_fecha_nacimiento">Fecha de Nacimiento</Label>
+                      <Label htmlFor="edit_check_in">Check-in</Label>
                       <Input
-                        id="edit_fecha_nacimiento"
+                        id="edit_check_in"
                         type="date"
-                        value={editForm.fecha_nacimiento}
-                        onChange={(e) => setEditForm({ ...editForm, fecha_nacimiento: e.target.value })}
+                        value={editForm.check_in}
+                        onChange={(e) => {
+                          const newCheckIn = e.target.value;
+                          // Solo mantener sincronizado si ya es DAY USE (ambas fechas iguales)
+                          if (editForm.check_in && editForm.check_out && editForm.check_in === editForm.check_out) {
+                            setEditForm({ ...editForm, check_in: newCheckIn, check_out: newCheckIn });
+                          } else {
+                            setEditForm({ ...editForm, check_in: newCheckIn });
+                          }
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <Label htmlFor="edit_check_out">Check-out</Label>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={editForm.check_in && editForm.check_in === editForm.check_out}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                // Establecer fecha de hoy (zona horaria local) en ambos campos
+                                const now = new Date();
+                                const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+                                setEditForm({ ...editForm, check_in: today, check_out: today });
+                              }
+                            }}
+                            className="w-4 h-4 rounded border-gray-300 text-orange-500 focus:ring-orange-500"
+                          />
+                          <span className="text-xs font-medium text-orange-600 dark:text-orange-400">DAY USE</span>
+                        </label>
+                      </div>
+                      <Input
+                        id="edit_check_out"
+                        type="date"
+                        value={editForm.check_out}
+                        onChange={(e) => setEditForm({ ...editForm, check_out: e.target.value })}
+                        min={editForm.check_in || undefined}
+                      />
+                      {editForm.check_in && editForm.check_in === editForm.check_out && (
+                        <p className="mt-1 text-xs text-orange-600 dark:text-orange-400 flex items-center gap-1">
+                          <span className="inline-block w-2 h-2 bg-orange-500 rounded-full"></span>
+                          Huésped llega y se va el mismo día
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="edit_tipo_habitacion">Tipo de Habitación</Label>
+                      <select
+                        id="edit_tipo_habitacion"
+                        value={editForm.tipo_habitacion}
+                        onChange={(e) => setEditForm({ ...editForm, tipo_habitacion: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 dark:bg-gray-800 dark:text-white"
+                      >
+                        <option value="SIMPLE">Simple</option>
+                        <option value="DOBLE">Doble</option>
+                        <option value="MATRIMONIAL">Matrimonial</option>
+                        <option value="TRIPLE">Triple</option>
+                      </select>
+                    </div>
+                    <div>
+                      <Label htmlFor="edit_numero_habitacion">Número de Habitación</Label>
+                      <select
+                        id="edit_numero_habitacion"
+                        value={editForm.numero_habitacion}
+                        onChange={(e) => setEditForm({ ...editForm, numero_habitacion: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 dark:bg-gray-800 dark:text-white"
+                      >
+                        {['111', '112', '113', '210', '211', '212', '213', '214', '215', '310', '311', '312', '313', '314', '315'].map(num => (
+                          <option key={num} value={num}>{num}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <Label htmlFor="edit_tarifa_noche">
+                        {editForm.check_in && editForm.check_in === editForm.check_out
+                          ? 'Tarifa DAY USE (S/.)'
+                          : 'Tarifa por Noche (S/.)'}
+                      </Label>
+                      <Input
+                        id="edit_tarifa_noche"
+                        type="number"
+                        step="0.01"
+                        value={editForm.tarifa_noche}
+                        onChange={(e) => setEditForm({ ...editForm, tarifa_noche: e.target.value })}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="edit_adultos">Adultos</Label>
+                      <Input
+                        id="edit_adultos"
+                        type="number"
+                        min="1"
+                        value={editForm.adultos}
+                        onChange={(e) => setEditForm({ ...editForm, adultos: parseInt(e.target.value) || 1 })}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="edit_ninos">Niños</Label>
+                      <Input
+                        id="edit_ninos"
+                        type="number"
+                        min="0"
+                        value={editForm.ninos}
+                        onChange={(e) => setEditForm({ ...editForm, ninos: parseInt(e.target.value) || 0 })}
                       />
                     </div>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <Label htmlFor="edit_nacionalidad">Nacionalidad</Label>
-                      <Input
-                        id="edit_nacionalidad"
-                        value={editForm.nacionalidad}
-                        onChange={(e) => setEditForm({ ...editForm, nacionalidad: e.target.value })}
-                      />
+                      <Label htmlFor="edit_metodo_pago">Método de Pago</Label>
+                      <select
+                        id="edit_metodo_pago"
+                        value={editForm.metodo_pago}
+                        onChange={(e) => setEditForm({ ...editForm, metodo_pago: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 dark:bg-gray-800 dark:text-white"
+                      >
+                        <option value="EFECTIVO">Efectivo</option>
+                        <option value="YAPE">Yape</option>
+                        <option value="TARJETA">Tarjeta Débito/Crédito</option>
+                      </select>
                     </div>
-                    <div>
-                      <Label htmlFor="edit_procedencia">Procedencia</Label>
-                      <Input
-                        id="edit_procedencia"
-                        value={editForm.procedencia}
-                        onChange={(e) => setEditForm({ ...editForm, procedencia: e.target.value })}
-                      />
-                    </div>
+                  </div>
+                  <div>
+                    <Label htmlFor="edit_observacion">Observación</Label>
+                    <textarea
+                      id="edit_observacion"
+                      value={editForm.observacion}
+                      onChange={(e) => setEditForm({ ...editForm, observacion: e.target.value })}
+                      rows="3"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 dark:bg-gray-800 dark:text-white"
+                    />
                   </div>
                 </div>
               </div>
 
-              {/* Información de Hospedaje */}
-              <div className="space-y-4">
-                <h4 className="text-lg font-semibold text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-700 pb-2">
-                  Información de Hospedaje
-                </h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="edit_check_in">Check-in</Label>
-                    <Input
-                      id="edit_check_in"
-                      type="date"
-                      value={editForm.check_in}
-                      onChange={(e) => setEditForm({ ...editForm, check_in: e.target.value })}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="edit_check_out">Check-out</Label>
-                    <Input
-                      id="edit_check_out"
-                      type="date"
-                      value={editForm.check_out}
-                      onChange={(e) => setEditForm({ ...editForm, check_out: e.target.value })}
-                    />
-                  </div>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="edit_tipo_habitacion">Tipo de Habitación</Label>
-                    <select
-                      id="edit_tipo_habitacion"
-                      value={editForm.tipo_habitacion}
-                      onChange={(e) => setEditForm({ ...editForm, tipo_habitacion: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 dark:bg-gray-800 dark:text-white"
-                    >
-                      <option value="SIMPLE">Simple</option>
-                      <option value="DOBLE">Doble</option>
-                      <option value="MATRIMONIAL">Matrimonial</option>
-                      <option value="TRIPLE">Triple</option>
-                    </select>
-                  </div>
-                  <div>
-                    <Label htmlFor="edit_numero_habitacion">Número de Habitación</Label>
-                    <select
-                      id="edit_numero_habitacion"
-                      value={editForm.numero_habitacion}
-                      onChange={(e) => setEditForm({ ...editForm, numero_habitacion: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 dark:bg-gray-800 dark:text-white"
-                    >
-                      {['111','112','113','210','211','212','213','214','215','310','311','312','313','314','315'].map(num => (
-                        <option key={num} value={num}>{num}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <Label htmlFor="edit_tarifa_noche">Tarifa por Noche (S/.)</Label>
-                    <Input
-                      id="edit_tarifa_noche"
-                      type="number"
-                      step="0.01"
-                      value={editForm.tarifa_noche}
-                      onChange={(e) => setEditForm({ ...editForm, tarifa_noche: e.target.value })}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="edit_adultos">Adultos</Label>
-                    <Input
-                      id="edit_adultos"
-                      type="number"
-                      min="1"
-                      value={editForm.adultos}
-                      onChange={(e) => setEditForm({ ...editForm, adultos: parseInt(e.target.value) || 1 })}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="edit_ninos">Niños</Label>
-                    <Input
-                      id="edit_ninos"
-                      type="number"
-                      min="0"
-                      value={editForm.ninos}
-                      onChange={(e) => setEditForm({ ...editForm, ninos: parseInt(e.target.value) || 0 })}
-                    />
-                  </div>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="edit_metodo_pago">Método de Pago</Label>
-                    <select
-                      id="edit_metodo_pago"
-                      value={editForm.metodo_pago}
-                      onChange={(e) => setEditForm({ ...editForm, metodo_pago: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 dark:bg-gray-800 dark:text-white"
-                    >
-                      <option value="EFECTIVO">Efectivo</option>
-                      <option value="YAPE">Yape</option>
-                      <option value="TARJETA">Tarjeta Débito/Crédito</option>
-                    </select>
-                  </div>
+              <div className="flex items-center gap-3 justify-end mt-6">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={closeEditModal}
+                  disabled={editingHuespedLoading}
+                  className="border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-black dark:text-white dark:hover:bg-gray-900"
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={handleUpdateHuesped}
+                  disabled={editingHuespedLoading}
+                  className="bg-orange-500 hover:bg-orange-600 text-white"
+                >
+                  {editingHuespedLoading ? "Actualizando..." : "Actualizar Pasajero"}
+                </Button>
+              </div>
+            </div>
+          )}
+    </div>
+      </Modal >
+
+    {/* Modal de Visualización */ }
+    < Modal isOpen = { isViewModalOpen } onClose = { closeViewModal } className = "max-w-[700px] m-4" >
+      <div className="no-scrollbar relative w-full max-w-[700px] max-h-[85vh] overflow-y-auto rounded-3xl bg-white dark:bg-black dark:border dark:border-orange-500/30 p-6 lg:p-8">
+        <div className="mb-6">
+          <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
+            Detalles del Pasajero
+          </h3>
+        </div>
+
+        {viewingHuesped && (
+          <div className="space-y-6">
+            <div className="space-y-3">
+              <h4 className="text-lg font-semibold text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-700 pb-2">
+                Información de Venta
+              </h4>
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <span className="text-gray-600 dark:text-gray-400">Canal de Venta:</span>
+                  <p className="font-medium text-gray-900 dark:text-white">{viewingHuesped.canal_venta}</p>
                 </div>
                 <div>
-                  <Label htmlFor="edit_observacion">Observación</Label>
-                  <textarea
-                    id="edit_observacion"
-                    value={editForm.observacion}
-                    onChange={(e) => setEditForm({ ...editForm, observacion: e.target.value })}
-                    rows="3"
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 dark:bg-gray-800 dark:text-white"
-                  />
+                  <span className="text-gray-600 dark:text-gray-400">Tipo de Comprobante:</span>
+                  <p className="font-medium text-gray-900 dark:text-white">{viewingHuesped.tipo_comprobante}</p>
                 </div>
               </div>
             </div>
-          )}
 
-          <div className="flex items-center gap-3 justify-end mt-6">
-            <Button 
-              size="sm" 
-              variant="outline" 
-              onClick={closeEditModal} 
-              disabled={editingHuespedLoading}
-              className="border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-black dark:text-white dark:hover:bg-gray-900"
-            >
-              Cancelar
-            </Button>
-            <Button 
-              size="sm" 
-              onClick={handleUpdateHuesped} 
-              disabled={editingHuespedLoading}
-              className="bg-orange-500 hover:bg-orange-600 text-white"
-            >
-              {editingHuespedLoading ? "Actualizando..." : "Actualizar Pasajero"}
-            </Button>
-          </div>
-        </div>
-      </Modal>
+            <div className="space-y-3">
+              <h4 className="text-lg font-semibold text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-700 pb-2">
+                Información Personal
+              </h4>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-gray-600 dark:text-gray-400">Nombres y Apellidos:</span>
+                  <span className="font-medium text-gray-900 dark:text-white">{viewingHuesped.nombres_apellidos}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600 dark:text-gray-400">Tipo de Documento:</span>
+                  <span className="font-medium text-gray-900 dark:text-white">{viewingHuesped.tipo_documento}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600 dark:text-gray-400">Número de Documento:</span>
+                  <span className="font-medium text-gray-900 dark:text-white">{viewingHuesped.numero_documento}</span>
+                </div>
+                {viewingHuesped.numero_ruc && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-600 dark:text-gray-400">RUC:</span>
+                    <span className="font-medium text-gray-900 dark:text-white">{viewingHuesped.numero_ruc}</span>
+                  </div>
+                )}
+                {viewingHuesped.nombre_o_razon_social && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-600 dark:text-gray-400">Razón Social:</span>
+                    <span className="font-medium text-gray-900 dark:text-white">{viewingHuesped.nombre_o_razon_social}</span>
+                  </div>
+                )}
+                {viewingHuesped.estado && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-600 dark:text-gray-400">Estado RUC:</span>
+                    <span className="font-medium text-gray-900 dark:text-white">{viewingHuesped.estado}</span>
+                  </div>
+                )}
+                {viewingHuesped.condicion && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-600 dark:text-gray-400">Condición RUC:</span>
+                    <span className="font-medium text-gray-900 dark:text-white">{viewingHuesped.condicion}</span>
+                  </div>
+                )}
+                {viewingHuesped.direccion_completa && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-600 dark:text-gray-400">Dirección:</span>
+                    <span className="font-medium text-gray-900 dark:text-white">{viewingHuesped.direccion_completa}</span>
+                  </div>
+                )}
+                <div className="flex justify-between">
+                  <span className="text-gray-600 dark:text-gray-400">Fecha de Nacimiento:</span>
+                  <span className="font-medium text-gray-900 dark:text-white">
+                    {new Date(viewingHuesped.fecha_nacimiento).toLocaleDateString('es-ES')}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600 dark:text-gray-400">Nacionalidad:</span>
+                  <span className="font-medium text-gray-900 dark:text-white">{viewingHuesped.nacionalidad}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600 dark:text-gray-400">Procedencia:</span>
+                  <span className="font-medium text-gray-900 dark:text-white">{viewingHuesped.procedencia}</span>
+                </div>
+              </div>
+            </div>
 
-      {/* Modal de Visualización */}
-      <Modal isOpen={isViewModalOpen} onClose={closeViewModal} className="max-w-[700px] m-4">
-        <div className="no-scrollbar relative w-full max-w-[700px] max-h-[85vh] overflow-y-auto rounded-3xl bg-white dark:bg-black dark:border dark:border-orange-500/30 p-6 lg:p-8">
-          <div className="mb-6">
-            <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
-              Detalles del Pasajero
-            </h3>
-          </div>
-
-          {viewingHuesped && (
-            <div className="space-y-6">
-              <div className="space-y-3">
-                <h4 className="text-lg font-semibold text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-700 pb-2">
-                  Información de Venta
-                </h4>
-                <div className="grid grid-cols-2 gap-4 text-sm">
+            <div className="space-y-3">
+              <h4 className="text-lg font-semibold text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-700 pb-2">
+                Información de Hospedaje
+              </h4>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-gray-600 dark:text-gray-400">Check-in:</span>
+                  <span className="font-medium text-gray-900 dark:text-white">
+                    {formatDateLocal(viewingHuesped.check_in)}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600 dark:text-gray-400">Check-out:</span>
+                  <span className="font-medium text-gray-900 dark:text-white">
+                    {formatDateLocal(viewingHuesped.check_out)}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600 dark:text-gray-400">Duración:</span>
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium text-gray-900 dark:text-white">
+                      {viewingHuesped.duracion_estadia} {viewingHuesped.is_day_use ? 'día' : 'noches'}
+                    </span>
+                    {viewingHuesped.is_day_use && (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400">
+                        DAY USE
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600 dark:text-gray-400">Tipo de Habitación:</span>
+                  <span className="font-medium text-gray-900 dark:text-white">{viewingHuesped.tipo_habitacion}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600 dark:text-gray-400">Número de Habitación:</span>
+                  <span className="font-medium text-gray-900 dark:text-white">{viewingHuesped.numero_habitacion}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600 dark:text-gray-400">Tarifa por Noche:</span>
+                  <span className="font-medium text-gray-900 dark:text-white">S/. {parseFloat(viewingHuesped.tarifa_noche).toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600 dark:text-gray-400">Adultos:</span>
+                  <span className="font-medium text-gray-900 dark:text-white">{viewingHuesped.adultos}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600 dark:text-gray-400">Niños:</span>
+                  <span className="font-medium text-gray-900 dark:text-white">{viewingHuesped.ninos}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600 dark:text-gray-400">Método de Pago:</span>
+                  <span className="font-medium text-gray-900 dark:text-white">{viewingHuesped.metodo_pago}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600 dark:text-gray-400">Total Estadía:</span>
+                  <span className="font-bold text-orange-600 dark:text-orange-400">S/. {parseFloat(viewingHuesped.total_estadia).toFixed(2)}</span>
+                </div>
+                {viewingHuesped.observacion && (
                   <div>
-                    <span className="text-gray-600 dark:text-gray-400">Canal de Venta:</span>
-                    <p className="font-medium text-gray-900 dark:text-white">{viewingHuesped.canal_venta}</p>
+                    <span className="text-gray-600 dark:text-gray-400">Observación:</span>
+                    <p className="font-medium text-gray-900 dark:text-white mt-1">{viewingHuesped.observacion}</p>
                   </div>
-                  <div>
-                    <span className="text-gray-600 dark:text-gray-400">Tipo de Comprobante:</span>
-                    <p className="font-medium text-gray-900 dark:text-white">{viewingHuesped.tipo_comprobante}</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-3">
-                <h4 className="text-lg font-semibold text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-700 pb-2">
-                  Información Personal
-                </h4>
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600 dark:text-gray-400">Nombres y Apellidos:</span>
-                    <span className="font-medium text-gray-900 dark:text-white">{viewingHuesped.nombres_apellidos}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600 dark:text-gray-400">Tipo de Documento:</span>
-                    <span className="font-medium text-gray-900 dark:text-white">{viewingHuesped.tipo_documento}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600 dark:text-gray-400">Número de Documento:</span>
-                    <span className="font-medium text-gray-900 dark:text-white">{viewingHuesped.numero_documento}</span>
-                  </div>
-                  {viewingHuesped.numero_ruc && (
-                    <div className="flex justify-between">
-                      <span className="text-gray-600 dark:text-gray-400">RUC:</span>
-                      <span className="font-medium text-gray-900 dark:text-white">{viewingHuesped.numero_ruc}</span>
-                    </div>
-                  )}
-                  {viewingHuesped.nombre_o_razon_social && (
-                    <div className="flex justify-between">
-                      <span className="text-gray-600 dark:text-gray-400">Razón Social:</span>
-                      <span className="font-medium text-gray-900 dark:text-white">{viewingHuesped.nombre_o_razon_social}</span>
-                    </div>
-                  )}
-                  {viewingHuesped.estado && (
-                    <div className="flex justify-between">
-                      <span className="text-gray-600 dark:text-gray-400">Estado RUC:</span>
-                      <span className="font-medium text-gray-900 dark:text-white">{viewingHuesped.estado}</span>
-                    </div>
-                  )}
-                  {viewingHuesped.condicion && (
-                    <div className="flex justify-between">
-                      <span className="text-gray-600 dark:text-gray-400">Condición RUC:</span>
-                      <span className="font-medium text-gray-900 dark:text-white">{viewingHuesped.condicion}</span>
-                    </div>
-                  )}
-                  {viewingHuesped.direccion_completa && (
-                    <div className="flex justify-between">
-                      <span className="text-gray-600 dark:text-gray-400">Dirección:</span>
-                      <span className="font-medium text-gray-900 dark:text-white">{viewingHuesped.direccion_completa}</span>
-                    </div>
-                  )}
-                  <div className="flex justify-between">
-                    <span className="text-gray-600 dark:text-gray-400">Fecha de Nacimiento:</span>
-                    <span className="font-medium text-gray-900 dark:text-white">
-                      {new Date(viewingHuesped.fecha_nacimiento).toLocaleDateString('es-ES')}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600 dark:text-gray-400">Nacionalidad:</span>
-                    <span className="font-medium text-gray-900 dark:text-white">{viewingHuesped.nacionalidad}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600 dark:text-gray-400">Procedencia:</span>
-                    <span className="font-medium text-gray-900 dark:text-white">{viewingHuesped.procedencia}</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-3">
-                <h4 className="text-lg font-semibold text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-700 pb-2">
-                  Información de Hospedaje
-                </h4>
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600 dark:text-gray-400">Check-in:</span>
-                    <span className="font-medium text-gray-900 dark:text-white">
-                      {new Date(viewingHuesped.check_in).toLocaleDateString('es-ES')}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600 dark:text-gray-400">Check-out:</span>
-                    <span className="font-medium text-gray-900 dark:text-white">
-                      {new Date(viewingHuesped.check_out).toLocaleDateString('es-ES')}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600 dark:text-gray-400">Duración:</span>
-                    <span className="font-medium text-gray-900 dark:text-white">{viewingHuesped.duracion_estadia} noches</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600 dark:text-gray-400">Tipo de Habitación:</span>
-                    <span className="font-medium text-gray-900 dark:text-white">{viewingHuesped.tipo_habitacion}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600 dark:text-gray-400">Número de Habitación:</span>
-                    <span className="font-medium text-gray-900 dark:text-white">{viewingHuesped.numero_habitacion}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600 dark:text-gray-400">Tarifa por Noche:</span>
-                    <span className="font-medium text-gray-900 dark:text-white">S/. {parseFloat(viewingHuesped.tarifa_noche).toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600 dark:text-gray-400">Adultos:</span>
-                    <span className="font-medium text-gray-900 dark:text-white">{viewingHuesped.adultos}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600 dark:text-gray-400">Niños:</span>
-                    <span className="font-medium text-gray-900 dark:text-white">{viewingHuesped.ninos}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600 dark:text-gray-400">Método de Pago:</span>
-                    <span className="font-medium text-gray-900 dark:text-white">{viewingHuesped.metodo_pago}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600 dark:text-gray-400">Total Estadía:</span>
-                    <span className="font-bold text-orange-600 dark:text-orange-400">S/. {parseFloat(viewingHuesped.total_estadia).toFixed(2)}</span>
-                  </div>
-                  {viewingHuesped.observacion && (
-                    <div>
-                      <span className="text-gray-600 dark:text-gray-400">Observación:</span>
-                      <p className="font-medium text-gray-900 dark:text-white mt-1">{viewingHuesped.observacion}</p>
-                    </div>
-                  )}
-                </div>
+                )}
               </div>
             </div>
-          )}
-
-          <div className="flex justify-end mt-6">
-            <Button 
-              size="sm" 
-              onClick={closeViewModal}
-              className="bg-orange-500 hover:bg-orange-600 text-white"
-            >
-              Cerrar
-            </Button>
           </div>
+        )}
+
+        <div className="flex justify-end mt-6">
+          <Button
+            size="sm"
+            onClick={closeViewModal}
+            className="bg-orange-500 hover:bg-orange-600 text-white"
+          >
+            Cerrar
+          </Button>
         </div>
-      </Modal>
+      </div>
+      </Modal >
 
-      {/* Modal de Eliminación */}
-      <Modal isOpen={isDeleteModalOpen} onClose={closeDeleteModal} className="max-w-md m-4">
-        <div className="relative w-full max-w-md rounded-3xl bg-white dark:bg-black dark:border dark:border-orange-500/30 p-6">
-          <div className="mb-6">
-            <h3 className="text-xl font-bold text-gray-900 dark:text-white">
-              Eliminar Pasajero
-            </h3>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
-              ¿Está seguro que desea eliminar este pasajero? Esta acción no se puede deshacer.
-            </p>
-          </div>
+    {/* Modal de Eliminación */ }
+    < Modal isOpen = { isDeleteModalOpen } onClose = { closeDeleteModal } className = "max-w-md m-4" >
+      <div className="relative w-full max-w-md rounded-3xl bg-white dark:bg-black dark:border dark:border-orange-500/30 p-6">
+        <div className="mb-6">
+          <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+            Eliminar Pasajero
+          </h3>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
+            ¿Está seguro que desea eliminar este pasajero? Esta acción no se puede deshacer.
+          </p>
+        </div>
 
-          {huespedToDelete && (
-            <div className="mb-6 p-4 bg-gray-50 border border-gray-200 rounded-lg dark:bg-gray-900/50 dark:border-gray-800">
-              <div className="space-y-1">
-                <div className="flex justify-between">
-                  <span className="text-gray-600 dark:text-gray-400">Nombre:</span>
-                  <span className="font-medium text-gray-900 dark:text-white">{huespedToDelete.nombres_apellidos}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600 dark:text-gray-400">Documento:</span>
-                  <span className="font-medium text-gray-900 dark:text-white">{huespedToDelete.numero_documento}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600 dark:text-gray-400">Habitación:</span>
-                  <span className="font-medium text-gray-900 dark:text-white">{huespedToDelete.numero_habitacion}</span>
-                </div>
+        {huespedToDelete && (
+          <div className="mb-6 p-4 bg-gray-50 border border-gray-200 rounded-lg dark:bg-gray-900/50 dark:border-gray-800">
+            <div className="space-y-1">
+              <div className="flex justify-between">
+                <span className="text-gray-600 dark:text-gray-400">Nombre:</span>
+                <span className="font-medium text-gray-900 dark:text-white">{huespedToDelete.nombres_apellidos}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600 dark:text-gray-400">Documento:</span>
+                <span className="font-medium text-gray-900 dark:text-white">{huespedToDelete.numero_documento}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600 dark:text-gray-400">Habitación:</span>
+                <span className="font-medium text-gray-900 dark:text-white">{huespedToDelete.numero_habitacion}</span>
               </div>
             </div>
-          )}
-
-          <div className="flex items-center gap-3 justify-end">
-            <Button 
-              size="sm" 
-              variant="outline" 
-              onClick={closeDeleteModal} 
-              disabled={deletingHuesped}
-              className="border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-black dark:text-white dark:hover:bg-gray-900"
-            >
-              Cancelar
-            </Button>
-            <Button 
-              size="sm" 
-              onClick={() => huespedToDelete && handleDeleteHuesped(huespedToDelete.id)} 
-              disabled={deletingHuesped}
-              className="bg-red-600 hover:bg-red-700 text-white"
-            >
-              {deletingHuesped ? "Eliminando..." : "Eliminar Pasajero"}
-            </Button>
           </div>
-        </div>
-      </Modal>
+        )}
 
-      {/* Tabla */}
-      <div className="overflow-auto rounded-xl border border-gray-200 bg-white dark:border-white/5 dark:bg-white/3">
-          <Table>
-            <TableHeader className="border-b border-gray-100 dark:border-white/5">
-              <TableRow>
-                <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
-                  Huésped
+        <div className="flex items-center gap-3 justify-end">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={closeDeleteModal}
+            disabled={deletingHuesped}
+            className="border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-black dark:text-white dark:hover:bg-gray-900"
+          >
+            Cancelar
+          </Button>
+          <Button
+            size="sm"
+            onClick={() => huespedToDelete && handleDeleteHuesped(huespedToDelete.id)}
+            disabled={deletingHuesped}
+            className="bg-red-600 hover:bg-red-700 text-white"
+          >
+            {deletingHuesped ? "Eliminando..." : "Eliminar Pasajero"}
+          </Button>
+        </div>
+      </div>
+      </Modal >
+
+    {/* Tabla */ }
+    < div className = "overflow-auto rounded-xl border border-gray-200 bg-white dark:border-white/5 dark:bg-white/3" >
+      <Table>
+        <TableHeader className="border-b border-gray-100 dark:border-white/5">
+          <TableRow>
+            <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
+              Huésped
+            </TableCell>
+            <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
+              Documento
+            </TableCell>
+            <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-center text-theme-xs dark:text-gray-400">
+              Canal de Venta
+            </TableCell>
+            <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-center text-theme-xs dark:text-gray-400">
+              RUC
+            </TableCell>
+            <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-center text-theme-xs dark:text-gray-400">
+              Check-in
+            </TableCell>
+            <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-center text-theme-xs dark:text-gray-400">
+              Check-out
+            </TableCell>
+            <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-center text-theme-xs dark:text-gray-400">
+              Habitación
+            </TableCell>
+            <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-center text-theme-xs dark:text-gray-400">
+              Tarifa
+            </TableCell>
+            <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-center text-theme-xs dark:text-gray-400">
+              Total
+            </TableCell>
+            <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-center text-theme-xs dark:text-gray-400">
+              Acciones
+            </TableCell>
+          </TableRow>
+        </TableHeader>
+
+        <TableBody className="divide-y divide-gray-100 dark:divide-white/5">
+          {loadingHuespedes && data.length === 0 ? (
+            Array.from({ length: itemsPerPage }).map((_, index) => (
+              <TableRow key={`skeleton-${index}`}>
+                <TableCell className="px-5 py-4 sm:px-6 text-start">
+                  <div className="h-4 w-32 bg-gray-200 rounded dark:bg-gray-700 animate-pulse"></div>
                 </TableCell>
-                <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
-                  Documento
+                <TableCell className="px-4 py-3">
+                  <div className="h-4 w-24 bg-gray-200 rounded dark:bg-gray-700 animate-pulse"></div>
                 </TableCell>
-                <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-center text-theme-xs dark:text-gray-400">
-                  Canal de Venta
+                <TableCell className="px-4 py-3">
+                  <div className="h-4 w-24 bg-gray-200 rounded dark:bg-gray-700 animate-pulse"></div>
                 </TableCell>
-                <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-center text-theme-xs dark:text-gray-400">
-                  RUC
+                <TableCell className="px-4 py-3 text-center">
+                  <div className="h-4 w-20 bg-gray-200 rounded dark:bg-gray-700 animate-pulse mx-auto"></div>
                 </TableCell>
-                <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-center text-theme-xs dark:text-gray-400">
-                  Check-in
+                <TableCell className="px-4 py-3 text-center">
+                  <div className="h-4 w-20 bg-gray-200 rounded dark:bg-gray-700 animate-pulse mx-auto"></div>
                 </TableCell>
-                <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-center text-theme-xs dark:text-gray-400">
-                  Check-out
+                <TableCell className="px-4 py-3 text-center">
+                  <div className="h-4 w-20 bg-gray-200 rounded dark:bg-gray-700 animate-pulse mx-auto"></div>
                 </TableCell>
-                <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-center text-theme-xs dark:text-gray-400">
-                  Habitación
+                <TableCell className="px-4 py-3 text-center">
+                  <div className="h-4 w-16 bg-gray-200 rounded dark:bg-gray-700 animate-pulse mx-auto"></div>
                 </TableCell>
-                <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-center text-theme-xs dark:text-gray-400">
-                  Tarifa Noche
+                <TableCell className="px-4 py-3 text-center">
+                  <div className="h-4 w-20 bg-gray-200 rounded dark:bg-gray-700 animate-pulse mx-auto"></div>
                 </TableCell>
-                <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-center text-theme-xs dark:text-gray-400">
-                  Total
+                <TableCell className="px-4 py-3 text-center">
+                  <div className="h-4 w-20 bg-gray-200 rounded dark:bg-gray-700 animate-pulse mx-auto"></div>
                 </TableCell>
-                <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-center text-theme-xs dark:text-gray-400">
-                  Acciones
+                <TableCell className="px-4 py-3 text-center">
+                  <div className="flex items-center justify-center gap-2">
+                    <div className="w-8 h-8 bg-gray-200 rounded-lg dark:bg-gray-700 animate-pulse"></div>
+                    <div className="w-8 h-8 bg-gray-200 rounded-lg dark:bg-gray-700 animate-pulse"></div>
+                    <div className="w-8 h-8 bg-gray-200 rounded-lg dark:bg-gray-700 animate-pulse"></div>
+                  </div>
                 </TableCell>
               </TableRow>
-            </TableHeader>
-
-            <TableBody className="divide-y divide-gray-100 dark:divide-white/5">
-              {loadingHuespedes && data.length === 0 ? (
-                Array.from({ length: itemsPerPage }).map((_, index) => (
-                  <TableRow key={`skeleton-${index}`}>
-                    <TableCell className="px-5 py-4 sm:px-6 text-start">
-                      <div className="h-4 w-32 bg-gray-200 rounded dark:bg-gray-700 animate-pulse"></div>
-                    </TableCell>
-                    <TableCell className="px-4 py-3">
-                      <div className="h-4 w-24 bg-gray-200 rounded dark:bg-gray-700 animate-pulse"></div>
-                    </TableCell>
-                    <TableCell className="px-4 py-3">
-                      <div className="h-4 w-24 bg-gray-200 rounded dark:bg-gray-700 animate-pulse"></div>
-                    </TableCell>
-                    <TableCell className="px-4 py-3 text-center">
-                      <div className="h-4 w-20 bg-gray-200 rounded dark:bg-gray-700 animate-pulse mx-auto"></div>
-                    </TableCell>
-                    <TableCell className="px-4 py-3 text-center">
-                      <div className="h-4 w-20 bg-gray-200 rounded dark:bg-gray-700 animate-pulse mx-auto"></div>
-                    </TableCell>
-                    <TableCell className="px-4 py-3 text-center">
-                      <div className="h-4 w-20 bg-gray-200 rounded dark:bg-gray-700 animate-pulse mx-auto"></div>
-                    </TableCell>
-                    <TableCell className="px-4 py-3 text-center">
-                      <div className="h-4 w-16 bg-gray-200 rounded dark:bg-gray-700 animate-pulse mx-auto"></div>
-                    </TableCell>
-                    <TableCell className="px-4 py-3 text-center">
-                      <div className="h-4 w-20 bg-gray-200 rounded dark:bg-gray-700 animate-pulse mx-auto"></div>
-                    </TableCell>
-                    <TableCell className="px-4 py-3 text-center">
-                      <div className="h-4 w-20 bg-gray-200 rounded dark:bg-gray-700 animate-pulse mx-auto"></div>
-                    </TableCell>
-                    <TableCell className="px-4 py-3 text-center">
-                      <div className="flex items-center justify-center gap-2">
-                        <div className="w-8 h-8 bg-gray-200 rounded-lg dark:bg-gray-700 animate-pulse"></div>
-                        <div className="w-8 h-8 bg-gray-200 rounded-lg dark:bg-gray-700 animate-pulse"></div>
-                        <div className="w-8 h-8 bg-gray-200 rounded-lg dark:bg-gray-700 animate-pulse"></div>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))
-              ) : paginatedData.length > 0 ? (
-                paginatedData.map((huesped) => (
-                  <TableRow key={huesped.id}>
-                    <TableCell className="px-5 py-4 sm:px-6 text-start">
-                      <div>
-                        <span className="block font-medium text-gray-800 text-theme-sm dark:text-white/90">
-                          {huesped.nombres_apellidos}
-                        </span>
-                        <span className="text-xs text-gray-500 dark:text-gray-400">
-                          {huesped.nacionalidad}
-                        </span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-                      {huesped.tipo_documento}: {huesped.numero_documento}
-                    </TableCell>
-                    <TableCell className="px-4 py-3 text-gray-500 text-center text-theme-sm dark:text-gray-400">
-                        {huesped.canal_venta}
-                    </TableCell>
-                    <TableCell className="px-4 py-3 text-gray-500 text-center text-theme-sm dark:text-gray-400">
-                      <div>
-                        <span className="block font-medium text-gray-800 text-theme-sm dark:text-white/90">
+            ))
+          ) : paginatedData.length > 0 ? (
+            paginatedData.map((huesped) => (
+              <TableRow key={huesped.id}>
+                <TableCell className="px-5 py-4 sm:px-6 text-start">
+                  <div>
+                    <span className="block font-medium text-gray-800 text-theme-sm dark:text-white/90">
+                      {huesped.nombres_apellidos}
+                    </span>
+                    <span className="text-xs text-gray-500 dark:text-gray-400">
+                      {huesped.nacionalidad}
+                    </span>
+                  </div>
+                </TableCell>
+                <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
+                  {huesped.tipo_documento}: {huesped.numero_documento}
+                </TableCell>
+                <TableCell className="px-4 py-3 text-gray-500 text-center text-theme-sm dark:text-gray-400">
+                  {huesped.canal_venta}
+                </TableCell>
+                <TableCell className="px-4 py-3 text-gray-500 text-center text-theme-sm dark:text-gray-400">
+                  <div>
+                    <span className="block font-medium text-gray-800 text-theme-sm dark:text-white/90">
                       {huesped.numero_ruc || 'N/A'}
-                        </span>
-                        <span className="text-xs text-gray-500 dark:text-gray-400">
-                            {huesped.nombre_o_razon_social || ''}
-                        </span>
-                        </div>
-                    </TableCell>
-                    <TableCell className="px-4 py-3 text-gray-500 text-center text-theme-sm dark:text-gray-400">
-                      {new Date(huesped.check_in).toLocaleDateString('es-ES')}
-                    </TableCell>
-                    <TableCell className="px-4 py-3 text-gray-500 text-center text-theme-sm dark:text-gray-400">
-                      {new Date(huesped.check_out).toLocaleDateString('es-ES')}
-                    </TableCell>
-                    <TableCell className="px-4 py-3 text-center">
-                      <div>
-                        <span className="block font-medium text-gray-900 dark:text-white">
-                          {huesped.numero_habitacion}
-                        </span>
-                        <span className="text-xs text-gray-500 dark:text-gray-400">
-                          {huesped.tipo_habitacion}
-                        </span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="px-4 py-3 text-center">
-                      <span className="font-medium text-gray-900 dark:text-white">
-                        S/. {parseFloat(huesped.tarifa_noche).toFixed(2)}
+                    </span>
+                    <span className="text-xs text-gray-500 dark:text-gray-400">
+                      {huesped.nombre_o_razon_social || ''}
+                    </span>
+                  </div>
+                </TableCell>
+                <TableCell className="px-4 py-3 text-gray-500 text-center text-theme-sm dark:text-gray-400">
+                  {formatDateLocal(huesped.check_in)}
+                </TableCell>
+                <TableCell className="px-4 py-3 text-center text-theme-sm">
+                  <div className="flex flex-col items-center gap-1">
+                    <span className="text-gray-500 dark:text-gray-400">
+                      {formatDateLocal(huesped.check_out)}
+                    </span>
+                    {huesped.is_day_use && (
+                      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400">
+                        DAY USE
                       </span>
-                    </TableCell>
-                    <TableCell className="px-4 py-3 text-center">
-                      <span className="font-semibold text-orange-600 dark:text-orange-400">
-                        S/. {parseFloat(huesped.total_estadia).toFixed(2)}
-                      </span>
-                    </TableCell>
-                    <TableCell className="px-4 py-3 text-center">
-                      <div className="flex items-center justify-center gap-2">
-                        <button
-                          onClick={() => handleViewHuesped(huesped)}
-                          className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-colors"
-                          title="Ver detalles"
-                        >
-                          <EyeIcon className="w-4 h-4 fill-current" />
-                        </button>
-                        <button
-                          onClick={() => handleEditHuespedClick(huesped)}
-                          className="p-2 text-green-600 hover:text-green-800 hover:bg-green-50 rounded-lg transition-colors"
-                          title="Editar pasajero"
-                        >
-                          <PencilIcon className="w-4 h-4 fill-current" />
-                        </button>
-                        <button
-                          onClick={() => handleOpenDeleteModal(huesped)}
-                          className="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg transition-colors"
-                          title="Eliminar pasajero"
-                        >
-                          <TrashBinIcon className="w-4 h-4 fill-current" />
-                        </button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={7} className="px-5 py-8 text-center text-gray-500 dark:text-gray-400">
-                    No se encontraron pasajeros
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        
-      </div>
+                    )}
+                  </div>
+                </TableCell>
+                <TableCell className="px-4 py-3 text-center">
+                  <div>
+                    <span className="block font-medium text-gray-900 dark:text-white">
+                      {huesped.numero_habitacion}
+                    </span>
+                    <span className="text-xs text-gray-500 dark:text-gray-400">
+                      {huesped.tipo_habitacion}
+                    </span>
+                  </div>
+                </TableCell>
+                <TableCell className="px-4 py-3 text-center">
+                  <div className="flex flex-col items-center">
+                    <span className="font-medium text-gray-900 dark:text-white">
+                      S/. {parseFloat(huesped.tarifa_noche).toFixed(2)}
+                    </span>
+                    {huesped.is_day_use && (
+                      <span className="text-[10px] text-gray-400 font-medium">DAY USE</span>
+                    )}
+                  </div>
+                </TableCell>
+                <TableCell className="px-4 py-3 text-center">
+                  <span className="font-semibold text-orange-600 dark:text-orange-400">
+                    S/. {parseFloat(huesped.total_estadia).toFixed(2)}
+                  </span>
+                </TableCell>
+                <TableCell className="px-4 py-3 text-center">
+                  <div className="flex items-center justify-center gap-2">
+                    <button
+                      onClick={() => handleViewHuesped(huesped)}
+                      className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-colors"
+                      title="Ver detalles"
+                    >
+                      <EyeIcon className="w-4 h-4 fill-current" />
+                    </button>
+                    <button
+                      onClick={() => handleEditHuespedClick(huesped)}
+                      className="p-2 text-green-600 hover:text-green-800 hover:bg-green-50 rounded-lg transition-colors"
+                      title="Editar pasajero"
+                    >
+                      <PencilIcon className="w-4 h-4 fill-current" />
+                    </button>
+                    <button
+                      onClick={() => handleOpenDeleteModal(huesped)}
+                      className="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg transition-colors"
+                      title="Eliminar pasajero"
+                    >
+                      <TrashBinIcon className="w-4 h-4 fill-current" />
+                    </button>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))
+          ) : (
+            <TableRow>
+              <TableCell colSpan={7} className="px-5 py-8 text-center text-gray-500 dark:text-gray-400">
+                No se encontraron pasajeros
+              </TableCell>
+            </TableRow>
+          )}
+        </TableBody>
+      </Table>
 
-      {/* Paginación */}
-      {totalPages > 1 && (
-        <div className="flex flex-col lg:flex-row items-center justify-center lg:justify-between gap-4">
-          <div className="text-sm text-gray-500 dark:text-gray-400 order-1 lg:order-1">
-            Mostrando {((currentPage - 1) * itemsPerPage) + 1} a {Math.min(currentPage * itemsPerPage, filteredData.length)} de {filteredData.length} pasajeros
-          </div>
-          <div className="flex items-center gap-2 order-2 lg:order-2">
-            <Button
-              onClick={() => handlePageChange(currentPage - 1)}
-              disabled={currentPage === 1}
-              size="sm"
-              className="bg-gray-500 hover:bg-gray-200 text-white disabled:opacity-50 flex items-center justify-center w-9 h-9 sm:w-auto sm:h-auto"
-              title="Página anterior"
-            >
-              <ChevronLeftIcon className="w-4 h-4 sm:w-4 sm:h-4 fill-current" />
-            </Button>
-            
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-              <Button
-                key={page}
-                onClick={() => handlePageChange(page)}
-                size="sm"
-                className={
-                  page === currentPage
-                    ? "bg-orange-500 hover:bg-orange-600 text-white w-9 h-9 sm:w-auto sm:h-auto"
-                    : "bg-gray-500 hover:bg-gray-200 text-gray-700 w-9 h-9 sm:w-auto sm:h-auto"
-                }
-              >
-                {page}
-              </Button>
-            ))}
-            
-            <Button
-              onClick={() => handlePageChange(currentPage + 1)}
-              disabled={currentPage === totalPages}
-              size="sm"
-              className="bg-gray-500 hover:bg-gray-200 text-white disabled:opacity-50 flex items-center justify-center w-9 h-9 sm:w-auto sm:h-auto"
-              title="Página siguiente"
-            >
-              <AngleRightIcon className="w-4 h-4 sm:w-4 sm:h-4 fill-current" />
-            </Button>
-          </div>
+      </div >
+
+    {/* Paginación */ }
+  {
+    totalPages > 1 && (
+      <div className="flex flex-col lg:flex-row items-center justify-center lg:justify-between gap-4">
+        <div className="text-sm text-gray-500 dark:text-gray-400 order-1 lg:order-1">
+          Mostrando {((currentPage - 1) * itemsPerPage) + 1} a {Math.min(currentPage * itemsPerPage, filteredData.length)} de {filteredData.length} pasajeros
         </div>
-      )}
-    </div>
+        <div className="flex items-center gap-2 order-2 lg:order-2">
+          <Button
+            onClick={() => handlePageChange(currentPage - 1)}
+            disabled={currentPage === 1}
+            size="sm"
+            className="bg-gray-500 hover:bg-gray-200 text-white disabled:opacity-50 flex items-center justify-center w-9 h-9 sm:w-auto sm:h-auto"
+            title="Página anterior"
+          >
+            <ChevronLeftIcon className="w-4 h-4 sm:w-4 sm:h-4 fill-current" />
+          </Button>
+
+          {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+            <Button
+              key={page}
+              onClick={() => handlePageChange(page)}
+              size="sm"
+              className={
+                page === currentPage
+                  ? "bg-orange-500 hover:bg-orange-600 text-white w-9 h-9 sm:w-auto sm:h-auto"
+                  : "bg-gray-500 hover:bg-gray-200 text-gray-700 w-9 h-9 sm:w-auto sm:h-auto"
+              }
+            >
+              {page}
+            </Button>
+          ))}
+
+          <Button
+            onClick={() => handlePageChange(currentPage + 1)}
+            disabled={currentPage === totalPages}
+            size="sm"
+            className="bg-gray-500 hover:bg-gray-200 text-white disabled:opacity-50 flex items-center justify-center w-9 h-9 sm:w-auto sm:h-auto"
+            title="Página siguiente"
+          >
+            <AngleRightIcon className="w-4 h-4 sm:w-4 sm:h-4 fill-current" />
+          </Button>
+        </div>
+      </div>
+    )
+  }
+    </div >
   );
 }
