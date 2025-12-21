@@ -47,18 +47,20 @@ const formatTimeAMPM = (timeString) => {
 
 // Función helper para parsear hora 24h a componentes 12h (hora, minutos, ampm)
 const parseTime12h = (timeString) => {
-  if (!timeString) return { hour: '12', minute: '', ampm: 'PM' };
+  if (!timeString) return { hour: '12', minute: '00', ampm: 'PM' };
   const [hours, minutes] = timeString.split(':');
-  if (!hours || !minutes) return { hour: '12', minute: '', ampm: 'PM' };
+  if (!hours) return { hour: '12', minute: '00', ampm: 'PM' };
 
   let hour = parseInt(hours, 10);
+  if (isNaN(hour)) return { hour: '12', minute: '00', ampm: 'PM' };
+
   const ampm = hour >= 12 ? 'PM' : 'AM';
   hour = hour % 12;
   hour = hour ? hour : 12;
 
   return {
     hour: String(hour).padStart(2, '0'),
-    minute: minutes.slice(0, 2),
+    minute: (minutes || '00').slice(0, 2).padStart(2, '0'),
     ampm
   };
 };
@@ -66,9 +68,12 @@ const parseTime12h = (timeString) => {
 // Función helper para construir hora 24h desde componentes 12h
 const buildTime24h = (hour, minute, ampm) => {
   let h = parseInt(hour, 10);
+  if (isNaN(h)) h = 12;
   if (ampm === 'PM' && h !== 12) h += 12;
   if (ampm === 'AM' && h === 12) h = 0;
-  return `${String(h).padStart(2, '0')}:${minute}`;
+  // Asegurarse de que minute siempre tenga un valor válido
+  const m = (minute || '00').padStart(2, '0');
+  return `${String(h).padStart(2, '0')}:${m}`;
 };
 
 export default function HuespedesTable({ onCountChange }) {
