@@ -9,7 +9,7 @@ import {
 import Badge from "../../ui/badge/Badge";
 import Input from "../../form/input/InputField";
 import Button from "../../ui/button/Button";
-import { PencilIcon, TrashBinIcon, PlusIcon, ChevronLeftIcon, AngleRightIcon, EyeIcon } from "../../../icons";
+import { PencilIcon, TrashBinIcon, PlusIcon, ChevronLeftIcon, AngleRightIcon, EyeIcon, CloseIcon } from "../../../icons";
 import { useModal } from "../../../hooks/useModal";
 import { Modal } from "../../ui/modal";
 import Label from "../../form/Label";
@@ -120,6 +120,7 @@ export default function HuespedesTable({ onCountChange }) {
     ninos: 0,
     metodo_pago: "EFECTIVO",
     observacion: "",
+    acompanantes: [],
   });
 
   const [editForm, setEditForm] = useState({});
@@ -262,6 +263,50 @@ export default function HuespedesTable({ onCountChange }) {
     }
   };
 
+  // Lookup para acompañantes (Crear)
+  const handleLookupAcompananteCreate = async (index) => {
+    try {
+      const acompanante = createForm.acompanantes[index];
+      if (!acompanante?.numero_documento || !["DNI", "CE"].includes(acompanante.tipo_documento)) return;
+      setLookupLoading(true);
+      const res = await lookupDocumento(acompanante.tipo_documento, acompanante.numero_documento);
+      const name = res?.name || "";
+      if (name) {
+        const newAcompanantes = [...createForm.acompanantes];
+        newAcompanantes[index].nombres_apellidos = name;
+        setCreateForm({ ...createForm, acompanantes: newAcompanantes });
+        toast.success(`Nombre autocompletado: ${name}`, { position: "bottom-right", autoClose: 2000 });
+      }
+    } catch (e) {
+      const msg = e?.response?.data?.error || "No se pudo autocompletar";
+      toast.error(msg, { position: "bottom-right", autoClose: 2500 });
+    } finally {
+      setLookupLoading(false);
+    }
+  };
+
+  // Lookup para acompañantes (Editar)
+  const handleLookupAcompananteEdit = async (index) => {
+    try {
+      const acompanante = editForm.acompanantes?.[index];
+      if (!acompanante?.numero_documento || !["DNI", "CE"].includes(acompanante.tipo_documento)) return;
+      setLookupLoading(true);
+      const res = await lookupDocumento(acompanante.tipo_documento, acompanante.numero_documento);
+      const name = res?.name || "";
+      if (name) {
+        const newAcompanantes = [...editForm.acompanantes];
+        newAcompanantes[index].nombres_apellidos = name;
+        setEditForm({ ...editForm, acompanantes: newAcompanantes });
+        toast.success(`Nombre autocompletado: ${name}`, { position: "bottom-right", autoClose: 2000 });
+      }
+    } catch (e) {
+      const msg = e?.response?.data?.error || "No se pudo autocompletar";
+      toast.error(msg, { position: "bottom-right", autoClose: 2500 });
+    } finally {
+      setLookupLoading(false);
+    }
+  };
+
   const refresh = async () => {
     try {
       setLoadingHuespedes(true);
@@ -374,6 +419,7 @@ export default function HuespedesTable({ onCountChange }) {
           ninos: 0,
           metodo_pago: "EFECTIVO",
           observacion: "",
+          acompanantes: [],
         });
         await refresh();
       }
@@ -417,6 +463,7 @@ export default function HuespedesTable({ onCountChange }) {
       ninos: huesped.ninos,
       metodo_pago: huesped.metodo_pago,
       observacion: huesped.observacion || "",
+      acompanantes: huesped.acompanantes || [],
     });
     openEditModal();
   };
@@ -699,6 +746,166 @@ export default function HuespedesTable({ onCountChange }) {
                   />
                 </div>
               </div>
+            </div>
+
+            {/* Acompañantes */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 pb-2">
+                <h4 className="text-lg font-semibold text-gray-900 dark:text-white">
+                  Acompañantes
+                </h4>
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={() => {
+                    setCreateForm({
+                      ...createForm,
+                      acompanantes: [
+                        ...createForm.acompanantes,
+                        {
+                          tipo_documento: "DNI",
+                          numero_documento: "",
+                          nombres_apellidos: "",
+                          fecha_nacimiento: "",
+                          nacionalidad: "Peruana",
+                          procedencia: "",
+                        },
+                      ],
+                    });
+                  }}
+                  className="bg-green-600 hover:bg-green-700 text-white flex items-center gap-1"
+                >
+                  <PlusIcon className="w-4 h-4 fill-current" />
+                  Agregar Persona
+                </Button>
+              </div>
+
+              {createForm.acompanantes.length === 0 ? (
+                <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4 border border-dashed border-gray-300 dark:border-gray-600 rounded-lg">
+                  No hay acompañantes registrados. Haga clic en "Agregar Persona" para añadir.
+                </p>
+              ) : (
+                <div className="space-y-4">
+                  {createForm.acompanantes.map((acompanante, index) => (
+                    <div
+                      key={index}
+                      className="relative p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-900"
+                    >
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const newAcompanantes = createForm.acompanantes.filter((_, i) => i !== index);
+                          setCreateForm({ ...createForm, acompanantes: newAcompanantes });
+                        }}
+                        className="absolute top-2 right-2 p-1 text-red-500 hover:text-red-700 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-full transition-colors"
+                        title="Eliminar acompañante"
+                      >
+                        <CloseIcon className="w-5 h-5" />
+                      </button>
+
+                      <p className="text-sm font-medium text-orange-600 dark:text-orange-400 mb-3">
+                        Acompañante #{index + 1}
+                      </p>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <Label>Tipo de Documento</Label>
+                          <select
+                            value={acompanante.tipo_documento}
+                            onChange={(e) => {
+                              const newAcompanantes = [...createForm.acompanantes];
+                              newAcompanantes[index].tipo_documento = e.target.value;
+                              setCreateForm({ ...createForm, acompanantes: newAcompanantes });
+                            }}
+                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 dark:bg-gray-800 dark:text-white"
+                          >
+                            <option value="DNI">DNI</option>
+                            <option value="CE">CE</option>
+                            <option value="PASAPORTE">Pasaporte</option>
+                          </select>
+                        </div>
+                        <div>
+                          <Label>Número de Documento</Label>
+                          <Input
+                            value={acompanante.numero_documento}
+                            onChange={(e) => {
+                              const newAcompanantes = [...createForm.acompanantes];
+                              newAcompanantes[index].numero_documento = e.target.value;
+                              setCreateForm({ ...createForm, acompanantes: newAcompanantes });
+                            }}
+                            onBlur={() => handleLookupAcompananteCreate(index)}
+                            placeholder="Ingrese y presione Tab para autocompletar"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="mt-3">
+                        <Label>Nombres y Apellidos Completos</Label>
+                        <Input
+                          value={acompanante.nombres_apellidos}
+                          onChange={(e) => {
+                            const newAcompanantes = [...createForm.acompanantes];
+                            newAcompanantes[index].nombres_apellidos = e.target.value;
+                            setCreateForm({ ...createForm, acompanantes: newAcompanantes });
+                          }}
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-3">
+                        <div>
+                          <Label>Fecha de Nacimiento</Label>
+                          <DatePicker
+                            selected={acompanante.fecha_nacimiento ? new Date(acompanante.fecha_nacimiento + 'T00:00:00') : null}
+                            onChange={(date) => {
+                              const newAcompanantes = [...createForm.acompanantes];
+                              if (date) {
+                                const formatted = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+                                newAcompanantes[index].fecha_nacimiento = formatted;
+                              } else {
+                                newAcompanantes[index].fecha_nacimiento = '';
+                              }
+                              setCreateForm({ ...createForm, acompanantes: newAcompanantes });
+                            }}
+                            locale="es"
+                            showYearDropdown
+                            showMonthDropdown
+                            dropdownMode="select"
+                            yearDropdownItemNumber={100}
+                            scrollableYearDropdown
+                            maxDate={new Date()}
+                            dateFormat="dd/MM/yyyy"
+                            placeholderText="Seleccionar fecha"
+                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 dark:bg-gray-800 dark:text-white"
+                            calendarClassName="dark:bg-gray-800"
+                          />
+                        </div>
+                        <div>
+                          <Label>Nacionalidad</Label>
+                          <Input
+                            value={acompanante.nacionalidad}
+                            onChange={(e) => {
+                              const newAcompanantes = [...createForm.acompanantes];
+                              newAcompanantes[index].nacionalidad = e.target.value;
+                              setCreateForm({ ...createForm, acompanantes: newAcompanantes });
+                            }}
+                          />
+                        </div>
+                        <div>
+                          <Label>Procedencia</Label>
+                          <Input
+                            value={acompanante.procedencia}
+                            onChange={(e) => {
+                              const newAcompanantes = [...createForm.acompanantes];
+                              newAcompanantes[index].procedencia = e.target.value;
+                              setCreateForm({ ...createForm, acompanantes: newAcompanantes });
+                            }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Información de Hospedaje */}
@@ -1180,6 +1387,166 @@ export default function HuespedesTable({ onCountChange }) {
                   </div>
                 </div>
 
+                {/* Acompañantes (Edición) */}
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 pb-2">
+                    <h4 className="text-lg font-semibold text-gray-900 dark:text-white">
+                      Acompañantes
+                    </h4>
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={() => {
+                        setEditForm({
+                          ...editForm,
+                          acompanantes: [
+                            ...(editForm.acompanantes || []),
+                            {
+                              tipo_documento: "DNI",
+                              numero_documento: "",
+                              nombres_apellidos: "",
+                              fecha_nacimiento: "",
+                              nacionalidad: "Peruana",
+                              procedencia: "",
+                            },
+                          ],
+                        });
+                      }}
+                      className="bg-green-600 hover:bg-green-700 text-white flex items-center gap-1"
+                    >
+                      <PlusIcon className="w-4 h-4 fill-current" />
+                      Agregar Persona
+                    </Button>
+                  </div>
+
+                  {(!editForm.acompanantes || editForm.acompanantes.length === 0) ? (
+                    <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4 border border-dashed border-gray-300 dark:border-gray-600 rounded-lg">
+                      No hay acompañantes registrados. Haga clic en "Agregar Persona" para añadir.
+                    </p>
+                  ) : (
+                    <div className="space-y-4">
+                      {editForm.acompanantes.map((acompanante, index) => (
+                        <div
+                          key={index}
+                          className="relative p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-900"
+                        >
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const newAcompanantes = editForm.acompanantes.filter((_, i) => i !== index);
+                              setEditForm({ ...editForm, acompanantes: newAcompanantes });
+                            }}
+                            className="absolute top-2 right-2 p-1 text-red-500 hover:text-red-700 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-full transition-colors"
+                            title="Eliminar acompañante"
+                          >
+                            <CloseIcon className="w-5 h-5" />
+                          </button>
+
+                          <p className="text-sm font-medium text-orange-600 dark:text-orange-400 mb-3">
+                            Acompañante #{index + 1}
+                          </p>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <Label>Tipo de Documento</Label>
+                              <select
+                                value={acompanante.tipo_documento}
+                                onChange={(e) => {
+                                  const newAcompanantes = [...editForm.acompanantes];
+                                  newAcompanantes[index].tipo_documento = e.target.value;
+                                  setEditForm({ ...editForm, acompanantes: newAcompanantes });
+                                }}
+                                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 dark:bg-gray-800 dark:text-white"
+                              >
+                                <option value="DNI">DNI</option>
+                                <option value="CE">CE</option>
+                                <option value="PASAPORTE">Pasaporte</option>
+                              </select>
+                            </div>
+                            <div>
+                              <Label>Número de Documento</Label>
+                              <Input
+                                value={acompanante.numero_documento}
+                                onChange={(e) => {
+                                  const newAcompanantes = [...editForm.acompanantes];
+                                  newAcompanantes[index].numero_documento = e.target.value;
+                                  setEditForm({ ...editForm, acompanantes: newAcompanantes });
+                                }}
+                                onBlur={() => handleLookupAcompananteEdit(index)}
+                                placeholder="Ingrese y presione Tab para autocompletar"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="mt-3">
+                            <Label>Nombres y Apellidos Completos</Label>
+                            <Input
+                              value={acompanante.nombres_apellidos}
+                              onChange={(e) => {
+                                const newAcompanantes = [...editForm.acompanantes];
+                                newAcompanantes[index].nombres_apellidos = e.target.value;
+                                setEditForm({ ...editForm, acompanantes: newAcompanantes });
+                              }}
+                            />
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-3">
+                            <div>
+                              <Label>Fecha de Nacimiento</Label>
+                              <DatePicker
+                                selected={acompanante.fecha_nacimiento ? new Date(acompanante.fecha_nacimiento + 'T00:00:00') : null}
+                                onChange={(date) => {
+                                  const newAcompanantes = [...editForm.acompanantes];
+                                  if (date) {
+                                    const formatted = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+                                    newAcompanantes[index].fecha_nacimiento = formatted;
+                                  } else {
+                                    newAcompanantes[index].fecha_nacimiento = '';
+                                  }
+                                  setEditForm({ ...editForm, acompanantes: newAcompanantes });
+                                }}
+                                locale="es"
+                                showYearDropdown
+                                showMonthDropdown
+                                dropdownMode="select"
+                                yearDropdownItemNumber={100}
+                                scrollableYearDropdown
+                                maxDate={new Date()}
+                                dateFormat="dd/MM/yyyy"
+                                placeholderText="Seleccionar fecha"
+                                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 dark:bg-gray-800 dark:text-white"
+                                calendarClassName="dark:bg-gray-800"
+                              />
+                            </div>
+                            <div>
+                              <Label>Nacionalidad</Label>
+                              <Input
+                                value={acompanante.nacionalidad}
+                                onChange={(e) => {
+                                  const newAcompanantes = [...editForm.acompanantes];
+                                  newAcompanantes[index].nacionalidad = e.target.value;
+                                  setEditForm({ ...editForm, acompanantes: newAcompanantes });
+                                }}
+                              />
+                            </div>
+                            <div>
+                              <Label>Procedencia</Label>
+                              <Input
+                                value={acompanante.procedencia}
+                                onChange={(e) => {
+                                  const newAcompanantes = [...editForm.acompanantes];
+                                  newAcompanantes[index].procedencia = e.target.value;
+                                  setEditForm({ ...editForm, acompanantes: newAcompanantes });
+                                }}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
                 {/* Información de Hospedaje */}
                 <div className="space-y-4">
                   <h4 className="text-lg font-semibold text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-700 pb-2">
@@ -1565,6 +1932,59 @@ export default function HuespedesTable({ onCountChange }) {
                   </div>
                 </div>
               </div>
+
+              {/* Acompañantes (Vista) */}
+              {viewingHuesped.acompanantes && viewingHuesped.acompanantes.length > 0 && (
+                <div className="space-y-3">
+                  <h4 className="text-lg font-semibold text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-700 pb-2">
+                    Acompañantes ({viewingHuesped.acompanantes.length})
+                  </h4>
+                  <div className="space-y-3">
+                    {viewingHuesped.acompanantes.map((acompanante, index) => (
+                      <div
+                        key={index}
+                        className="p-3 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-900"
+                      >
+                        <p className="text-sm font-medium text-orange-600 dark:text-orange-400 mb-2">
+                          Acompañante #{index + 1}
+                        </p>
+                        <div className="grid grid-cols-2 gap-2 text-sm">
+                          <div>
+                            <span className="text-gray-500 dark:text-gray-400">Documento:</span>
+                            <span className="ml-1 font-medium text-gray-900 dark:text-white">
+                              {acompanante.tipo_documento}: {acompanante.numero_documento || 'N/A'}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-gray-500 dark:text-gray-400">Nacionalidad:</span>
+                            <span className="ml-1 font-medium text-gray-900 dark:text-white">
+                              {acompanante.nacionalidad || 'N/A'}
+                            </span>
+                          </div>
+                          <div className="col-span-2">
+                            <span className="text-gray-500 dark:text-gray-400">Nombre:</span>
+                            <span className="ml-1 font-medium text-gray-900 dark:text-white">
+                              {acompanante.nombres_apellidos || 'N/A'}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-gray-500 dark:text-gray-400">Nacimiento:</span>
+                            <span className="ml-1 font-medium text-gray-900 dark:text-white">
+                              {formatDateLocal(acompanante.fecha_nacimiento) || 'N/A'}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-gray-500 dark:text-gray-400">Procedencia:</span>
+                            <span className="ml-1 font-medium text-gray-900 dark:text-white">
+                              {acompanante.procedencia || 'N/A'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               <div className="space-y-3">
                 <h4 className="text-lg font-semibold text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-700 pb-2">

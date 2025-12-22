@@ -5,7 +5,7 @@ import { auth } from "../firebase/config";
 // Para desarrollo local: http://localhost:8000
 // Para producción: https://tu-app.seenode.app (reemplaza con tu URL real)
 // También puedes crear un archivo .env con: VITE_API_URL=https://tu-app.seenode.app
-const BASE_URL = import.meta?.env?.VITE_API_URL || "https://plazabolognesi.com";
+const BASE_URL = import.meta?.env?.VITE_API_URL || "https://plazabolognesi.api.com.plazabolognesi.com";
 
 const api = axios.create({ baseURL: BASE_URL });
 
