@@ -2131,7 +2131,7 @@ export default function HuespedesTable({ onCountChange }) {
       </Modal >
 
       {/* Tabla */}
-      < div className="overflow-auto rounded-xl border border-gray-200 bg-white dark:border-white/5 dark:bg-white/3" >
+      <div className="w-full max-w-full overflow-x-auto rounded-xl border border-gray-200 bg-white dark:border-white/5 dark:bg-white/3">
         <Table>
           <TableHeader className="border-b border-gray-100 dark:border-white/5">
             <TableRow>
