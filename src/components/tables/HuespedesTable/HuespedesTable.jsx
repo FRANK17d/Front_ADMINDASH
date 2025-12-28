@@ -540,7 +540,7 @@ export default function HuespedesTable({ onCountChange }) {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 min-w-0 overflow-hidden">
       {/* Barra de búsqueda y botón crear */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div className="w-full sm:w-80">
@@ -746,166 +746,6 @@ export default function HuespedesTable({ onCountChange }) {
                   />
                 </div>
               </div>
-            </div>
-
-            {/* Acompañantes */}
-            <div className="space-y-4">
-              <div className="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 pb-2">
-                <h4 className="text-lg font-semibold text-gray-900 dark:text-white">
-                  Acompañantes
-                </h4>
-                <Button
-                  type="button"
-                  size="sm"
-                  onClick={() => {
-                    setCreateForm({
-                      ...createForm,
-                      acompanantes: [
-                        ...createForm.acompanantes,
-                        {
-                          tipo_documento: "DNI",
-                          numero_documento: "",
-                          nombres_apellidos: "",
-                          fecha_nacimiento: "",
-                          nacionalidad: "Peruana",
-                          procedencia: "",
-                        },
-                      ],
-                    });
-                  }}
-                  className="bg-green-600 hover:bg-green-700 text-white flex items-center gap-1"
-                >
-                  <PlusIcon className="w-4 h-4 fill-current" />
-                  Agregar Persona
-                </Button>
-              </div>
-
-              {createForm.acompanantes.length === 0 ? (
-                <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4 border border-dashed border-gray-300 dark:border-gray-600 rounded-lg">
-                  No hay acompañantes registrados. Haga clic en "Agregar Persona" para añadir.
-                </p>
-              ) : (
-                <div className="space-y-4">
-                  {createForm.acompanantes.map((acompanante, index) => (
-                    <div
-                      key={index}
-                      className="relative p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-900"
-                    >
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const newAcompanantes = createForm.acompanantes.filter((_, i) => i !== index);
-                          setCreateForm({ ...createForm, acompanantes: newAcompanantes });
-                        }}
-                        className="absolute top-2 right-2 p-1 text-red-500 hover:text-red-700 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-full transition-colors"
-                        title="Eliminar acompañante"
-                      >
-                        <CloseIcon className="w-5 h-5" />
-                      </button>
-
-                      <p className="text-sm font-medium text-orange-600 dark:text-orange-400 mb-3">
-                        Acompañante #{index + 1}
-                      </p>
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <Label>Tipo de Documento</Label>
-                          <select
-                            value={acompanante.tipo_documento}
-                            onChange={(e) => {
-                              const newAcompanantes = [...createForm.acompanantes];
-                              newAcompanantes[index].tipo_documento = e.target.value;
-                              setCreateForm({ ...createForm, acompanantes: newAcompanantes });
-                            }}
-                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 dark:bg-gray-800 dark:text-white"
-                          >
-                            <option value="DNI">DNI</option>
-                            <option value="CE">CE</option>
-                            <option value="PASAPORTE">Pasaporte</option>
-                          </select>
-                        </div>
-                        <div>
-                          <Label>Número de Documento</Label>
-                          <Input
-                            value={acompanante.numero_documento}
-                            onChange={(e) => {
-                              const newAcompanantes = [...createForm.acompanantes];
-                              newAcompanantes[index].numero_documento = e.target.value;
-                              setCreateForm({ ...createForm, acompanantes: newAcompanantes });
-                            }}
-                            onBlur={() => handleLookupAcompananteCreate(index)}
-                            placeholder="Ingrese y presione Tab para autocompletar"
-                          />
-                        </div>
-                      </div>
-
-                      <div className="mt-3">
-                        <Label>Nombres y Apellidos Completos</Label>
-                        <Input
-                          value={acompanante.nombres_apellidos}
-                          onChange={(e) => {
-                            const newAcompanantes = [...createForm.acompanantes];
-                            newAcompanantes[index].nombres_apellidos = e.target.value;
-                            setCreateForm({ ...createForm, acompanantes: newAcompanantes });
-                          }}
-                        />
-                      </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-3">
-                        <div>
-                          <Label>Fecha de Nacimiento</Label>
-                          <DatePicker
-                            selected={acompanante.fecha_nacimiento ? new Date(acompanante.fecha_nacimiento + 'T00:00:00') : null}
-                            onChange={(date) => {
-                              const newAcompanantes = [...createForm.acompanantes];
-                              if (date) {
-                                const formatted = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-                                newAcompanantes[index].fecha_nacimiento = formatted;
-                              } else {
-                                newAcompanantes[index].fecha_nacimiento = '';
-                              }
-                              setCreateForm({ ...createForm, acompanantes: newAcompanantes });
-                            }}
-                            locale="es"
-                            showYearDropdown
-                            showMonthDropdown
-                            dropdownMode="select"
-                            yearDropdownItemNumber={100}
-                            scrollableYearDropdown
-                            maxDate={new Date()}
-                            dateFormat="dd/MM/yyyy"
-                            placeholderText="Seleccionar fecha"
-                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 dark:bg-gray-800 dark:text-white"
-                            calendarClassName="dark:bg-gray-800"
-                          />
-                        </div>
-                        <div>
-                          <Label>Nacionalidad</Label>
-                          <Input
-                            value={acompanante.nacionalidad}
-                            onChange={(e) => {
-                              const newAcompanantes = [...createForm.acompanantes];
-                              newAcompanantes[index].nacionalidad = e.target.value;
-                              setCreateForm({ ...createForm, acompanantes: newAcompanantes });
-                            }}
-                          />
-                        </div>
-                        <div>
-                          <Label>Procedencia</Label>
-                          <Input
-                            value={acompanante.procedencia}
-                            onChange={(e) => {
-                              const newAcompanantes = [...createForm.acompanantes];
-                              newAcompanantes[index].procedencia = e.target.value;
-                              setCreateForm({ ...createForm, acompanantes: newAcompanantes });
-                            }}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
             </div>
 
             {/* Información de Hospedaje */}
@@ -1177,6 +1017,166 @@ export default function HuespedesTable({ onCountChange }) {
                 />
               </div>
             </div>
+
+            {/* Acompañantes */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 pb-2">
+                <h4 className="text-lg font-semibold text-gray-900 dark:text-white">
+                  Acompañantes
+                </h4>
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={() => {
+                    setCreateForm({
+                      ...createForm,
+                      acompanantes: [
+                        ...createForm.acompanantes,
+                        {
+                          tipo_documento: "DNI",
+                          numero_documento: "",
+                          nombres_apellidos: "",
+                          fecha_nacimiento: "",
+                          nacionalidad: "Peruana",
+                          procedencia: "",
+                        },
+                      ],
+                    });
+                  }}
+                  className="bg-green-600 hover:bg-green-700 text-white flex items-center gap-1"
+                >
+                  <PlusIcon className="w-4 h-4 fill-current" />
+                  Agregar Persona
+                </Button>
+              </div>
+
+              {createForm.acompanantes.length === 0 ? (
+                <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4 border border-dashed border-gray-300 dark:border-gray-600 rounded-lg">
+                  No hay acompañantes registrados. Haga clic en "Agregar Persona" para añadir.
+                </p>
+              ) : (
+                <div className="space-y-4">
+                  {createForm.acompanantes.map((acompanante, index) => (
+                    <div
+                      key={index}
+                      className="relative p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-900"
+                    >
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const newAcompanantes = createForm.acompanantes.filter((_, i) => i !== index);
+                          setCreateForm({ ...createForm, acompanantes: newAcompanantes });
+                        }}
+                        className="absolute top-2 right-2 p-1 text-red-500 hover:text-red-700 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-full transition-colors"
+                        title="Eliminar acompañante"
+                      >
+                        <CloseIcon className="w-5 h-5" />
+                      </button>
+
+                      <p className="text-sm font-medium text-orange-600 dark:text-orange-400 mb-3">
+                        Acompañante #{index + 1}
+                      </p>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <Label>Tipo de Documento</Label>
+                          <select
+                            value={acompanante.tipo_documento}
+                            onChange={(e) => {
+                              const newAcompanantes = [...createForm.acompanantes];
+                              newAcompanantes[index].tipo_documento = e.target.value;
+                              setCreateForm({ ...createForm, acompanantes: newAcompanantes });
+                            }}
+                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 dark:bg-gray-800 dark:text-white"
+                          >
+                            <option value="DNI">DNI</option>
+                            <option value="CE">CE</option>
+                            <option value="PASAPORTE">Pasaporte</option>
+                          </select>
+                        </div>
+                        <div>
+                          <Label>Número de Documento</Label>
+                          <Input
+                            value={acompanante.numero_documento}
+                            onChange={(e) => {
+                              const newAcompanantes = [...createForm.acompanantes];
+                              newAcompanantes[index].numero_documento = e.target.value;
+                              setCreateForm({ ...createForm, acompanantes: newAcompanantes });
+                            }}
+                            onBlur={() => handleLookupAcompananteCreate(index)}
+                            placeholder="Ingrese y presione Tab para autocompletar"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="mt-3">
+                        <Label>Nombres y Apellidos Completos</Label>
+                        <Input
+                          value={acompanante.nombres_apellidos}
+                          onChange={(e) => {
+                            const newAcompanantes = [...createForm.acompanantes];
+                            newAcompanantes[index].nombres_apellidos = e.target.value;
+                            setCreateForm({ ...createForm, acompanantes: newAcompanantes });
+                          }}
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-3">
+                        <div>
+                          <Label>Fecha de Nacimiento</Label>
+                          <DatePicker
+                            selected={acompanante.fecha_nacimiento ? new Date(acompanante.fecha_nacimiento + 'T00:00:00') : null}
+                            onChange={(date) => {
+                              const newAcompanantes = [...createForm.acompanantes];
+                              if (date) {
+                                const formatted = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+                                newAcompanantes[index].fecha_nacimiento = formatted;
+                              } else {
+                                newAcompanantes[index].fecha_nacimiento = '';
+                              }
+                              setCreateForm({ ...createForm, acompanantes: newAcompanantes });
+                            }}
+                            locale="es"
+                            showYearDropdown
+                            showMonthDropdown
+                            dropdownMode="select"
+                            yearDropdownItemNumber={100}
+                            scrollableYearDropdown
+                            maxDate={new Date()}
+                            dateFormat="dd/MM/yyyy"
+                            placeholderText="Seleccionar fecha"
+                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 dark:bg-gray-800 dark:text-white"
+                            calendarClassName="dark:bg-gray-800"
+                          />
+                        </div>
+                        <div>
+                          <Label>Nacionalidad</Label>
+                          <Input
+                            value={acompanante.nacionalidad}
+                            onChange={(e) => {
+                              const newAcompanantes = [...createForm.acompanantes];
+                              newAcompanantes[index].nacionalidad = e.target.value;
+                              setCreateForm({ ...createForm, acompanantes: newAcompanantes });
+                            }}
+                          />
+                        </div>
+                        <div>
+                          <Label>Procedencia</Label>
+                          <Input
+                            value={acompanante.procedencia}
+                            onChange={(e) => {
+                              const newAcompanantes = [...createForm.acompanantes];
+                              newAcompanantes[index].procedencia = e.target.value;
+                              setCreateForm({ ...createForm, acompanantes: newAcompanantes });
+                            }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="flex items-center gap-3 justify-end mt-6">
@@ -1386,464 +1386,461 @@ export default function HuespedesTable({ onCountChange }) {
                     </div>
                   </div>
                 </div>
+              </div>
 
-                {/* Acompañantes (Edición) */}
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 pb-2">
-                    <h4 className="text-lg font-semibold text-gray-900 dark:text-white">
-                      Acompañantes
-                    </h4>
-                    <Button
-                      type="button"
-                      size="sm"
-                      onClick={() => {
-                        setEditForm({
-                          ...editForm,
-                          acompanantes: [
-                            ...(editForm.acompanantes || []),
-                            {
-                              tipo_documento: "DNI",
-                              numero_documento: "",
-                              nombres_apellidos: "",
-                              fecha_nacimiento: "",
-                              nacionalidad: "Peruana",
-                              procedencia: "",
-                            },
-                          ],
-                        });
+              {/* Información de Hospedaje */}
+              <div className="space-y-4">
+                <h4 className="text-lg font-semibold text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-700 pb-2">
+                  Información de Hospedaje
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="edit_check_in">Check-in</Label>
+                    <DatePicker
+                      id="edit_check_in"
+                      selected={editForm.check_in ? new Date(editForm.check_in + 'T00:00:00') : null}
+                      onChange={(date) => {
+                        if (date) {
+                          const formatted = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+                          if (editForm.check_in && editForm.check_out && editForm.check_in === editForm.check_out) {
+                            setEditForm({ ...editForm, check_in: formatted, check_out: formatted });
+                          } else {
+                            setEditForm({ ...editForm, check_in: formatted });
+                          }
+                        } else {
+                          setEditForm({ ...editForm, check_in: '' });
+                        }
                       }}
-                      className="bg-green-600 hover:bg-green-700 text-white flex items-center gap-1"
-                    >
-                      <PlusIcon className="w-4 h-4 fill-current" />
-                      Agregar Persona
-                    </Button>
-                  </div>
-
-                  {(!editForm.acompanantes || editForm.acompanantes.length === 0) ? (
-                    <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4 border border-dashed border-gray-300 dark:border-gray-600 rounded-lg">
-                      No hay acompañantes registrados. Haga clic en "Agregar Persona" para añadir.
-                    </p>
-                  ) : (
-                    <div className="space-y-4">
-                      {editForm.acompanantes.map((acompanante, index) => (
-                        <div
-                          key={index}
-                          className="relative p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-900"
+                      locale="es"
+                      showMonthDropdown
+                      showYearDropdown
+                      dropdownMode="select"
+                      dateFormat="dd/MM/yyyy"
+                      placeholderText="Seleccionar fecha"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 dark:bg-gray-800 dark:text-white"
+                      calendarClassName="dark:bg-gray-800"
+                    />
+                    <div className="mt-2">
+                      <Label>Hora de Entrada</Label>
+                      <div className="flex gap-2 items-center">
+                        <select
+                          value={parseTime12h(editForm.hora_entrada || '').hour}
+                          onChange={(e) => {
+                            const parsed = parseTime12h(editForm.hora_entrada || '');
+                            setEditForm({ ...editForm, hora_entrada: buildTime24h(e.target.value, parsed.minute, parsed.ampm) });
+                          }}
+                          className="w-20 px-2 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 dark:bg-gray-800 dark:text-white"
                         >
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const newAcompanantes = editForm.acompanantes.filter((_, i) => i !== index);
-                              setEditForm({ ...editForm, acompanantes: newAcompanantes });
-                            }}
-                            className="absolute top-2 right-2 p-1 text-red-500 hover:text-red-700 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-full transition-colors"
-                            title="Eliminar acompañante"
-                          >
-                            <CloseIcon className="w-5 h-5" />
-                          </button>
+                          {['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'].map(h => (
+                            <option key={h} value={h}>{h}</option>
+                          ))}
+                        </select>
+                        <span className="text-gray-500 dark:text-gray-400 font-bold">:</span>
+                        <input
+                          type="text"
+                          maxLength="2"
+                          defaultValue={parseTime12h(editForm.hora_entrada || '').minute}
+                          key={`edit-min-entrada-${editForm.hora_entrada}`}
+                          onBlur={(e) => {
+                            let val = e.target.value.replace(/\D/g, '').slice(0, 2);
+                            if (!val) val = '00';
+                            if (parseInt(val) > 59) val = '59';
+                            val = val.padStart(2, '0');
+                            e.target.value = val;
+                            const parsed = parseTime12h(editForm.hora_entrada || '');
+                            setEditForm({ ...editForm, hora_entrada: buildTime24h(parsed.hour, val, parsed.ampm) });
+                          }}
+                          className="w-14 px-2 py-2 text-center border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 dark:bg-gray-800 dark:text-white"
+                          placeholder="00"
+                        />
+                        <select
+                          value={parseTime12h(editForm.hora_entrada || '').ampm}
+                          onChange={(e) => {
+                            const parsed = parseTime12h(editForm.hora_entrada || '');
+                            setEditForm({ ...editForm, hora_entrada: buildTime24h(parsed.hour, parsed.minute, e.target.value) });
+                          }}
+                          className="w-20 px-2 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 dark:bg-gray-800 dark:text-white font-medium"
+                        >
+                          <option value="AM">AM</option>
+                          <option value="PM">PM</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <Label htmlFor="edit_check_out">Check-out</Label>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={editForm.check_in && editForm.check_in === editForm.check_out}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              const now = new Date();
+                              const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+                              setEditForm({ ...editForm, check_in: today, check_out: today });
+                            } else {
+                              setEditForm({ ...editForm, check_out: '' });
+                            }
+                          }}
+                          className="w-4 h-4 rounded border-gray-300 text-orange-500 focus:ring-orange-500"
+                        />
+                        <span className="text-xs font-medium text-orange-600 dark:text-orange-400">DAY USE</span>
+                      </label>
+                    </div>
+                    <DatePicker
+                      id="edit_check_out"
+                      selected={editForm.check_out ? new Date(editForm.check_out + 'T00:00:00') : null}
+                      onChange={(date) => {
+                        if (date) {
+                          const formatted = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+                          setEditForm({ ...editForm, check_out: formatted });
+                        } else {
+                          setEditForm({ ...editForm, check_out: '' });
+                        }
+                      }}
+                      locale="es"
+                      showMonthDropdown
+                      showYearDropdown
+                      dropdownMode="select"
+                      minDate={editForm.check_in ? new Date(editForm.check_in + 'T00:00:00') : null}
+                      dateFormat="dd/MM/yyyy"
+                      placeholderText="Seleccionar fecha"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 dark:bg-gray-800 dark:text-white"
+                      calendarClassName="dark:bg-gray-800"
+                    />
+                    {editForm.check_in && editForm.check_in === editForm.check_out && (
+                      <p className="mt-1 text-xs text-orange-600 dark:text-orange-400 flex items-center gap-1">
+                        <span className="inline-block w-2 h-2 bg-orange-500 rounded-full"></span>
+                        Huésped llega y se va el mismo día
+                      </p>
+                    )}
+                    <div className="mt-2">
+                      <Label>Hora de Salida</Label>
+                      <div className="flex gap-2 items-center">
+                        <select
+                          value={parseTime12h(editForm.hora_salida || '').hour}
+                          onChange={(e) => {
+                            const parsed = parseTime12h(editForm.hora_salida || '');
+                            setEditForm({ ...editForm, hora_salida: buildTime24h(e.target.value, parsed.minute, parsed.ampm) });
+                          }}
+                          className="w-20 px-2 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 dark:bg-gray-800 dark:text-white"
+                        >
+                          {['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'].map(h => (
+                            <option key={h} value={h}>{h}</option>
+                          ))}
+                        </select>
+                        <span className="text-gray-500 dark:text-gray-400 font-bold">:</span>
+                        <input
+                          type="text"
+                          maxLength="2"
+                          defaultValue={parseTime12h(editForm.hora_salida || '').minute}
+                          key={`edit-min-salida-${editForm.hora_salida}`}
+                          onBlur={(e) => {
+                            let val = e.target.value.replace(/\D/g, '').slice(0, 2);
+                            if (!val) val = '00';
+                            if (parseInt(val) > 59) val = '59';
+                            val = val.padStart(2, '0');
+                            e.target.value = val;
+                            const parsed = parseTime12h(editForm.hora_salida || '');
+                            setEditForm({ ...editForm, hora_salida: buildTime24h(parsed.hour, val, parsed.ampm) });
+                          }}
+                          className="w-14 px-2 py-2 text-center border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 dark:bg-gray-800 dark:text-white"
+                          placeholder="00"
+                        />
+                        <select
+                          value={parseTime12h(editForm.hora_salida || '').ampm}
+                          onChange={(e) => {
+                            const parsed = parseTime12h(editForm.hora_salida || '');
+                            setEditForm({ ...editForm, hora_salida: buildTime24h(parsed.hour, parsed.minute, e.target.value) });
+                          }}
+                          className="w-20 px-2 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 dark:bg-gray-800 dark:text-white font-medium"
+                        >
+                          <option value="AM">AM</option>
+                          <option value="PM">PM</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="edit_tipo_habitacion">Tipo de Habitación</Label>
+                    <select
+                      id="edit_tipo_habitacion"
+                      value={editForm.tipo_habitacion}
+                      onChange={(e) => setEditForm({ ...editForm, tipo_habitacion: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 dark:bg-gray-800 dark:text-white"
+                    >
+                      <option value="SIMPLE">Simple</option>
+                      <option value="DOBLE">Doble</option>
+                      <option value="MATRIMONIAL">Matrimonial</option>
+                      <option value="TRIPLE">Triple</option>
+                    </select>
+                  </div>
+                  <div>
+                    <Label htmlFor="edit_numero_habitacion">Número de Habitación</Label>
+                    <select
+                      id="edit_numero_habitacion"
+                      value={editForm.numero_habitacion}
+                      onChange={(e) => setEditForm({ ...editForm, numero_habitacion: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 dark:bg-gray-800 dark:text-white"
+                    >
+                      {['111', '112', '113', '210', '211', '212', '213', '214', '215', '310', '311', '312', '313', '314', '315'].map(num => (
+                        <option key={num} value={num}>{num}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <Label htmlFor="edit_tarifa_noche">
+                      {editForm.check_in && editForm.check_in === editForm.check_out
+                        ? 'Tarifa DAY USE (S/.)'
+                        : 'Tarifa por Noche (S/.)'}
+                    </Label>
+                    <Input
+                      id="edit_tarifa_noche"
+                      type="number"
+                      step="0.01"
+                      value={editForm.tarifa_noche}
+                      onChange={(e) => setEditForm({ ...editForm, tarifa_noche: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="edit_adultos">Adultos</Label>
+                    <Input
+                      id="edit_adultos"
+                      type="number"
+                      min="1"
+                      value={editForm.adultos}
+                      onChange={(e) => setEditForm({ ...editForm, adultos: parseInt(e.target.value) || 1 })}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="edit_ninos">Niños</Label>
+                    <Input
+                      id="edit_ninos"
+                      type="number"
+                      min="0"
+                      value={editForm.ninos}
+                      onChange={(e) => setEditForm({ ...editForm, ninos: parseInt(e.target.value) || 0 })}
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="edit_metodo_pago">Método de Pago</Label>
+                    <select
+                      id="edit_metodo_pago"
+                      value={editForm.metodo_pago}
+                      onChange={(e) => setEditForm({ ...editForm, metodo_pago: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 dark:bg-gray-800 dark:text-white"
+                    >
+                      <option value="EFECTIVO">Efectivo</option>
+                      <option value="YAPE">Yape</option>
+                      <option value="TARJETA">Tarjeta Débito/Crédito</option>
+                    </select>
+                  </div>
+                </div>
+                <div>
+                  <Label htmlFor="edit_observacion">Observación</Label>
+                  <textarea
+                    id="edit_observacion"
+                    value={editForm.observacion}
+                    onChange={(e) => setEditForm({ ...editForm, observacion: e.target.value })}
+                    rows="3"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 dark:bg-gray-800 dark:text-white"
+                  />
+                </div>
+              </div>
 
-                          <p className="text-sm font-medium text-orange-600 dark:text-orange-400 mb-3">
-                            Acompañante #{index + 1}
-                          </p>
+              {/* Acompañantes (Edición) */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 pb-2">
+                  <h4 className="text-lg font-semibold text-gray-900 dark:text-white">
+                    Acompañantes
+                  </h4>
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={() => {
+                      setEditForm({
+                        ...editForm,
+                        acompanantes: [
+                          ...(editForm.acompanantes || []),
+                          {
+                            tipo_documento: "DNI",
+                            numero_documento: "",
+                            nombres_apellidos: "",
+                            fecha_nacimiento: "",
+                            nacionalidad: "Peruana",
+                            procedencia: "",
+                          },
+                        ],
+                      });
+                    }}
+                    className="bg-green-600 hover:bg-green-700 text-white flex items-center gap-1"
+                  >
+                    <PlusIcon className="w-4 h-4 fill-current" />
+                    Agregar Persona
+                  </Button>
+                </div>
 
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                              <Label>Tipo de Documento</Label>
-                              <select
-                                value={acompanante.tipo_documento}
-                                onChange={(e) => {
-                                  const newAcompanantes = [...editForm.acompanantes];
-                                  newAcompanantes[index].tipo_documento = e.target.value;
-                                  setEditForm({ ...editForm, acompanantes: newAcompanantes });
-                                }}
-                                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 dark:bg-gray-800 dark:text-white"
-                              >
-                                <option value="DNI">DNI</option>
-                                <option value="CE">CE</option>
-                                <option value="PASAPORTE">Pasaporte</option>
-                              </select>
-                            </div>
-                            <div>
-                              <Label>Número de Documento</Label>
-                              <Input
-                                value={acompanante.numero_documento}
-                                onChange={(e) => {
-                                  const newAcompanantes = [...editForm.acompanantes];
-                                  newAcompanantes[index].numero_documento = e.target.value;
-                                  setEditForm({ ...editForm, acompanantes: newAcompanantes });
-                                }}
-                                onBlur={() => handleLookupAcompananteEdit(index)}
-                                placeholder="Ingrese y presione Tab para autocompletar"
-                              />
-                            </div>
-                          </div>
+                {(!editForm.acompanantes || editForm.acompanantes.length === 0) ? (
+                  <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4 border border-dashed border-gray-300 dark:border-gray-600 rounded-lg">
+                    No hay acompañantes registrados. Haga clic en "Agregar Persona" para añadir.
+                  </p>
+                ) : (
+                  <div className="space-y-4">
+                    {editForm.acompanantes.map((acompanante, index) => (
+                      <div
+                        key={index}
+                        className="relative p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-900"
+                      >
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newAcompanantes = editForm.acompanantes.filter((_, i) => i !== index);
+                            setEditForm({ ...editForm, acompanantes: newAcompanantes });
+                          }}
+                          className="absolute top-2 right-2 p-1 text-red-500 hover:text-red-700 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-full transition-colors"
+                          title="Eliminar acompañante"
+                        >
+                          <CloseIcon className="w-5 h-5" />
+                        </button>
 
-                          <div className="mt-3">
-                            <Label>Nombres y Apellidos Completos</Label>
-                            <Input
-                              value={acompanante.nombres_apellidos}
+                        <p className="text-sm font-medium text-orange-600 dark:text-orange-400 mb-3">
+                          Acompañante #{index + 1}
+                        </p>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <Label>Tipo de Documento</Label>
+                            <select
+                              value={acompanante.tipo_documento}
                               onChange={(e) => {
                                 const newAcompanantes = [...editForm.acompanantes];
-                                newAcompanantes[index].nombres_apellidos = e.target.value;
+                                newAcompanantes[index].tipo_documento = e.target.value;
+                                setEditForm({ ...editForm, acompanantes: newAcompanantes });
+                              }}
+                              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 dark:bg-gray-800 dark:text-white"
+                            >
+                              <option value="DNI">DNI</option>
+                              <option value="CE">CE</option>
+                              <option value="PASAPORTE">Pasaporte</option>
+                            </select>
+                          </div>
+                          <div>
+                            <Label>Número de Documento</Label>
+                            <Input
+                              value={acompanante.numero_documento}
+                              onChange={(e) => {
+                                const newAcompanantes = [...editForm.acompanantes];
+                                newAcompanantes[index].numero_documento = e.target.value;
+                                setEditForm({ ...editForm, acompanantes: newAcompanantes });
+                              }}
+                              onBlur={() => handleLookupAcompananteEdit(index)}
+                              placeholder="Ingrese y presione Tab para autocompletar"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="mt-3">
+                          <Label>Nombres y Apellidos Completos</Label>
+                          <Input
+                            value={acompanante.nombres_apellidos}
+                            onChange={(e) => {
+                              const newAcompanantes = [...editForm.acompanantes];
+                              newAcompanantes[index].nombres_apellidos = e.target.value;
+                              setEditForm({ ...editForm, acompanantes: newAcompanantes });
+                            }}
+                          />
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-3">
+                          <div>
+                            <Label>Fecha de Nacimiento</Label>
+                            <DatePicker
+                              selected={acompanante.fecha_nacimiento ? new Date(acompanante.fecha_nacimiento + 'T00:00:00') : null}
+                              onChange={(date) => {
+                                const newAcompanantes = [...editForm.acompanantes];
+                                if (date) {
+                                  const formatted = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+                                  newAcompanantes[index].fecha_nacimiento = formatted;
+                                } else {
+                                  newAcompanantes[index].fecha_nacimiento = '';
+                                }
+                                setEditForm({ ...editForm, acompanantes: newAcompanantes });
+                              }}
+                              locale="es"
+                              showYearDropdown
+                              showMonthDropdown
+                              dropdownMode="select"
+                              yearDropdownItemNumber={100}
+                              scrollableYearDropdown
+                              maxDate={new Date()}
+                              dateFormat="dd/MM/yyyy"
+                              placeholderText="Seleccionar fecha"
+                              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 dark:bg-gray-800 dark:text-white"
+                              calendarClassName="dark:bg-gray-800"
+                            />
+                          </div>
+                          <div>
+                            <Label>Nacionalidad</Label>
+                            <Input
+                              value={acompanante.nacionalidad}
+                              onChange={(e) => {
+                                const newAcompanantes = [...editForm.acompanantes];
+                                newAcompanantes[index].nacionalidad = e.target.value;
                                 setEditForm({ ...editForm, acompanantes: newAcompanantes });
                               }}
                             />
                           </div>
-
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-3">
-                            <div>
-                              <Label>Fecha de Nacimiento</Label>
-                              <DatePicker
-                                selected={acompanante.fecha_nacimiento ? new Date(acompanante.fecha_nacimiento + 'T00:00:00') : null}
-                                onChange={(date) => {
-                                  const newAcompanantes = [...editForm.acompanantes];
-                                  if (date) {
-                                    const formatted = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-                                    newAcompanantes[index].fecha_nacimiento = formatted;
-                                  } else {
-                                    newAcompanantes[index].fecha_nacimiento = '';
-                                  }
-                                  setEditForm({ ...editForm, acompanantes: newAcompanantes });
-                                }}
-                                locale="es"
-                                showYearDropdown
-                                showMonthDropdown
-                                dropdownMode="select"
-                                yearDropdownItemNumber={100}
-                                scrollableYearDropdown
-                                maxDate={new Date()}
-                                dateFormat="dd/MM/yyyy"
-                                placeholderText="Seleccionar fecha"
-                                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 dark:bg-gray-800 dark:text-white"
-                                calendarClassName="dark:bg-gray-800"
-                              />
-                            </div>
-                            <div>
-                              <Label>Nacionalidad</Label>
-                              <Input
-                                value={acompanante.nacionalidad}
-                                onChange={(e) => {
-                                  const newAcompanantes = [...editForm.acompanantes];
-                                  newAcompanantes[index].nacionalidad = e.target.value;
-                                  setEditForm({ ...editForm, acompanantes: newAcompanantes });
-                                }}
-                              />
-                            </div>
-                            <div>
-                              <Label>Procedencia</Label>
-                              <Input
-                                value={acompanante.procedencia}
-                                onChange={(e) => {
-                                  const newAcompanantes = [...editForm.acompanantes];
-                                  newAcompanantes[index].procedencia = e.target.value;
-                                  setEditForm({ ...editForm, acompanantes: newAcompanantes });
-                                }}
-                              />
-                            </div>
+                          <div>
+                            <Label>Procedencia</Label>
+                            <Input
+                              value={acompanante.procedencia}
+                              onChange={(e) => {
+                                const newAcompanantes = [...editForm.acompanantes];
+                                newAcompanantes[index].procedencia = e.target.value;
+                                setEditForm({ ...editForm, acompanantes: newAcompanantes });
+                              }}
+                            />
                           </div>
                         </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {/* Información de Hospedaje */}
-                <div className="space-y-4">
-                  <h4 className="text-lg font-semibold text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-700 pb-2">
-                    Información de Hospedaje
-                  </h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="edit_check_in">Check-in</Label>
-                      <DatePicker
-                        id="edit_check_in"
-                        selected={editForm.check_in ? new Date(editForm.check_in + 'T00:00:00') : null}
-                        onChange={(date) => {
-                          if (date) {
-                            const formatted = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-                            // Solo mantener sincronizado si ya es DAY USE (ambas fechas iguales)
-                            if (editForm.check_in && editForm.check_out && editForm.check_in === editForm.check_out) {
-                              setEditForm({ ...editForm, check_in: formatted, check_out: formatted });
-                            } else {
-                              setEditForm({ ...editForm, check_in: formatted });
-                            }
-                          } else {
-                            setEditForm({ ...editForm, check_in: '' });
-                          }
-                        }}
-                        locale="es"
-                        showMonthDropdown
-                        showYearDropdown
-                        dropdownMode="select"
-                        dateFormat="dd/MM/yyyy"
-                        placeholderText="Seleccionar fecha"
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 dark:bg-gray-800 dark:text-white"
-                        calendarClassName="dark:bg-gray-800"
-                      />
-                      <div className="mt-2">
-                        <Label>Hora de Entrada</Label>
-                        <div className="flex gap-2 items-center">
-                          <select
-                            value={parseTime12h(editForm.hora_entrada || '').hour}
-                            onChange={(e) => {
-                              const parsed = parseTime12h(editForm.hora_entrada || '');
-                              setEditForm({ ...editForm, hora_entrada: buildTime24h(e.target.value, parsed.minute, parsed.ampm) });
-                            }}
-                            className="w-20 px-2 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 dark:bg-gray-800 dark:text-white"
-                          >
-                            {['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'].map(h => (
-                              <option key={h} value={h}>{h}</option>
-                            ))}
-                          </select>
-                          <span className="text-gray-500 dark:text-gray-400 font-bold">:</span>
-                          <input
-                            type="text"
-                            maxLength="2"
-                            defaultValue={parseTime12h(editForm.hora_entrada || '').minute}
-                            key={`edit-min-entrada-${editForm.hora_entrada}`}
-                            onBlur={(e) => {
-                              let val = e.target.value.replace(/\D/g, '').slice(0, 2);
-                              if (!val) val = '00';
-                              if (parseInt(val) > 59) val = '59';
-                              val = val.padStart(2, '0');
-                              e.target.value = val;
-                              const parsed = parseTime12h(editForm.hora_entrada || '');
-                              setEditForm({ ...editForm, hora_entrada: buildTime24h(parsed.hour, val, parsed.ampm) });
-                            }}
-                            className="w-14 px-2 py-2 text-center border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 dark:bg-gray-800 dark:text-white"
-                            placeholder="00"
-                          />
-                          <select
-                            value={parseTime12h(editForm.hora_entrada || '').ampm}
-                            onChange={(e) => {
-                              const parsed = parseTime12h(editForm.hora_entrada || '');
-                              setEditForm({ ...editForm, hora_entrada: buildTime24h(parsed.hour, parsed.minute, e.target.value) });
-                            }}
-                            className="w-20 px-2 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 dark:bg-gray-800 dark:text-white font-medium"
-                          >
-                            <option value="AM">AM</option>
-                            <option value="PM">PM</option>
-                          </select>
-                        </div>
                       </div>
-                    </div>
-                    <div>
-                      <div className="flex items-center justify-between mb-1">
-                        <Label htmlFor="edit_check_out">Check-out</Label>
-                        <label className="flex items-center gap-2 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={editForm.check_in && editForm.check_in === editForm.check_out}
-                            onChange={(e) => {
-                              if (e.target.checked) {
-                                // Establecer fecha de hoy (zona horaria local) en ambos campos
-                                const now = new Date();
-                                const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-                                setEditForm({ ...editForm, check_in: today, check_out: today });
-                              } else {
-                                // Al deseleccionar, limpiar check_out para que el usuario elija otra fecha
-                                setEditForm({ ...editForm, check_out: '' });
-                              }
-                            }}
-                            className="w-4 h-4 rounded border-gray-300 text-orange-500 focus:ring-orange-500"
-                          />
-                          <span className="text-xs font-medium text-orange-600 dark:text-orange-400">DAY USE</span>
-                        </label>
-                      </div>
-                      <DatePicker
-                        id="edit_check_out"
-                        selected={editForm.check_out ? new Date(editForm.check_out + 'T00:00:00') : null}
-                        onChange={(date) => {
-                          if (date) {
-                            const formatted = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-                            setEditForm({ ...editForm, check_out: formatted });
-                          } else {
-                            setEditForm({ ...editForm, check_out: '' });
-                          }
-                        }}
-                        locale="es"
-                        showMonthDropdown
-                        showYearDropdown
-                        dropdownMode="select"
-                        minDate={editForm.check_in ? new Date(editForm.check_in + 'T00:00:00') : null}
-                        dateFormat="dd/MM/yyyy"
-                        placeholderText="Seleccionar fecha"
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 dark:bg-gray-800 dark:text-white"
-                        calendarClassName="dark:bg-gray-800"
-                      />
-                      {editForm.check_in && editForm.check_in === editForm.check_out && (
-                        <p className="mt-1 text-xs text-orange-600 dark:text-orange-400 flex items-center gap-1">
-                          <span className="inline-block w-2 h-2 bg-orange-500 rounded-full"></span>
-                          Huésped llega y se va el mismo día
-                        </p>
-                      )}
-                      <div className="mt-2">
-                        <Label>Hora de Salida</Label>
-                        <div className="flex gap-2 items-center">
-                          <select
-                            value={parseTime12h(editForm.hora_salida || '').hour}
-                            onChange={(e) => {
-                              const parsed = parseTime12h(editForm.hora_salida || '');
-                              setEditForm({ ...editForm, hora_salida: buildTime24h(e.target.value, parsed.minute, parsed.ampm) });
-                            }}
-                            className="w-20 px-2 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 dark:bg-gray-800 dark:text-white"
-                          >
-                            {['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'].map(h => (
-                              <option key={h} value={h}>{h}</option>
-                            ))}
-                          </select>
-                          <span className="text-gray-500 dark:text-gray-400 font-bold">:</span>
-                          <input
-                            type="text"
-                            maxLength="2"
-                            defaultValue={parseTime12h(editForm.hora_salida || '').minute}
-                            key={`edit-min-salida-${editForm.hora_salida}`}
-                            onBlur={(e) => {
-                              let val = e.target.value.replace(/\D/g, '').slice(0, 2);
-                              if (!val) val = '00';
-                              if (parseInt(val) > 59) val = '59';
-                              val = val.padStart(2, '0');
-                              e.target.value = val;
-                              const parsed = parseTime12h(editForm.hora_salida || '');
-                              setEditForm({ ...editForm, hora_salida: buildTime24h(parsed.hour, val, parsed.ampm) });
-                            }}
-                            className="w-14 px-2 py-2 text-center border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 dark:bg-gray-800 dark:text-white"
-                            placeholder="00"
-                          />
-                          <select
-                            value={parseTime12h(editForm.hora_salida || '').ampm}
-                            onChange={(e) => {
-                              const parsed = parseTime12h(editForm.hora_salida || '');
-                              setEditForm({ ...editForm, hora_salida: buildTime24h(parsed.hour, parsed.minute, e.target.value) });
-                            }}
-                            className="w-20 px-2 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 dark:bg-gray-800 dark:text-white font-medium"
-                          >
-                            <option value="AM">AM</option>
-                            <option value="PM">PM</option>
-                          </select>
-                        </div>
-                      </div>
-                    </div>
+                    ))}
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="edit_tipo_habitacion">Tipo de Habitación</Label>
-                      <select
-                        id="edit_tipo_habitacion"
-                        value={editForm.tipo_habitacion}
-                        onChange={(e) => setEditForm({ ...editForm, tipo_habitacion: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 dark:bg-gray-800 dark:text-white"
-                      >
-                        <option value="SIMPLE">Simple</option>
-                        <option value="DOBLE">Doble</option>
-                        <option value="MATRIMONIAL">Matrimonial</option>
-                        <option value="TRIPLE">Triple</option>
-                      </select>
-                    </div>
-                    <div>
-                      <Label htmlFor="edit_numero_habitacion">Número de Habitación</Label>
-                      <select
-                        id="edit_numero_habitacion"
-                        value={editForm.numero_habitacion}
-                        onChange={(e) => setEditForm({ ...editForm, numero_habitacion: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 dark:bg-gray-800 dark:text-white"
-                      >
-                        {['111', '112', '113', '210', '211', '212', '213', '214', '215', '310', '311', '312', '313', '314', '315'].map(num => (
-                          <option key={num} value={num}>{num}</option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                      <Label htmlFor="edit_tarifa_noche">
-                        {editForm.check_in && editForm.check_in === editForm.check_out
-                          ? 'Tarifa DAY USE (S/.)'
-                          : 'Tarifa por Noche (S/.)'}
-                      </Label>
-                      <Input
-                        id="edit_tarifa_noche"
-                        type="number"
-                        step="0.01"
-                        value={editForm.tarifa_noche}
-                        onChange={(e) => setEditForm({ ...editForm, tarifa_noche: e.target.value })}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="edit_adultos">Adultos</Label>
-                      <Input
-                        id="edit_adultos"
-                        type="number"
-                        min="1"
-                        value={editForm.adultos}
-                        onChange={(e) => setEditForm({ ...editForm, adultos: parseInt(e.target.value) || 1 })}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="edit_ninos">Niños</Label>
-                      <Input
-                        id="edit_ninos"
-                        type="number"
-                        min="0"
-                        value={editForm.ninos}
-                        onChange={(e) => setEditForm({ ...editForm, ninos: parseInt(e.target.value) || 0 })}
-                      />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="edit_metodo_pago">Método de Pago</Label>
-                      <select
-                        id="edit_metodo_pago"
-                        value={editForm.metodo_pago}
-                        onChange={(e) => setEditForm({ ...editForm, metodo_pago: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 dark:bg-gray-800 dark:text-white"
-                      >
-                        <option value="EFECTIVO">Efectivo</option>
-                        <option value="YAPE">Yape</option>
-                        <option value="TARJETA">Tarjeta Débito/Crédito</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div>
-                    <Label htmlFor="edit_observacion">Observación</Label>
-                    <textarea
-                      id="edit_observacion"
-                      value={editForm.observacion}
-                      onChange={(e) => setEditForm({ ...editForm, observacion: e.target.value })}
-                      rows="3"
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 dark:bg-gray-800 dark:text-white"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3 justify-end mt-6">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={closeEditModal}
-                  disabled={editingHuespedLoading}
-                  className="border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-black dark:text-white dark:hover:bg-gray-900"
-                >
-                  Cancelar
-                </Button>
-                <Button
-                  size="sm"
-                  onClick={handleUpdateHuesped}
-                  disabled={editingHuespedLoading}
-                  className="bg-orange-500 hover:bg-orange-600 text-white"
-                >
-                  {editingHuespedLoading ? "Actualizando..." : "Actualizar Pasajero"}
-                </Button>
+                )}
               </div>
             </div>
           )}
+
+          <div className="flex items-center gap-3 justify-end mt-6">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={closeEditModal}
+              disabled={editingHuespedLoading}
+              className="border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-black dark:text-white dark:hover:bg-gray-900"
+            >
+              Cancelar
+            </Button>
+            <Button
+              size="sm"
+              onClick={handleUpdateHuesped}
+              disabled={editingHuespedLoading}
+              className="bg-orange-500 hover:bg-orange-600 text-white"
+            >
+              {editingHuespedLoading ? "Actualizando..." : "Actualizar Pasajero"}
+            </Button>
+          </div>
         </div>
-      </Modal >
+      </Modal>
 
       {/* Modal de Visualización */}
-      < Modal isOpen={isViewModalOpen} onClose={closeViewModal} className="max-w-[700px] m-4" >
+      <Modal isOpen={isViewModalOpen} onClose={closeViewModal} className="max-w-[700px] m-4">
         <div className="no-scrollbar relative w-full max-w-[700px] max-h-[85vh] overflow-y-auto rounded-3xl bg-white dark:bg-black dark:border dark:border-orange-500/30 p-6 lg:p-8">
           <div className="mb-6">
             <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
@@ -2131,7 +2128,7 @@ export default function HuespedesTable({ onCountChange }) {
       </Modal >
 
       {/* Tabla */}
-      <div className="w-full max-w-full overflow-x-auto rounded-xl border border-gray-200 bg-white dark:border-white/5 dark:bg-white/3">
+      <div className="w-full min-w-0 max-w-full overflow-x-auto rounded-xl border border-gray-200 bg-white dark:border-white/5 dark:bg-white/3" >
         <Table>
           <TableHeader className="border-b border-gray-100 dark:border-white/5">
             <TableRow>
@@ -2326,7 +2323,7 @@ export default function HuespedesTable({ onCountChange }) {
           </TableBody>
         </Table>
 
-      </div >
+      </div>
 
       {/* Paginación */}
       {
