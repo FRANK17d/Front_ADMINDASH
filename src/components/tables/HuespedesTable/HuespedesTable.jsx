@@ -149,7 +149,11 @@ export default function HuespedesTable({ onCountChange }) {
       }
       if (typeof value === "string") {
         const v = value.trim();
-        if (v === "") return;
+        // Permitir enviar null si el string está vacío para poder limpiar campos opcionales
+        if (v === "") {
+          payload[key] = null;
+          return;
+        }
         payload[key] = v;
         return;
       }
