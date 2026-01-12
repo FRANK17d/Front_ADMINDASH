@@ -331,11 +331,20 @@ export default function HuespedesTable({ onCountChange }) {
 
   // Filtrar datos basado en la búsqueda
   const filteredData = useMemo(() => {
-    return data.filter(huesped =>
-      huesped.nombres_apellidos.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      huesped.numero_documento.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (huesped.numero_ruc && huesped.numero_ruc.toLowerCase().includes(searchTerm.toLowerCase()))
-    );
+    if (!searchTerm.trim()) return data;
+    const terms = searchTerm.toLowerCase().trim().split(/\s+/);
+    const searchString = searchTerm.toLowerCase().trim();
+
+    return data.filter(huesped => {
+      const name = (huesped.nombres_apellidos || '').toLowerCase();
+      const doc = (huesped.numero_documento || '').toLowerCase();
+      const ruc = (huesped.numero_ruc || '').toLowerCase();
+
+      // Check if ALL name terms are present in the name field (allows "Juan Perez" to match "Juan Carlos Perez")
+      const matchesName = terms.every(t => name.includes(t));
+
+      return matchesName || doc.includes(searchString) || ruc.includes(searchString);
+    });
   }, [searchTerm, data]);
 
   // Calcular datos paginados
@@ -652,13 +661,28 @@ export default function HuespedesTable({ onCountChange }) {
                     />
                   </div>
                 </div>
-                <div>
-                  <Label htmlFor="nombres_apellidos">Nombres y Apellidos Completos</Label>
-                  <Input
-                    id="nombres_apellidos"
-                    value={createForm.nombres_apellidos}
-                    onChange={(e) => setCreateForm({ ...createForm, nombres_apellidos: e.target.value })}
-                  />
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="md:col-span-2">
+                    <Label htmlFor="nombres_apellidos">Nombres y Apellidos Completos</Label>
+                    <Input
+                      id="nombres_apellidos"
+                      value={createForm.nombres_apellidos}
+                      onChange={(e) => setCreateForm({ ...createForm, nombres_apellidos: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="celular">Número de Celular</Label>
+                    <Input
+                      id="celular"
+                      value={createForm.celular}
+                      onChange={(e) => {
+                        const value = e.target.value.replace(/\D/g, '').slice(0, 9);
+                        setCreateForm({ ...createForm, celular: value });
+                      }}
+                      maxLength="9"
+                      placeholder="9 dígitos"
+                    />
+                  </div>
                 </div>
 
                 {/* Nuevos campos reubicados */}
@@ -707,19 +731,7 @@ export default function HuespedesTable({ onCountChange }) {
                   </div>
                 </div>
 
-                <div>
-                  <Label htmlFor="celular">Número de Celular</Label>
-                  <Input
-                    id="celular"
-                    value={createForm.celular}
-                    onChange={(e) => {
-                      const value = e.target.value.replace(/\D/g, '').slice(0, 9);
-                      setCreateForm({ ...createForm, celular: value });
-                    }}
-                    maxLength="9"
-                    placeholder="9 dígitos"
-                  />
-                </div>
+
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
@@ -1316,13 +1328,28 @@ export default function HuespedesTable({ onCountChange }) {
                       </div>
                     </div>
 
-                    <div>
-                      <Label htmlFor="edit_nombres_apellidos">Nombres y Apellidos Completos</Label>
-                      <Input
-                        id="edit_nombres_apellidos"
-                        value={editForm.nombres_apellidos}
-                        onChange={(e) => setEditForm({ ...editForm, nombres_apellidos: e.target.value })}
-                      />
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="md:col-span-2">
+                        <Label htmlFor="edit_nombres_apellidos">Nombres y Apellidos Completos</Label>
+                        <Input
+                          id="edit_nombres_apellidos"
+                          value={editForm.nombres_apellidos}
+                          onChange={(e) => setEditForm({ ...editForm, nombres_apellidos: e.target.value })}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="edit_celular">Número de Celular</Label>
+                        <Input
+                          id="edit_celular"
+                          value={editForm.celular || ''}
+                          onChange={(e) => {
+                            const value = e.target.value.replace(/\D/g, '').slice(0, 9);
+                            setEditForm({ ...editForm, celular: value });
+                          }}
+                          maxLength="9"
+                          placeholder="9 dígitos"
+                        />
+                      </div>
                     </div>
 
                     {/* Bloque reubicado con separación extra */}
@@ -1371,19 +1398,7 @@ export default function HuespedesTable({ onCountChange }) {
                       </div>
                     </div>
 
-                    <div>
-                      <Label htmlFor="edit_celular">Número de Celular</Label>
-                      <Input
-                        id="edit_celular"
-                        value={editForm.celular || ''}
-                        onChange={(e) => {
-                          const value = e.target.value.replace(/\D/g, '').slice(0, 9);
-                          setEditForm({ ...editForm, celular: value });
-                        }}
-                        maxLength="9"
-                        placeholder="9 dígitos"
-                      />
-                    </div>
+
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
                       <div>
@@ -1998,59 +2013,6 @@ export default function HuespedesTable({ onCountChange }) {
                 </div>
               </div>
 
-              {/* Acompañantes (Vista) */}
-              {viewingHuesped.acompanantes && viewingHuesped.acompanantes.length > 0 && (
-                <div className="space-y-3">
-                  <h4 className="text-lg font-semibold text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-700 pb-2">
-                    Acompañantes ({viewingHuesped.acompanantes.length})
-                  </h4>
-                  <div className="space-y-3">
-                    {viewingHuesped.acompanantes.map((acompanante, index) => (
-                      <div
-                        key={index}
-                        className="p-3 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-900"
-                      >
-                        <p className="text-sm font-medium text-orange-600 dark:text-orange-400 mb-2">
-                          Acompañante #{index + 1}
-                        </p>
-                        <div className="grid grid-cols-2 gap-2 text-sm">
-                          <div>
-                            <span className="text-gray-500 dark:text-gray-400">Documento:</span>
-                            <span className="ml-1 font-medium text-gray-900 dark:text-white">
-                              {acompanante.tipo_documento}: {acompanante.numero_documento || 'N/A'}
-                            </span>
-                          </div>
-                          <div>
-                            <span className="text-gray-500 dark:text-gray-400">Nacionalidad:</span>
-                            <span className="ml-1 font-medium text-gray-900 dark:text-white">
-                              {acompanante.nacionalidad || 'N/A'}
-                            </span>
-                          </div>
-                          <div className="col-span-2">
-                            <span className="text-gray-500 dark:text-gray-400">Nombre:</span>
-                            <span className="ml-1 font-medium text-gray-900 dark:text-white">
-                              {acompanante.nombres_apellidos || 'N/A'}
-                            </span>
-                          </div>
-                          <div>
-                            <span className="text-gray-500 dark:text-gray-400">Nacimiento:</span>
-                            <span className="ml-1 font-medium text-gray-900 dark:text-white">
-                              {formatDateLocal(acompanante.fecha_nacimiento) || 'N/A'}
-                            </span>
-                          </div>
-                          <div>
-                            <span className="text-gray-500 dark:text-gray-400">Procedencia:</span>
-                            <span className="ml-1 font-medium text-gray-900 dark:text-white">
-                              {acompanante.procedencia || 'N/A'}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
               <div className="space-y-3">
                 <h4 className="text-lg font-semibold text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-700 pb-2">
                   Información de Hospedaje
@@ -2134,6 +2096,59 @@ export default function HuespedesTable({ onCountChange }) {
                   )}
                 </div>
               </div>
+
+              {/* Acompañantes (Vista) */}
+              {viewingHuesped.acompanantes && viewingHuesped.acompanantes.length > 0 && (
+                <div className="space-y-3">
+                  <h4 className="text-lg font-semibold text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-700 pb-2">
+                    Acompañantes ({viewingHuesped.acompanantes.length})
+                  </h4>
+                  <div className="space-y-3">
+                    {viewingHuesped.acompanantes.map((acompanante, index) => (
+                      <div
+                        key={index}
+                        className="p-3 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-900"
+                      >
+                        <p className="text-sm font-medium text-orange-600 dark:text-orange-400 mb-2">
+                          Acompañante #{index + 1}
+                        </p>
+                        <div className="grid grid-cols-2 gap-2 text-sm">
+                          <div>
+                            <span className="text-gray-500 dark:text-gray-400">Documento:</span>
+                            <span className="ml-1 font-medium text-gray-900 dark:text-white">
+                              {acompanante.tipo_documento}: {acompanante.numero_documento || 'N/A'}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-gray-500 dark:text-gray-400">Nacionalidad:</span>
+                            <span className="ml-1 font-medium text-gray-900 dark:text-white">
+                              {acompanante.nacionalidad || 'N/A'}
+                            </span>
+                          </div>
+                          <div className="col-span-2">
+                            <span className="text-gray-500 dark:text-gray-400">Nombre:</span>
+                            <span className="ml-1 font-medium text-gray-900 dark:text-white">
+                              {acompanante.nombres_apellidos || 'N/A'}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-gray-500 dark:text-gray-400">Nacimiento:</span>
+                            <span className="ml-1 font-medium text-gray-900 dark:text-white">
+                              {formatDateLocal(acompanante.fecha_nacimiento) || 'N/A'}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-gray-500 dark:text-gray-400">Procedencia:</span>
+                            <span className="ml-1 font-medium text-gray-900 dark:text-white">
+                              {acompanante.procedencia || 'N/A'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
