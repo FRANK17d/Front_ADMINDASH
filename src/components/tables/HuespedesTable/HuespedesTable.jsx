@@ -93,7 +93,7 @@ export default function HuespedesTable({ onCountChange }) {
   const [editingHuespedLoading, setEditingHuespedLoading] = useState(false);
   const [deletingHuesped, setDeletingHuesped] = useState(false);
   const [error, setError] = useState("");
-  const [lookupLoading, setLookupLoading] = useState(false);
+  const [_lookupLoading, setLookupLoading] = useState(false);
 
   const [createForm, setCreateForm] = useState({
     canal_venta: "RECEPCION",
@@ -109,6 +109,7 @@ export default function HuespedesTable({ onCountChange }) {
     fecha_nacimiento: "",
     nacionalidad: "Peruana",
     procedencia: "",
+    celular: "",
     check_in: "",
     hora_entrada: "",
     check_out: "",
@@ -119,6 +120,7 @@ export default function HuespedesTable({ onCountChange }) {
     adultos: 1,
     ninos: 0,
     metodo_pago: "EFECTIVO",
+    tipo_desayuno: "NINGUNO",
     observacion: "",
     acompanantes: [],
   });
@@ -315,7 +317,7 @@ export default function HuespedesTable({ onCountChange }) {
       if (res.success) {
         setData(res.data || []);
       }
-    } catch (e) {
+    } catch (_e) {
       setError("No se pudo cargar huéspedes");
       setData([]);
     } finally {
@@ -410,14 +412,18 @@ export default function HuespedesTable({ onCountChange }) {
           fecha_nacimiento: "",
           nacionalidad: "Peruana",
           procedencia: "",
+          celular: "",
           check_in: "",
+          hora_entrada: "",
           check_out: "",
+          hora_salida: "",
           tipo_habitacion: "SIMPLE",
           numero_habitacion: "111",
           tarifa_noche: "",
           adultos: 1,
           ninos: 0,
           metodo_pago: "EFECTIVO",
+          tipo_desayuno: "NINGUNO",
           observacion: "",
           acompanantes: [],
         });
@@ -452,6 +458,7 @@ export default function HuespedesTable({ onCountChange }) {
       fecha_nacimiento: huesped.fecha_nacimiento,
       nacionalidad: huesped.nacionalidad,
       procedencia: huesped.procedencia,
+      celular: huesped.celular || "",
       check_in: huesped.check_in,
       hora_entrada: huesped.hora_entrada || "",
       check_out: huesped.check_out,
@@ -462,6 +469,7 @@ export default function HuespedesTable({ onCountChange }) {
       adultos: huesped.adultos,
       ninos: huesped.ninos,
       metodo_pago: huesped.metodo_pago,
+      tipo_desayuno: huesped.tipo_desayuno || "NINGUNO",
       observacion: huesped.observacion || "",
       acompanantes: huesped.acompanantes || [],
     });
@@ -699,6 +707,20 @@ export default function HuespedesTable({ onCountChange }) {
                   </div>
                 </div>
 
+                <div>
+                  <Label htmlFor="celular">Número de Celular</Label>
+                  <Input
+                    id="celular"
+                    value={createForm.celular}
+                    onChange={(e) => {
+                      const value = e.target.value.replace(/\D/g, '').slice(0, 9);
+                      setCreateForm({ ...createForm, celular: value });
+                    }}
+                    maxLength="9"
+                    placeholder="9 dígitos"
+                  />
+                </div>
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="numero_ruc">Número de RUC (Opcional)</Label>
@@ -755,7 +777,7 @@ export default function HuespedesTable({ onCountChange }) {
               </h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="check_in">Check-in</Label>
+                  <Label htmlFor="check_in">Fecha de Arrivo</Label>
                   <DatePicker
                     id="check_in"
                     selected={createForm.check_in ? new Date(createForm.check_in + 'T00:00:00') : null}
@@ -830,7 +852,7 @@ export default function HuespedesTable({ onCountChange }) {
                 </div>
                 <div>
                   <div className="flex items-center justify-between mb-1">
-                    <Label htmlFor="check_out">Check-out</Label>
+                    <Label htmlFor="check_out">Fecha de Salida</Label>
                     <label className="flex items-center gap-2 cursor-pointer">
                       <input
                         type="checkbox"
@@ -1003,6 +1025,19 @@ export default function HuespedesTable({ onCountChange }) {
                     <option value="EFECTIVO">Efectivo</option>
                     <option value="YAPE">Yape</option>
                     <option value="TARJETA">Tarjeta Débito/Crédito</option>
+                  </select>
+                </div>
+                <div>
+                  <Label htmlFor="tipo_desayuno">Tipo de Desayuno</Label>
+                  <select
+                    id="tipo_desayuno"
+                    value={createForm.tipo_desayuno}
+                    onChange={(e) => setCreateForm({ ...createForm, tipo_desayuno: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 dark:bg-gray-800 dark:text-white"
+                  >
+                    <option value="NINGUNO">Ninguno</option>
+                    <option value="CONTINENTAL">Desayuno Continental</option>
+                    <option value="AMERICANO">Desayuno Americano</option>
                   </select>
                 </div>
               </div>
@@ -1336,6 +1371,20 @@ export default function HuespedesTable({ onCountChange }) {
                       </div>
                     </div>
 
+                    <div>
+                      <Label htmlFor="edit_celular">Número de Celular</Label>
+                      <Input
+                        id="edit_celular"
+                        value={editForm.celular || ''}
+                        onChange={(e) => {
+                          const value = e.target.value.replace(/\D/g, '').slice(0, 9);
+                          setEditForm({ ...editForm, celular: value });
+                        }}
+                        maxLength="9"
+                        placeholder="9 dígitos"
+                      />
+                    </div>
+
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
                       <div>
                         <Label htmlFor="edit_numero_ruc">Número de RUC (Opcional)</Label>
@@ -1642,6 +1691,19 @@ export default function HuespedesTable({ onCountChange }) {
                       <option value="TARJETA">Tarjeta Débito/Crédito</option>
                     </select>
                   </div>
+                  <div>
+                    <Label htmlFor="edit_tipo_desayuno">Tipo de Desayuno</Label>
+                    <select
+                      id="edit_tipo_desayuno"
+                      value={editForm.tipo_desayuno || 'NINGUNO'}
+                      onChange={(e) => setEditForm({ ...editForm, tipo_desayuno: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 dark:bg-gray-800 dark:text-white"
+                    >
+                      <option value="NINGUNO">Ninguno</option>
+                      <option value="CONTINENTAL">Desayuno Continental</option>
+                      <option value="AMERICANO">Desayuno Americano</option>
+                    </select>
+                  </div>
                 </div>
                 <div>
                   <Label htmlFor="edit_observacion">Observación</Label>
@@ -1927,6 +1989,12 @@ export default function HuespedesTable({ onCountChange }) {
                     <span className="text-gray-600 dark:text-gray-400">Procedencia:</span>
                     <span className="font-medium text-gray-900 dark:text-white">{viewingHuesped.procedencia}</span>
                   </div>
+                  {viewingHuesped.celular && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-600 dark:text-gray-400">Celular:</span>
+                      <span className="font-medium text-gray-900 dark:text-white">{viewingHuesped.celular}</span>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -2048,6 +2116,13 @@ export default function HuespedesTable({ onCountChange }) {
                     <span className="font-medium text-gray-900 dark:text-white">{viewingHuesped.metodo_pago}</span>
                   </div>
                   <div className="flex justify-between">
+                    <span className="text-gray-600 dark:text-gray-400">Tipo de Desayuno:</span>
+                    <span className="font-medium text-gray-900 dark:text-white">
+                      {viewingHuesped.tipo_desayuno === 'CONTINENTAL' ? 'Desayuno Continental' :
+                        viewingHuesped.tipo_desayuno === 'AMERICANO' ? 'Desayuno Americano' : 'Ninguno'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
                     <span className="text-gray-600 dark:text-gray-400">Total Estadía:</span>
                     <span className="font-bold text-orange-600 dark:text-orange-400">S/. {parseFloat(viewingHuesped.total_estadia).toFixed(2)}</span>
                   </div>
@@ -2139,6 +2214,9 @@ export default function HuespedesTable({ onCountChange }) {
                 Documento
               </TableCell>
               <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-center text-theme-xs dark:text-gray-400">
+                Celular
+              </TableCell>
+              <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-center text-theme-xs dark:text-gray-400">
                 Canal de Venta
               </TableCell>
               <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-center text-theme-xs dark:text-gray-400">
@@ -2152,6 +2230,9 @@ export default function HuespedesTable({ onCountChange }) {
               </TableCell>
               <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-center text-theme-xs dark:text-gray-400">
                 Habitación
+              </TableCell>
+              <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-center text-theme-xs dark:text-gray-400">
+                Desayuno
               </TableCell>
               <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-center text-theme-xs dark:text-gray-400">
                 Tarifa
@@ -2176,6 +2257,9 @@ export default function HuespedesTable({ onCountChange }) {
                     <div className="h-4 w-24 bg-gray-200 rounded dark:bg-gray-700 animate-pulse"></div>
                   </TableCell>
                   <TableCell className="px-4 py-3">
+                    <div className="h-4 w-20 bg-gray-200 rounded dark:bg-gray-700 animate-pulse mx-auto"></div>
+                  </TableCell>
+                  <TableCell className="px-4 py-3">
                     <div className="h-4 w-24 bg-gray-200 rounded dark:bg-gray-700 animate-pulse"></div>
                   </TableCell>
                   <TableCell className="px-4 py-3 text-center">
@@ -2189,6 +2273,9 @@ export default function HuespedesTable({ onCountChange }) {
                   </TableCell>
                   <TableCell className="px-4 py-3 text-center">
                     <div className="h-4 w-16 bg-gray-200 rounded dark:bg-gray-700 animate-pulse mx-auto"></div>
+                  </TableCell>
+                  <TableCell className="px-4 py-3 text-center">
+                    <div className="h-4 w-20 bg-gray-200 rounded dark:bg-gray-700 animate-pulse mx-auto"></div>
                   </TableCell>
                   <TableCell className="px-4 py-3 text-center">
                     <div className="h-4 w-20 bg-gray-200 rounded dark:bg-gray-700 animate-pulse mx-auto"></div>
@@ -2220,6 +2307,9 @@ export default function HuespedesTable({ onCountChange }) {
                   </TableCell>
                   <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
                     {huesped.tipo_documento}: {huesped.numero_documento}
+                  </TableCell>
+                  <TableCell className="px-4 py-3 text-gray-500 text-center text-theme-sm dark:text-gray-400">
+                    {huesped.celular || 'N/A'}
                   </TableCell>
                   <TableCell className="px-4 py-3 text-gray-500 text-center text-theme-sm dark:text-gray-400">
                     {huesped.canal_venta}
@@ -2271,6 +2361,10 @@ export default function HuespedesTable({ onCountChange }) {
                       </span>
                     </div>
                   </TableCell>
+                  <TableCell className="px-4 py-3 text-center text-theme-sm text-gray-500 dark:text-gray-400">
+                    {huesped.tipo_desayuno === 'CONTINENTAL' ? 'Continental' :
+                      huesped.tipo_desayuno === 'AMERICANO' ? 'Americano' : 'Ninguno'}
+                  </TableCell>
                   <TableCell className="px-4 py-3 text-center">
                     <div className="flex flex-col items-center">
                       <span className="font-medium text-gray-900 dark:text-white">
@@ -2315,7 +2409,7 @@ export default function HuespedesTable({ onCountChange }) {
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={7} className="px-5 py-8 text-center text-gray-500 dark:text-gray-400">
+                <TableCell colSpan={12} className="px-5 py-8 text-center text-gray-500 dark:text-gray-400">
                   No se encontraron pasajeros
                 </TableCell>
               </TableRow>
