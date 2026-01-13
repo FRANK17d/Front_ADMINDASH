@@ -618,6 +618,7 @@ export default function HuespedesTable({ onCountChange }) {
                     <option value="BOOKING">Booking</option>
                     <option value="WHATSAPP">WhatsApp</option>
                     <option value="RECEPCION">Recepción</option>
+                    <option value="EXPEDIA">Expedia</option>
                   </select>
                 </div>
                 <div>
@@ -1283,6 +1284,7 @@ export default function HuespedesTable({ onCountChange }) {
                       <option value="BOOKING">Booking</option>
                       <option value="WHATSAPP">WhatsApp</option>
                       <option value="RECEPCION">Recepción</option>
+                      <option value="EXPEDIA">Expedia</option>
                     </select>
                   </div>
                   <div>
