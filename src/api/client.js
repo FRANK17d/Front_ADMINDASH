@@ -9,6 +9,7 @@ const BASE_URL = import.meta?.env?.VITE_API_URL || "https://plazabolognesi.api.c
 
 const api = axios.create({ baseURL: BASE_URL });
 
+// Interceptor de request - agregar token
 api.interceptors.request.use(
   async (config) => {
     const currentUser = auth.currentUser;
@@ -24,6 +25,47 @@ api.interceptors.request.use(
     return config;
   },
   (error) => Promise.reject(error)
+);
+
+// Interceptor de response - manejar errores HTTP con mensajes amigables
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    const status = error?.response?.status;
+    const url = error?.config?.url || "";
+
+    // Solo aplicar mensajes personalizados para la API de lookup
+    if (url.includes("lookup")) {
+      if (status === 405) {
+        error.response = {
+          ...error.response,
+          data: { error: "Alcanzaste el límite de consultas. Intenta más tarde." }
+        };
+      } else if (status === 429) {
+        error.response = {
+          ...error.response,
+          data: { error: "Demasiadas consultas. Espera un momento." }
+        };
+      } else if (status === 404) {
+        error.response = {
+          ...error.response,
+          data: { error: "Documento no encontrado en el registro." }
+        };
+      } else if (status === 400) {
+        error.response = {
+          ...error.response,
+          data: { error: error?.response?.data?.error || "Documento inválido o no encontrado." }
+        };
+      } else if (status >= 500) {
+        error.response = {
+          ...error.response,
+          data: { error: "Error en el servicio de consulta. Intenta más tarde." }
+        };
+      }
+    }
+
+    return Promise.reject(error);
+  }
 );
 
 export default api;

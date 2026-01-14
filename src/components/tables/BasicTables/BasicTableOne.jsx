@@ -57,9 +57,9 @@ export default function BasicTableOne() {
   const [togglingUserStatus, setTogglingUserStatus] = useState(null); // ID del usuario siendo habilitado/inhabilitado
   const [error, setError] = useState("");
   const [successData, setSuccessData] = useState(null);
-  const [createForm, setCreateForm] = useState({ 
-    name: "", 
-    email: "", 
+  const [createForm, setCreateForm] = useState({
+    name: "",
+    email: "",
     role: "Administrador",
     salary: "",
     entry_date: ""
@@ -85,7 +85,7 @@ export default function BasicTableOne() {
       // Los administradores siempre muestran "Activo" (no necesitan verificar correo)
       let status = "Activo";
       const isAdmin = u.role === "admin";
-      
+
       if (u.disabled) {
         status = "Inhabilitado";
       } else if (!isAdmin && u.email_verified === false) {
@@ -93,7 +93,7 @@ export default function BasicTableOne() {
         status = "Sin confirmar";
       }
       // Si es admin y no está disabled, siempre será "Activo"
-      
+
       return {
         id: u.uid,
         name: u.display_name || (u.email ? u.email.split("@")[0] : "Usuario"),
@@ -160,12 +160,12 @@ export default function BasicTableOne() {
     setSearchTerm(e.target.value);
     setCurrentPage(1); // Reset a la primera página al buscar
   };
-  
+
   const handleOpenCreateModal = () => {
     setError(""); // Limpiar errores previos
     openCreateModal();
   };
-  
+
   const handleCloseCreateModal = () => {
     setError(""); // Limpiar errores
     setCreatingUser(false); // Resetear estado de loading
@@ -177,7 +177,7 @@ export default function BasicTableOne() {
   const handleCreateUser = async () => {
     setCreatingUser(true);
     setError("");
-    
+
     try {
       if (!isAdmin) {
         setError("No tienes permisos para crear usuarios");
@@ -195,7 +195,7 @@ export default function BasicTableOne() {
         salary: createForm.salary || "",
         entry_date: createForm.entry_date && createForm.entry_date.trim() !== "" ? createForm.entry_date : null
       });
-      
+
       // Guardar datos para mostrar en modal de éxito
       setSuccessData({
         email: createForm.email,
@@ -203,28 +203,28 @@ export default function BasicTableOne() {
         tempPassword: result.password || tempPassword,
         role: createForm.role
       });
-      
+
       // Limpiar formulario después de crear el usuario
-      setCreateForm({ 
-        name: "", 
-        email: "", 
+      setCreateForm({
+        name: "",
+        email: "",
         role: "Administrador",
         salary: "",
         entry_date: ""
       });
-      
+
       // Refrescar lista de usuarios
       await refresh();
-      
+
       // Mostrar toast de éxito
       toast.success(`Usuario "${createForm.name}" creado exitosamente`, {
         position: "bottom-right",
         autoClose: 3000,
       });
-      
+
       // No cerrar el modal, solo mostrar éxito
       setCreatingUser(false);
-      
+
     } catch (e) {
       console.error("Error creando usuario:", e);
       const errorMessage = e.message || "No se pudo crear el usuario. Por favor, intenta nuevamente.";
@@ -258,7 +258,7 @@ export default function BasicTableOne() {
         setEditingUserLoading(false);
         return;
       }
-      
+
       // Validar que el rol sea válido
       if (!editingUser.role || editingUser.role.trim() === "") {
         const errorMessage = "Debe seleccionar un rol válido";
@@ -270,7 +270,7 @@ export default function BasicTableOne() {
         setEditingUserLoading(false);
         return;
       }
-      
+
       // Preparar datos - enviar null si la fecha está vacía
       const apiRole = roleLabelToApi(editingUser.role);
       const updateData = {
@@ -278,17 +278,17 @@ export default function BasicTableOne() {
         salary: editingUser.salary || "",
         entry_date: editingUser.entryDate && editingUser.entryDate.trim() !== "" ? editingUser.entryDate : null
       };
-      
+
       console.log('Actualizando usuario:', editingUser.id, 'con datos:', updateData);
       await updateUser(editingUser.id, updateData);
       await refresh();
-      
+
       // Mostrar toast de éxito
       toast.success(`Usuario "${editingUser.name}" actualizado exitosamente`, {
         position: "bottom-right",
         autoClose: 3000,
       });
-      
+
       setEditingUser(null);
       closeEditModal();
     } catch (e) {
@@ -318,7 +318,7 @@ export default function BasicTableOne() {
         setDeletingUser(false);
         return;
       }
-      
+
       if (!userId) {
         const errorMessage = "No se pudo identificar el usuario a eliminar";
         setError(errorMessage);
@@ -341,19 +341,19 @@ export default function BasicTableOne() {
         setDeletingUser(false);
         return;
       }
-      
+
       // Obtener el nombre del usuario antes de eliminarlo para el toast
       const userName = userToDelete?.name || "Usuario";
-      
+
       await deleteUser(userId);
       await refresh();
-      
+
       // Mostrar toast de éxito
       toast.success(`Usuario "${userName}" eliminado exitosamente`, {
         position: "bottom-right",
         autoClose: 3000,
       });
-      
+
       closeDeleteModal();
       setUserToDelete(null);
     } catch (e) {
@@ -386,7 +386,7 @@ export default function BasicTableOne() {
         });
         return;
       }
-      
+
       if (!user?.id) {
         const errorMessage = "No se pudo identificar el usuario";
         setError(errorMessage);
@@ -398,9 +398,9 @@ export default function BasicTableOne() {
       }
 
       // Verificar que no sea administrador - usar el rol original de la API
-      const userRoleApi = user.roleApi || (user.role === "Administrador" ? "admin" : 
-                      user.role === "Hotelero" ? "housekeeping" : "receptionist");
-      
+      const userRoleApi = user.roleApi || (user.role === "Administrador" ? "admin" :
+        user.role === "Hotelero" ? "housekeeping" : "receptionist");
+
       if (userRoleApi === "admin") {
         const errorMessage = "No se puede habilitar/inhabilitar usuarios administradores";
         setError(errorMessage);
@@ -410,13 +410,13 @@ export default function BasicTableOne() {
         });
         return;
       }
-      
+
       // Activar loading para este usuario específico
       setTogglingUserStatus(user.id);
-      
+
       await toggleUserStatus(user.id);
       await refresh();
-      
+
       const statusText = user.status === "Inhabilitado" ? "habilitado" : "inhabilitado";
       toast.success(`Usuario "${user.name}" ${statusText} exitosamente`, {
         position: "bottom-right",
@@ -478,14 +478,14 @@ export default function BasicTableOne() {
               Complete la información para crear un nuevo usuario en el sistema.
             </p>
           </div>
-          
+
           {/* Mensaje de error dentro del modal */}
           {error && (
             <div className="mb-4 p-3 text-sm text-orange-700 bg-orange-50 border border-orange-300 rounded-lg dark:text-orange-300 dark:bg-orange-900/30 dark:border-orange-600">
               {error}
             </div>
           )}
-          
+
           {/* Layout condicional: normal antes de crear, dos columnas después de crear */}
           <div className={successData ? "grid grid-cols-1 lg:grid-cols-2 gap-6" : ""}>
             {/* Formulario */}
@@ -494,11 +494,11 @@ export default function BasicTableOne() {
                 <div className={successData ? "space-y-5" : "grid grid-cols-1 gap-6 lg:grid-cols-2"}>
                   <div>
                     <Label>Nombre Completo</Label>
-                    <Input 
-                      type="text" 
-                      placeholder="Ej: Juan Pérez García" 
-                      value={createForm.name} 
-                      onChange={(e)=>setCreateForm(v=>({...v,name:e.target.value}))} 
+                    <Input
+                      type="text"
+                      placeholder="Ej: Juan Pérez García"
+                      value={createForm.name}
+                      onChange={(e) => setCreateForm(v => ({ ...v, name: e.target.value }))}
                       required
                       className="dark:bg-black dark:border-orange-500/30 dark:text-white dark:placeholder-gray-500"
                     />
@@ -506,11 +506,11 @@ export default function BasicTableOne() {
 
                   <div>
                     <Label>Correo Electrónico</Label>
-                    <Input 
-                      type="email" 
-                      placeholder="usuario@hotelplaza.com" 
-                      value={createForm.email} 
-                      onChange={(e)=>setCreateForm(v=>({...v,email:e.target.value}))} 
+                    <Input
+                      type="email"
+                      placeholder="usuario@hotelplaza.com"
+                      value={createForm.email}
+                      onChange={(e) => setCreateForm(v => ({ ...v, email: e.target.value }))}
                       required
                       className="dark:bg-black dark:border-orange-500/30 dark:text-white dark:placeholder-gray-500"
                     />
@@ -518,9 +518,9 @@ export default function BasicTableOne() {
 
                   <div>
                     <Label>Rol</Label>
-                    <select 
-                      value={createForm.role} 
-                      onChange={(e)=>setCreateForm(v=>({...v,role:e.target.value}))}
+                    <select
+                      value={createForm.role}
+                      onChange={(e) => setCreateForm(v => ({ ...v, role: e.target.value }))}
                       className="w-full px-2.5 py-2.5 border border-gray-300 rounded-lg bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500 dark:border-orange-500/30 dark:bg-black dark:text-white dark:focus:ring-orange-500 dark:focus:border-orange-500"
                     >
                       <option value="Administrador">Administrador</option>
@@ -531,11 +531,11 @@ export default function BasicTableOne() {
 
                   <div>
                     <Label>Salario <span className="text-error-500">*</span></Label>
-                    <Input 
-                      type="text" 
-                      placeholder="2,500" 
-                      value={createForm.salary} 
-                      onChange={(e)=> setCreateForm(v=>({...v,salary: e.target.value}))} 
+                    <Input
+                      type="text"
+                      placeholder="2,500"
+                      value={createForm.salary}
+                      onChange={(e) => setCreateForm(v => ({ ...v, salary: e.target.value }))}
                       required
                       className="dark:bg-black dark:border-orange-500/30 dark:text-white"
                     />
@@ -543,10 +543,10 @@ export default function BasicTableOne() {
 
                   <div>
                     <Label>Fecha de Entrada <span className="text-error-500">*</span></Label>
-                    <Input 
-                      type="date" 
-                      value={createForm.entry_date} 
-                      onChange={(e)=>setCreateForm(v=>({...v,entry_date:e.target.value}))} 
+                    <Input
+                      type="date"
+                      value={createForm.entry_date}
+                      onChange={(e) => setCreateForm(v => ({ ...v, entry_date: e.target.value }))}
                       required
                       className="dark:bg-black dark:border-orange-500/30 dark:text-white"
                     />
@@ -557,9 +557,9 @@ export default function BasicTableOne() {
                 <Button type="button" size="sm" variant="outline" onClick={handleCloseCreateModal} disabled={creatingUser} className="border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-black dark:text-white dark:hover:bg-gray-900">
                   Cancelar
                 </Button>
-                <Button 
+                <Button
                   type="submit"
-                  size="sm" 
+                  size="sm"
                   className="bg-orange-500 hover:bg-orange-600 text-white dark:bg-orange-600 dark:hover:bg-orange-700"
                   disabled={creatingUser || !createForm.name || !createForm.email || !createForm.salary || !createForm.entry_date}
                 >
@@ -589,7 +589,7 @@ export default function BasicTableOne() {
                     Usuario Creado Exitosamente
                   </h5>
                 </div>
-                
+
                 <div className="p-4 bg-orange-50 border border-orange-300 rounded-lg dark:bg-orange-900/20 dark:border-orange-600">
                   <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">
                     Credenciales de acceso:
@@ -655,23 +655,23 @@ export default function BasicTableOne() {
               Modifique la información del usuario según sea necesario.
             </p>
           </div>
-          
+
           {/* Mensaje de error dentro del modal */}
           {error && isEditModalOpen && (
             <div className="mb-4 p-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg dark:bg-red-900/20 dark:text-red-400 dark:border-red-800">
               {error}
             </div>
           )}
-          
+
           <form className="flex flex-col">
             <div className="space-y-4 mb-6">
               <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                 <div>
                   <Label>Nombre</Label>
-                  <Input 
-                    type="text" 
-                    defaultValue={editingUser?.name || ""} 
-                    placeholder="Nombre del usuario" 
+                  <Input
+                    type="text"
+                    defaultValue={editingUser?.name || ""}
+                    placeholder="Nombre del usuario"
                     disabled
                     className="bg-gray-100 dark:bg-gray-900 dark:border-orange-500/30 cursor-not-allowed"
                   />
@@ -682,10 +682,10 @@ export default function BasicTableOne() {
 
                 <div>
                   <Label>Email</Label>
-                  <Input 
-                    type="email" 
-                    defaultValue={editingUser?.email || ""} 
-                    placeholder="Email del usuario" 
+                  <Input
+                    type="email"
+                    defaultValue={editingUser?.email || ""}
+                    placeholder="Email del usuario"
                     disabled
                     className="bg-gray-100 dark:bg-gray-900 dark:border-orange-500/30 cursor-not-allowed"
                   />
@@ -696,9 +696,9 @@ export default function BasicTableOne() {
 
                 <div>
                   <Label>Rol</Label>
-                  <select 
-                    value={editingUser?.role || ""} 
-                    onChange={(e)=>setEditingUser(prev=>({...prev, role: e.target.value}))}
+                  <select
+                    value={editingUser?.role || ""}
+                    onChange={(e) => setEditingUser(prev => ({ ...prev, role: e.target.value }))}
                     className="w-full px-4 py-2.5 pr-16 border border-gray-300 rounded-lg bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-orange-500 dark:border-orange-500/30 dark:bg-black dark:text-white dark:focus:ring-orange-500"
                   >
                     <option value="">Seleccione un rol</option>
@@ -713,11 +713,11 @@ export default function BasicTableOne() {
 
                 <div>
                   <Label>Salario</Label>
-                  <Input 
-                    type="text" 
-                    value={editingUser?.salary || ""} 
-                    placeholder="2,500" 
-                    onChange={(e)=> setEditingUser(prev=>({...prev, salary: e.target.value}))}
+                  <Input
+                    type="text"
+                    value={editingUser?.salary || ""}
+                    placeholder="2,500"
+                    onChange={(e) => setEditingUser(prev => ({ ...prev, salary: e.target.value }))}
                     className="dark:bg-black dark:border-orange-500/30 dark:text-white"
                   />
                   <p className="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
@@ -727,10 +727,10 @@ export default function BasicTableOne() {
 
                 <div>
                   <Label>Fecha de Entrada</Label>
-                  <Input 
-                    type="date" 
-                    defaultValue={editingUser?.entryDate || ""} 
-                    onChange={(e)=>setEditingUser(prev=>({...prev, entryDate: e.target.value}))}
+                  <Input
+                    type="date"
+                    defaultValue={editingUser?.entryDate || ""}
+                    onChange={(e) => setEditingUser(prev => ({ ...prev, entryDate: e.target.value }))}
                     className="dark:bg-black dark:border-orange-500/30 dark:text-white"
                   />
                   <p className="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
@@ -740,19 +740,19 @@ export default function BasicTableOne() {
               </div>
             </div>
             <div className="flex items-center gap-3 justify-end pt-4 border-t border-gray-200 dark:border-orange-500/20">
-              <Button 
-                size="sm" 
-                variant="outline" 
-                onClick={closeEditModal} 
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={closeEditModal}
                 disabled={editingUserLoading}
                 className="border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-black dark:text-white dark:hover:bg-gray-900"
               >
                 Cancelar
               </Button>
-              <Button 
+              <Button
                 type="button"
-                size="sm" 
-                onClick={handleSaveEdit} 
+                size="sm"
+                onClick={handleSaveEdit}
                 disabled={editingUserLoading}
                 className="bg-orange-500 hover:bg-orange-600 text-white dark:bg-orange-600 dark:hover:bg-orange-700"
               >
@@ -852,18 +852,18 @@ export default function BasicTableOne() {
           )}
 
           <div className="flex items-center gap-3 justify-end">
-            <Button 
-              size="sm" 
-              variant="outline" 
-              onClick={closeDeleteModal} 
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={closeDeleteModal}
               disabled={deletingUser}
               className="border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-black dark:text-white dark:hover:bg-gray-900"
             >
               Cancelar
             </Button>
-            <Button 
-              size="sm" 
-              onClick={() => userToDelete && handleDeleteUser(userToDelete.id)} 
+            <Button
+              size="sm"
+              onClick={() => userToDelete && handleDeleteUser(userToDelete.id)}
               disabled={deletingUser || (userToDelete && isOnlyAdmin(userToDelete))}
               className="bg-red-600 hover:bg-red-700 text-white dark:bg-red-700 dark:hover:bg-red-800"
             >
@@ -951,115 +951,114 @@ export default function BasicTableOne() {
                 ))
               ) : paginatedData.length > 0 ? (
                 paginatedData.map((user) => (
-                    <TableRow key={user.id}>
-                      <TableCell className="px-5 py-4 sm:px-6 text-start">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 overflow-hidden rounded-full bg-orange-100 dark:bg-orange-900/30 border-2 border-orange-200 dark:border-orange-800 flex items-center justify-center">
-                            {user.image ? (
-                              <img
-                                width={40}
-                                height={40}
-                                src={user.image}
-                                alt={user.name}
-                                className="w-full h-full object-cover"
-                                onError={(e) => {
-                                  e.target.style.display = 'none';
-                                  e.target.parentElement.innerHTML = '<svg class="w-6 h-6 text-orange-600 dark:text-orange-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd" /></svg>';
-                                }}
-                              />
-                            ) : (
-                              <svg className="w-6 h-6 text-orange-600 dark:text-orange-400" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
-                              </svg>
-                            )}
-                          </div>
-                          <div>
-                            <span className="block font-medium text-gray-800 text-theme-sm dark:text-white/90">
-                              {user.name}
-                            </span>
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-                        {user.role}
-                      </TableCell>
-                      <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-                        {user.email}
-                      </TableCell>
-                      <TableCell className="px-4 py-3 text-gray-500 text-center text-theme-sm dark:text-gray-400">
-                        {user.salary && user.salary !== "—" ? `S/ ${user.salary}` : user.salary}
-                      </TableCell>
-                      <TableCell className="px-4 py-3 text-gray-500 text-center text-theme-sm dark:text-gray-400">
-                        {user.entryDate}
-                      </TableCell>
-                      <TableCell className="px-4 py-3 text-gray-500 text-center text-theme-sm dark:text-gray-400">
-                        <Badge
-                          size="sm"
-                          color={
-                            user.status === "Activo" 
-                              ? "success" 
-                              : user.status === "Sin confirmar" 
-                              ? "warning" 
-                              : "error"
-                          }
-                        >
-                          {user.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="px-4 py-3 text-center">
-                        <div className="flex items-center justify-center gap-2">
-                          <button
-                            onClick={() => isAdmin && handleEditUserClick(user)}
-                            className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-colors disabled:text-gray-400 disabled:cursor-not-allowed disabled:hover:bg-transparent"
-                            title="Editar usuario"
-                            disabled={!isAdmin}
-                          >
-                            <PencilIcon className="w-4 h-4 fill-current" />
-                          </button>
-                          {/* Botón de habilitar/inhabilitar - solo para recepcionistas y hoteleros */}
-                          {(user.roleApi === "receptionist" || user.roleApi === "housekeeping") && (
-                            <button
-                              onClick={() => isAdmin && handleToggleUserStatus(user)}
-                              className={`p-2 rounded-lg transition-colors disabled:text-gray-400 disabled:cursor-not-allowed disabled:hover:bg-transparent ${
-                                user.disabled
-                                  ? "text-green-600 hover:text-green-800 hover:bg-green-50"
-                                  : "text-orange-600 hover:text-orange-800 hover:bg-orange-50"
-                              }`}
-                              title={user.disabled ? "Habilitar usuario" : "Inhabilitar usuario"}
-                              disabled={!isAdmin || togglingUserStatus === user.id}
-                            >
-                              {togglingUserStatus === user.id ? (
-                                <svg className="w-4 h-4 animate-spin fill-current" fill="none" viewBox="0 0 24 24">
-                                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                </svg>
-                              ) : (
-                                <LockIcon className="w-4 h-4 fill-current" />
-                              )}
-                            </button>
+                  <TableRow key={user.id}>
+                    <TableCell className="px-5 py-4 sm:px-6 text-start">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 overflow-hidden rounded-full bg-orange-100 dark:bg-orange-900/30 border-2 border-orange-200 dark:border-orange-800 flex items-center justify-center">
+                          {user.image ? (
+                            <img
+                              width={40}
+                              height={40}
+                              src={user.image}
+                              alt={user.name}
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                e.target.style.display = 'none';
+                                e.target.parentElement.innerHTML = '<svg class="w-6 h-6 text-orange-600 dark:text-orange-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd" /></svg>';
+                              }}
+                            />
+                          ) : (
+                            <svg className="w-6 h-6 text-orange-600 dark:text-orange-400" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+                            </svg>
                           )}
-                          <button
-                            onClick={() => isAdmin && handleOpenDeleteModal(user)}
-                            className="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg transition-colors disabled:text-gray-400 disabled:cursor-not-allowed disabled:hover:bg-transparent"
-                            title={isOnlyAdmin(user) ? "No se puede eliminar el único administrador" : "Eliminar usuario"}
-                            disabled={!isAdmin || isOnlyAdmin(user)}
-                          >
-                            <TrashBinIcon className="w-4 h-4 fill-current" />
-                          </button>
                         </div>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={7} className="px-5 py-8 text-center text-gray-500 dark:text-gray-400">
-                      No se encontraron usuarios
+                        <div>
+                          <span className="block font-medium text-gray-800 text-theme-sm dark:text-white/90">
+                            {user.name}
+                          </span>
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
+                      {user.role}
+                    </TableCell>
+                    <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
+                      {user.email}
+                    </TableCell>
+                    <TableCell className="px-4 py-3 text-gray-500 text-center text-theme-sm dark:text-gray-400">
+                      {user.salary && user.salary !== "—" ? `S/ ${user.salary}` : user.salary}
+                    </TableCell>
+                    <TableCell className="px-4 py-3 text-gray-500 text-center text-theme-sm dark:text-gray-400">
+                      {user.entryDate}
+                    </TableCell>
+                    <TableCell className="px-4 py-3 text-gray-500 text-center text-theme-sm dark:text-gray-400">
+                      <Badge
+                        size="sm"
+                        color={
+                          user.status === "Activo"
+                            ? "success"
+                            : user.status === "Sin confirmar"
+                              ? "warning"
+                              : "error"
+                        }
+                      >
+                        {user.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="px-4 py-3 text-center">
+                      <div className="flex items-center justify-center gap-2">
+                        <button
+                          onClick={() => isAdmin && handleEditUserClick(user)}
+                          className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-colors disabled:text-gray-400 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+                          title="Editar usuario"
+                          disabled={!isAdmin}
+                        >
+                          <PencilIcon className="w-4 h-4 fill-current" />
+                        </button>
+                        {/* Botón de habilitar/inhabilitar - solo para recepcionistas y hoteleros */}
+                        {(user.roleApi === "receptionist" || user.roleApi === "housekeeping") && (
+                          <button
+                            onClick={() => isAdmin && handleToggleUserStatus(user)}
+                            className={`p-2 rounded-lg transition-colors disabled:text-gray-400 disabled:cursor-not-allowed disabled:hover:bg-transparent ${user.disabled
+                                ? "text-green-600 hover:text-green-800 hover:bg-green-50"
+                                : "text-orange-600 hover:text-orange-800 hover:bg-orange-50"
+                              }`}
+                            title={user.disabled ? "Habilitar usuario" : "Inhabilitar usuario"}
+                            disabled={!isAdmin || togglingUserStatus === user.id}
+                          >
+                            {togglingUserStatus === user.id ? (
+                              <svg className="w-4 h-4 animate-spin fill-current" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                              </svg>
+                            ) : (
+                              <LockIcon className="w-4 h-4 fill-current" />
+                            )}
+                          </button>
+                        )}
+                        <button
+                          onClick={() => isAdmin && handleOpenDeleteModal(user)}
+                          className="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg transition-colors disabled:text-gray-400 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+                          title={isOnlyAdmin(user) ? "No se puede eliminar el único administrador" : "Eliminar usuario"}
+                          disabled={!isAdmin || isOnlyAdmin(user)}
+                        >
+                          <TrashBinIcon className="w-4 h-4 fill-current" />
+                        </button>
+                      </div>
                     </TableCell>
                   </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </div>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={7} className="px-5 py-8 text-center text-gray-500 dark:text-gray-400">
+                    No se encontraron usuarios
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </div>
       </div>
 
       {/* Paginación */}
@@ -1078,22 +1077,60 @@ export default function BasicTableOne() {
             >
               <ChevronLeftIcon className="w-4 h-4 sm:w-4 sm:h-4 fill-current" />
             </Button>
-            
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-              <Button
-                key={page}
-                onClick={() => handlePageChange(page)}
-                size="sm"
-                className={
-                  page === currentPage
-                    ? "bg-orange-500 hover:bg-orange-600 text-white w-9 h-9 sm:w-auto sm:h-auto"
-                    : "bg-gray-500 hover:bg-gray-200 text-gray-700 w-9 h-9 sm:w-auto sm:h-auto"
+
+            {(() => {
+              const maxVisible = 5;
+              const pages = [];
+
+              if (totalPages <= maxVisible) {
+                // Si hay pocas páginas, mostrar todas
+                for (let i = 1; i <= totalPages; i++) {
+                  pages.push(i);
                 }
-              >
-                {page}
-              </Button>
-            ))}
-            
+              } else {
+                // Siempre mostrar primera página
+                pages.push(1);
+
+                if (currentPage <= 3) {
+                  // Si estamos al inicio: 1, 2, 3, ..., última
+                  pages.push(2, 3);
+                  pages.push('...');
+                  pages.push(totalPages);
+                } else if (currentPage >= totalPages - 2) {
+                  // Si estamos al final: 1, ..., ante-penúltima, penúltima, última
+                  pages.push('...');
+                  pages.push(totalPages - 2, totalPages - 1, totalPages);
+                } else {
+                  // En el medio: 1, ..., actual-1, actual, actual+1, ..., última
+                  pages.push('...');
+                  pages.push(currentPage - 1, currentPage, currentPage + 1);
+                  pages.push('...');
+                  pages.push(totalPages);
+                }
+              }
+
+              return pages.map((page, index) => (
+                page === '...' ? (
+                  <span key={`ellipsis-${index}`} className="px-2 text-gray-500 dark:text-gray-400 flex items-center">
+                    ...
+                  </span>
+                ) : (
+                  <Button
+                    key={page}
+                    onClick={() => handlePageChange(page)}
+                    size="sm"
+                    className={
+                      page === currentPage
+                        ? "bg-orange-500 hover:bg-orange-600 text-white w-9 h-9 sm:w-auto sm:h-auto"
+                        : "bg-gray-500 hover:bg-gray-200 text-gray-700 w-9 h-9 sm:w-auto sm:h-auto"
+                    }
+                  >
+                    {page}
+                  </Button>
+                )
+              ));
+            })()}
+
             <Button
               onClick={() => handlePageChange(currentPage + 1)}
               disabled={currentPage === totalPages}

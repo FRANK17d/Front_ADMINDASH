@@ -386,13 +386,21 @@ export default function HuespedesTable({ onCountChange }) {
 
       const nombre = (createForm.nombres_apellidos || '').trim();
       const documento = (createForm.numero_documento || '').trim();
+      const fechaNacimiento = (createForm.fecha_nacimiento || '').trim();
+      const checkIn = (createForm.check_in || '').trim();
+      const tarifa = createForm.tarifa_noche;
+
       const faltantes = [];
       if (!documento) faltantes.push('Número de Documento');
-      if (!nombre) faltantes.push('Nombres y Apellidos Completos');
+      if (!nombre) faltantes.push('Nombres y Apellidos');
+      if (!fechaNacimiento) faltantes.push('Fecha de Nacimiento');
+      if (!checkIn) faltantes.push('Fecha de Arribo (Check-in)');
+      if (!tarifa || tarifa === '' || tarifa === null) faltantes.push('Tarifa por Noche');
+
       if (faltantes.length) {
-        const msg = `Complete: ${faltantes.join(' y ')}`;
+        const msg = `Complete los campos: ${faltantes.join(', ')}`;
         setError(`Campos obligatorios faltantes: ${faltantes.join(', ')}`);
-        toast.warn(msg, { position: 'bottom-right', autoClose: 2500 });
+        toast.warn(msg, { position: 'bottom-right', autoClose: 3500 });
         return;
       }
 
@@ -1940,11 +1948,11 @@ export default function HuespedesTable({ onCountChange }) {
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
                     <span className="text-gray-600 dark:text-gray-400">Canal de Venta:</span>
-                    <p className="font-medium text-gray-900 dark:text-white">{viewingHuesped.canal_venta}</p>
+                    <p className="font-medium text-gray-900 dark:text-white">{viewingHuesped.canal_venta || '-'}</p>
                   </div>
                   <div>
                     <span className="text-gray-600 dark:text-gray-400">Tipo de Comprobante:</span>
-                    <p className="font-medium text-gray-900 dark:text-white">{viewingHuesped.tipo_comprobante}</p>
+                    <p className="font-medium text-gray-900 dark:text-white">{viewingHuesped.tipo_comprobante || '-'}</p>
                   </div>
                 </div>
               </div>
@@ -1956,66 +1964,54 @@ export default function HuespedesTable({ onCountChange }) {
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-gray-600 dark:text-gray-400">Nombres y Apellidos:</span>
-                    <span className="font-medium text-gray-900 dark:text-white">{viewingHuesped.nombres_apellidos}</span>
+                    <span className="font-medium text-gray-900 dark:text-white">{viewingHuesped.nombres_apellidos || '-'}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600 dark:text-gray-400">Tipo de Documento:</span>
-                    <span className="font-medium text-gray-900 dark:text-white">{viewingHuesped.tipo_documento}</span>
+                    <span className="font-medium text-gray-900 dark:text-white">{viewingHuesped.tipo_documento || '-'}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600 dark:text-gray-400">Número de Documento:</span>
-                    <span className="font-medium text-gray-900 dark:text-white">{viewingHuesped.numero_documento}</span>
+                    <span className="font-medium text-gray-900 dark:text-white">{viewingHuesped.numero_documento || '-'}</span>
                   </div>
-                  {viewingHuesped.numero_ruc && (
-                    <div className="flex justify-between">
-                      <span className="text-gray-600 dark:text-gray-400">RUC:</span>
-                      <span className="font-medium text-gray-900 dark:text-white">{viewingHuesped.numero_ruc}</span>
-                    </div>
-                  )}
-                  {viewingHuesped.nombre_o_razon_social && (
-                    <div className="flex justify-between">
-                      <span className="text-gray-600 dark:text-gray-400">Razón Social:</span>
-                      <span className="font-medium text-gray-900 dark:text-white">{viewingHuesped.nombre_o_razon_social}</span>
-                    </div>
-                  )}
-                  {viewingHuesped.estado && (
-                    <div className="flex justify-between">
-                      <span className="text-gray-600 dark:text-gray-400">Estado RUC:</span>
-                      <span className="font-medium text-gray-900 dark:text-white">{viewingHuesped.estado}</span>
-                    </div>
-                  )}
-                  {viewingHuesped.condicion && (
-                    <div className="flex justify-between">
-                      <span className="text-gray-600 dark:text-gray-400">Condición RUC:</span>
-                      <span className="font-medium text-gray-900 dark:text-white">{viewingHuesped.condicion}</span>
-                    </div>
-                  )}
-                  {viewingHuesped.direccion_completa && (
-                    <div className="flex justify-between">
-                      <span className="text-gray-600 dark:text-gray-400">Dirección:</span>
-                      <span className="font-medium text-gray-900 dark:text-white">{viewingHuesped.direccion_completa}</span>
-                    </div>
-                  )}
+                  <div className="flex justify-between">
+                    <span className="text-gray-600 dark:text-gray-400">RUC:</span>
+                    <span className="font-medium text-gray-900 dark:text-white">{viewingHuesped.numero_ruc || '-'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600 dark:text-gray-400">Razón Social:</span>
+                    <span className="font-medium text-gray-900 dark:text-white">{viewingHuesped.nombre_o_razon_social || '-'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600 dark:text-gray-400">Estado RUC:</span>
+                    <span className="font-medium text-gray-900 dark:text-white">{viewingHuesped.estado || '-'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600 dark:text-gray-400">Condición RUC:</span>
+                    <span className="font-medium text-gray-900 dark:text-white">{viewingHuesped.condicion || '-'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600 dark:text-gray-400">Dirección:</span>
+                    <span className="font-medium text-gray-900 dark:text-white text-right max-w-[60%]">{viewingHuesped.direccion_completa || '-'}</span>
+                  </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600 dark:text-gray-400">Fecha de Nacimiento:</span>
                     <span className="font-medium text-gray-900 dark:text-white">
-                      {formatDateLocal(viewingHuesped.fecha_nacimiento)}
+                      {formatDateLocal(viewingHuesped.fecha_nacimiento) || '-'}
                     </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600 dark:text-gray-400">Nacionalidad:</span>
-                    <span className="font-medium text-gray-900 dark:text-white">{viewingHuesped.nacionalidad}</span>
+                    <span className="font-medium text-gray-900 dark:text-white">{viewingHuesped.nacionalidad || '-'}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600 dark:text-gray-400">Procedencia:</span>
-                    <span className="font-medium text-gray-900 dark:text-white">{viewingHuesped.procedencia}</span>
+                    <span className="font-medium text-gray-900 dark:text-white">{viewingHuesped.procedencia || '-'}</span>
                   </div>
-                  {viewingHuesped.celular && (
-                    <div className="flex justify-between">
-                      <span className="text-gray-600 dark:text-gray-400">Celular:</span>
-                      <span className="font-medium text-gray-900 dark:text-white">{viewingHuesped.celular}</span>
-                    </div>
-                  )}
+                  <div className="flex justify-between">
+                    <span className="text-gray-600 dark:text-gray-400">Celular:</span>
+                    <span className="font-medium text-gray-900 dark:text-white">{viewingHuesped.celular || '-'}</span>
+                  </div>
                 </div>
               </div>
 
@@ -2027,7 +2023,7 @@ export default function HuespedesTable({ onCountChange }) {
                   <div className="flex justify-between">
                     <span className="text-gray-600 dark:text-gray-400">Check-in:</span>
                     <span className="font-medium text-gray-900 dark:text-white">
-                      {formatDateLocal(viewingHuesped.check_in)}
+                      {formatDateLocal(viewingHuesped.check_in) || '-'}
                       {viewingHuesped.hora_entrada && (
                         <span className="ml-2 text-blue-600 dark:text-blue-400">
                           {formatTimeAMPM(viewingHuesped.hora_entrada)}
@@ -2036,21 +2032,28 @@ export default function HuespedesTable({ onCountChange }) {
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-600 dark:text-gray-400">Check-out:</span>
+                    <span className="text-gray-600 dark:text-gray-400">Hora de Entrada:</span>
                     <span className="font-medium text-gray-900 dark:text-white">
-                      {formatDateLocal(viewingHuesped.check_out)}
-                      {viewingHuesped.hora_salida && (
-                        <span className="ml-2 text-blue-600 dark:text-blue-400">
-                          {formatTimeAMPM(viewingHuesped.hora_salida)}
-                        </span>
-                      )}
+                      {viewingHuesped.hora_entrada ? formatTimeAMPM(viewingHuesped.hora_entrada) : '-'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600 dark:text-gray-400">Check-out:</span>
+                    <span className={viewingHuesped.check_out ? "font-medium text-gray-900 dark:text-white" : "font-medium text-amber-600 dark:text-amber-400"}>
+                      {formatDateLocal(viewingHuesped.check_out) || 'Por confirmar'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600 dark:text-gray-400">Hora de Salida:</span>
+                    <span className="font-medium text-gray-900 dark:text-white">
+                      {viewingHuesped.hora_salida ? formatTimeAMPM(viewingHuesped.hora_salida) : '-'}
                     </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600 dark:text-gray-400">Duración:</span>
                     <div className="flex items-center gap-2">
                       <span className="font-medium text-gray-900 dark:text-white">
-                        {viewingHuesped.duracion_estadia} {viewingHuesped.is_day_use ? 'día' : 'noches'}
+                        {viewingHuesped.duracion_estadia != null ? `${viewingHuesped.duracion_estadia} ${viewingHuesped.is_day_use ? 'día' : 'noches'}` : '-'}
                       </span>
                       {viewingHuesped.is_day_use && (
                         <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400">
@@ -2061,45 +2064,52 @@ export default function HuespedesTable({ onCountChange }) {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600 dark:text-gray-400">Tipo de Habitación:</span>
-                    <span className="font-medium text-gray-900 dark:text-white">{viewingHuesped.tipo_habitacion}</span>
+                    <span className="font-medium text-gray-900 dark:text-white">{viewingHuesped.tipo_habitacion || '-'}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600 dark:text-gray-400">Número de Habitación:</span>
-                    <span className="font-medium text-gray-900 dark:text-white">{viewingHuesped.numero_habitacion}</span>
+                    <span className="font-medium text-gray-900 dark:text-white">{viewingHuesped.numero_habitacion || '-'}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600 dark:text-gray-400">Tarifa por Noche:</span>
-                    <span className="font-medium text-gray-900 dark:text-white">S/. {parseFloat(viewingHuesped.tarifa_noche).toFixed(2)}</span>
+                    <span className="font-medium text-gray-900 dark:text-white">
+                      {viewingHuesped.tarifa_noche && !isNaN(parseFloat(viewingHuesped.tarifa_noche))
+                        ? `S/. ${parseFloat(viewingHuesped.tarifa_noche).toFixed(2)}`
+                        : '-'}
+                    </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600 dark:text-gray-400">Adultos:</span>
-                    <span className="font-medium text-gray-900 dark:text-white">{viewingHuesped.adultos}</span>
+                    <span className="font-medium text-gray-900 dark:text-white">{viewingHuesped.adultos ?? '-'}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600 dark:text-gray-400">Niños:</span>
-                    <span className="font-medium text-gray-900 dark:text-white">{viewingHuesped.ninos}</span>
+                    <span className="font-medium text-gray-900 dark:text-white">{viewingHuesped.ninos ?? '-'}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600 dark:text-gray-400">Método de Pago:</span>
-                    <span className="font-medium text-gray-900 dark:text-white">{viewingHuesped.metodo_pago}</span>
+                    <span className="font-medium text-gray-900 dark:text-white">{viewingHuesped.metodo_pago || '-'}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600 dark:text-gray-400">Tipo de Desayuno:</span>
                     <span className="font-medium text-gray-900 dark:text-white">
                       {viewingHuesped.tipo_desayuno === 'CONTINENTAL' ? 'Desayuno Continental' :
-                        viewingHuesped.tipo_desayuno === 'AMERICANO' ? 'Desayuno Americano' : 'Ninguno'}
+                        viewingHuesped.tipo_desayuno === 'AMERICANO' ? 'Desayuno Americano' :
+                          viewingHuesped.tipo_desayuno === 'NINGUNO' ? 'Ninguno' : '-'}
                     </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600 dark:text-gray-400">Total Estadía:</span>
-                    <span className="font-bold text-orange-600 dark:text-orange-400">S/. {parseFloat(viewingHuesped.total_estadia).toFixed(2)}</span>
+                    <span className="font-bold text-orange-600 dark:text-orange-400">
+                      {viewingHuesped.total_estadia && !isNaN(parseFloat(viewingHuesped.total_estadia))
+                        ? `S/. ${parseFloat(viewingHuesped.total_estadia).toFixed(2)}`
+                        : '-'}
+                    </span>
                   </div>
-                  {viewingHuesped.observacion && (
-                    <div>
-                      <span className="text-gray-600 dark:text-gray-400">Observación:</span>
-                      <p className="font-medium text-gray-900 dark:text-white mt-1">{viewingHuesped.observacion}</p>
-                    </div>
-                  )}
+                  <div>
+                    <span className="text-gray-600 dark:text-gray-400">Observación:</span>
+                    <p className="font-medium text-gray-900 dark:text-white mt-1">{viewingHuesped.observacion || '-'}</p>
+                  </div>
                 </div>
               </div>
 
@@ -2319,26 +2329,28 @@ export default function HuespedesTable({ onCountChange }) {
                   <TableCell className="px-5 py-4 sm:px-6 text-start">
                     <div>
                       <span className="block font-medium text-gray-800 text-theme-sm dark:text-white/90">
-                        {huesped.nombres_apellidos}
+                        {huesped.nombres_apellidos || '-'}
                       </span>
                       <span className="text-xs text-gray-500 dark:text-gray-400">
-                        {huesped.nacionalidad}
+                        {huesped.nacionalidad || '-'}
                       </span>
                     </div>
                   </TableCell>
                   <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-                    {huesped.tipo_documento}: {huesped.numero_documento}
+                    {huesped.tipo_documento && huesped.numero_documento
+                      ? `${huesped.tipo_documento}: ${huesped.numero_documento}`
+                      : '-'}
                   </TableCell>
                   <TableCell className="px-4 py-3 text-gray-500 text-center text-theme-sm dark:text-gray-400">
-                    {huesped.celular || 'N/A'}
+                    {huesped.celular || '-'}
                   </TableCell>
                   <TableCell className="px-4 py-3 text-gray-500 text-center text-theme-sm dark:text-gray-400">
-                    {huesped.canal_venta}
+                    {huesped.canal_venta || '-'}
                   </TableCell>
                   <TableCell className="px-4 py-3 text-gray-500 text-center text-theme-sm dark:text-gray-400">
                     <div>
                       <span className="block font-medium text-gray-800 text-theme-sm dark:text-white/90">
-                        {huesped.numero_ruc || 'N/A'}
+                        {huesped.numero_ruc || '-'}
                       </span>
                       <span className="text-xs text-gray-500 dark:text-gray-400">
                         {huesped.nombre_o_razon_social || ''}
@@ -2347,7 +2359,7 @@ export default function HuespedesTable({ onCountChange }) {
                   </TableCell>
                   <TableCell className="px-4 py-3 text-gray-500 text-center text-theme-sm dark:text-gray-400">
                     <div className="flex flex-col items-center">
-                      <span>{formatDateLocal(huesped.check_in)}</span>
+                      <span>{formatDateLocal(huesped.check_in) || '-'}</span>
                       {huesped.hora_entrada && (
                         <span className="text-xs text-blue-600 dark:text-blue-400">
                           {formatTimeAMPM(huesped.hora_entrada)}
@@ -2357,8 +2369,8 @@ export default function HuespedesTable({ onCountChange }) {
                   </TableCell>
                   <TableCell className="px-4 py-3 text-center text-theme-sm">
                     <div className="flex flex-col items-center gap-1">
-                      <span className="text-gray-500 dark:text-gray-400">
-                        {formatDateLocal(huesped.check_out)}
+                      <span className={huesped.check_out ? "text-gray-500 dark:text-gray-400" : "text-amber-600 dark:text-amber-400 font-medium"}>
+                        {formatDateLocal(huesped.check_out) || 'Por confirmar'}
                       </span>
                       {huesped.hora_salida && (
                         <span className="text-xs text-blue-600 dark:text-blue-400">
@@ -2375,21 +2387,25 @@ export default function HuespedesTable({ onCountChange }) {
                   <TableCell className="px-4 py-3 text-center">
                     <div>
                       <span className="block font-medium text-gray-900 dark:text-white">
-                        {huesped.numero_habitacion}
+                        {huesped.numero_habitacion || '-'}
                       </span>
                       <span className="text-xs text-gray-500 dark:text-gray-400">
-                        {huesped.tipo_habitacion}
+                        {huesped.tipo_habitacion || '-'}
                       </span>
                     </div>
                   </TableCell>
                   <TableCell className="px-4 py-3 text-center text-theme-sm text-gray-500 dark:text-gray-400">
                     {huesped.tipo_desayuno === 'CONTINENTAL' ? 'Continental' :
-                      huesped.tipo_desayuno === 'AMERICANO' ? 'Americano' : 'Ninguno'}
+                      huesped.tipo_desayuno === 'AMERICANO' ? 'Americano' :
+                        huesped.tipo_desayuno === 'NINGUNO' ? 'Ninguno' :
+                          !huesped.tipo_desayuno ? '-' : huesped.tipo_desayuno}
                   </TableCell>
                   <TableCell className="px-4 py-3 text-center">
                     <div className="flex flex-col items-center">
                       <span className="font-medium text-gray-900 dark:text-white">
-                        S/. {parseFloat(huesped.tarifa_noche).toFixed(2)}
+                        {huesped.tarifa_noche && !isNaN(parseFloat(huesped.tarifa_noche))
+                          ? `S/. ${parseFloat(huesped.tarifa_noche).toFixed(2)}`
+                          : '-'}
                       </span>
                       {huesped.is_day_use && (
                         <span className="text-[10px] text-gray-400 font-medium">DAY USE</span>
@@ -2398,7 +2414,9 @@ export default function HuespedesTable({ onCountChange }) {
                   </TableCell>
                   <TableCell className="px-4 py-3 text-center">
                     <span className="font-semibold text-orange-600 dark:text-orange-400">
-                      S/. {parseFloat(huesped.total_estadia).toFixed(2)}
+                      {huesped.total_estadia && !isNaN(parseFloat(huesped.total_estadia))
+                        ? `S/. ${parseFloat(huesped.total_estadia).toFixed(2)}`
+                        : '-'}
                     </span>
                   </TableCell>
                   <TableCell className="px-4 py-3 text-center">
@@ -2458,20 +2476,58 @@ export default function HuespedesTable({ onCountChange }) {
                 <ChevronLeftIcon className="w-4 h-4 sm:w-4 sm:h-4 fill-current" />
               </Button>
 
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                <Button
-                  key={page}
-                  onClick={() => handlePageChange(page)}
-                  size="sm"
-                  className={
-                    page === currentPage
-                      ? "bg-orange-500 hover:bg-orange-600 text-white w-9 h-9 sm:w-auto sm:h-auto"
-                      : "bg-gray-500 hover:bg-gray-200 text-gray-700 w-9 h-9 sm:w-auto sm:h-auto"
+              {(() => {
+                const maxVisible = 5;
+                const pages = [];
+
+                if (totalPages <= maxVisible) {
+                  // Si hay pocas páginas, mostrar todas
+                  for (let i = 1; i <= totalPages; i++) {
+                    pages.push(i);
                   }
-                >
-                  {page}
-                </Button>
-              ))}
+                } else {
+                  // Siempre mostrar primera página
+                  pages.push(1);
+
+                  if (currentPage <= 3) {
+                    // Si estamos al inicio: 1, 2, 3, ..., última
+                    pages.push(2, 3);
+                    pages.push('...');
+                    pages.push(totalPages);
+                  } else if (currentPage >= totalPages - 2) {
+                    // Si estamos al final: 1, ..., ante-penúltima, penúltima, última
+                    pages.push('...');
+                    pages.push(totalPages - 2, totalPages - 1, totalPages);
+                  } else {
+                    // En el medio: 1, ..., actual-1, actual, actual+1, ..., última
+                    pages.push('...');
+                    pages.push(currentPage - 1, currentPage, currentPage + 1);
+                    pages.push('...');
+                    pages.push(totalPages);
+                  }
+                }
+
+                return pages.map((page, index) => (
+                  page === '...' ? (
+                    <span key={`ellipsis-${index}`} className="px-2 text-gray-500 dark:text-gray-400 flex items-center">
+                      ...
+                    </span>
+                  ) : (
+                    <Button
+                      key={page}
+                      onClick={() => handlePageChange(page)}
+                      size="sm"
+                      className={
+                        page === currentPage
+                          ? "bg-orange-500 hover:bg-orange-600 text-white w-9 h-9 sm:w-auto sm:h-auto"
+                          : "bg-gray-500 hover:bg-gray-200 text-gray-700 w-9 h-9 sm:w-auto sm:h-auto"
+                      }
+                    >
+                      {page}
+                    </Button>
+                  )
+                ));
+              })()}
 
               <Button
                 onClick={() => handlePageChange(currentPage + 1)}
