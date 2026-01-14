@@ -94,10 +94,14 @@ export default function HuespedesTable({ onCountChange }) {
   const [deletingHuesped, setDeletingHuesped] = useState(false);
   const [error, setError] = useState("");
   const [_lookupLoading, setLookupLoading] = useState(false);
+  const [habitacionesPopover, setHabitacionesPopover] = useState(null); // ID del huésped con popover abierto
+  const [acompanantesPopover, setAcompanantesPopover] = useState(null); // ID del huésped con popover de acompañantes abierto
 
   const [createForm, setCreateForm] = useState({
     canal_venta: "RECEPCION",
     tipo_comprobante: "BOLETA",
+    numero_boleta: "",
+    numero_factura: "",
     nombres_apellidos: "",
     tipo_documento: "DNI",
     numero_documento: "",
@@ -123,6 +127,7 @@ export default function HuespedesTable({ onCountChange }) {
     tipo_desayuno: "NINGUNO",
     observacion: "",
     acompanantes: [],
+    habitaciones_adicionales: [],
   });
 
   const [editForm, setEditForm] = useState({});
@@ -133,6 +138,41 @@ export default function HuespedesTable({ onCountChange }) {
     const payload = {};
     Object.entries(form).forEach(([key, value]) => {
       if (value === undefined || value === null) return;
+
+      // Manejar habitaciones_adicionales
+      if (key === "habitaciones_adicionales" && Array.isArray(value)) {
+        payload[key] = value.map(hab => {
+          const sanitizedHab = {};
+          Object.entries(hab).forEach(([habKey, habValue]) => {
+            if (habValue === undefined) return;
+            // Manejar tarifa como número
+            if (habKey === "tarifa") {
+              const v = typeof habValue === "string" ? habValue.trim() : habValue;
+              if (v === "" || v === null) {
+                sanitizedHab[habKey] = null;
+                return;
+              }
+              const num = parseFloat(v);
+              if (!Number.isNaN(num)) sanitizedHab[habKey] = num;
+              return;
+            }
+            // Strings vacíos convertir a null
+            if (typeof habValue === "string") {
+              const v = habValue.trim();
+              if (v === "") {
+                sanitizedHab[habKey] = null;
+                return;
+              }
+              sanitizedHab[habKey] = v;
+              return;
+            }
+            sanitizedHab[habKey] = habValue;
+          });
+          return sanitizedHab;
+        });
+        return;
+      }
+
       if (key === "tarifa_noche") {
         const v = typeof value === "string" ? value.trim() : value;
         if (v === "" || v === null) return;
@@ -313,6 +353,50 @@ export default function HuespedesTable({ onCountChange }) {
     }
   };
 
+  // Lookup para habitaciones adicionales (Crear)
+  const handleLookupHabitacionCreate = async (index) => {
+    try {
+      const habitacion = createForm.habitaciones_adicionales[index];
+      if (!habitacion?.numero_documento || !["DNI", "CE"].includes(habitacion.tipo_documento)) return;
+      setLookupLoading(true);
+      const res = await lookupDocumento(habitacion.tipo_documento, habitacion.numero_documento);
+      const name = res?.name || "";
+      if (name) {
+        const newHabitaciones = [...createForm.habitaciones_adicionales];
+        newHabitaciones[index].nombres_apellidos = name;
+        setCreateForm({ ...createForm, habitaciones_adicionales: newHabitaciones });
+        toast.success(`Nombre autocompletado: ${name}`, { position: "bottom-right", autoClose: 2000 });
+      }
+    } catch (e) {
+      const msg = e?.response?.data?.error || "No se pudo autocompletar";
+      toast.error(msg, { position: "bottom-right", autoClose: 2500 });
+    } finally {
+      setLookupLoading(false);
+    }
+  };
+
+  // Lookup para habitaciones adicionales (Editar)
+  const handleLookupHabitacionEdit = async (index) => {
+    try {
+      const habitacion = editForm.habitaciones_adicionales?.[index];
+      if (!habitacion?.numero_documento || !["DNI", "CE"].includes(habitacion.tipo_documento)) return;
+      setLookupLoading(true);
+      const res = await lookupDocumento(habitacion.tipo_documento, habitacion.numero_documento);
+      const name = res?.name || "";
+      if (name) {
+        const newHabitaciones = [...editForm.habitaciones_adicionales];
+        newHabitaciones[index].nombres_apellidos = name;
+        setEditForm({ ...editForm, habitaciones_adicionales: newHabitaciones });
+        toast.success(`Nombre autocompletado: ${name}`, { position: "bottom-right", autoClose: 2000 });
+      }
+    } catch (e) {
+      const msg = e?.response?.data?.error || "No se pudo autocompletar";
+      toast.error(msg, { position: "bottom-right", autoClose: 2500 });
+    } finally {
+      setLookupLoading(false);
+    }
+  };
+
   const refresh = async () => {
     try {
       setLoadingHuespedes(true);
@@ -332,6 +416,39 @@ export default function HuespedesTable({ onCountChange }) {
   useEffect(() => {
     refresh();
   }, []);
+
+  // Cerrar popover de habitaciones al hacer clic afuera
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (habitacionesPopover !== null) {
+        // Si el clic no fue dentro del popover, cerrarlo
+        const popoverElement = document.getElementById(`popover-hab-${habitacionesPopover}`);
+        const badgeElement = document.getElementById(`badge-hab-${habitacionesPopover}`);
+        if (popoverElement && !popoverElement.contains(e.target) && badgeElement && !badgeElement.contains(e.target)) {
+          setHabitacionesPopover(null);
+        }
+      }
+    };
+
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, [habitacionesPopover]);
+
+  // Cerrar popover de acompañantes al hacer clic afuera
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (acompanantesPopover !== null) {
+        const popoverElement = document.getElementById(`popover-acomp-${acompanantesPopover}`);
+        const badgeElement = document.getElementById(`badge-acomp-${acompanantesPopover}`);
+        if (popoverElement && !popoverElement.contains(e.target) && badgeElement && !badgeElement.contains(e.target)) {
+          setAcompanantesPopover(null);
+        }
+      }
+    };
+
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, [acompanantesPopover]);
 
   // Filtrar datos basado en la búsqueda
   const filteredData = useMemo(() => {
@@ -389,6 +506,9 @@ export default function HuespedesTable({ onCountChange }) {
       const fechaNacimiento = (createForm.fecha_nacimiento || '').trim();
       const checkIn = (createForm.check_in || '').trim();
       const tarifa = createForm.tarifa_noche;
+      const tipoComprobante = createForm.tipo_comprobante;
+      const numBoleta = (createForm.numero_boleta || '').trim();
+      const numFactura = (createForm.numero_factura || '').trim();
 
       const faltantes = [];
       if (!documento) faltantes.push('Número de Documento');
@@ -396,6 +516,13 @@ export default function HuespedesTable({ onCountChange }) {
       if (!fechaNacimiento) faltantes.push('Fecha de Nacimiento');
       if (!checkIn) faltantes.push('Fecha de Arribo (Check-in)');
       if (!tarifa || tarifa === '' || tarifa === null) faltantes.push('Tarifa por Noche');
+
+      if (tipoComprobante === 'BOLETA' && !numBoleta) {
+        faltantes.push('N° de Boleta');
+      }
+      if (tipoComprobante === 'FACTURA' && !numFactura) {
+        faltantes.push('N° de Factura');
+      }
 
       if (faltantes.length) {
         const msg = `Complete los campos: ${faltantes.join(', ')}`;
@@ -422,6 +549,8 @@ export default function HuespedesTable({ onCountChange }) {
         setCreateForm({
           canal_venta: "RECEPCION",
           tipo_comprobante: "BOLETA",
+          numero_boleta: "",
+          numero_factura: "",
           nombres_apellidos: "",
           tipo_documento: "DNI",
           numero_documento: "",
@@ -447,6 +576,7 @@ export default function HuespedesTable({ onCountChange }) {
           tipo_desayuno: "NINGUNO",
           observacion: "",
           acompanantes: [],
+          habitaciones_adicionales: [],
         });
         await refresh();
       }
@@ -466,33 +596,36 @@ export default function HuespedesTable({ onCountChange }) {
   const handleEditHuespedClick = (huesped) => {
     setEditingHuesped(huesped);
     setEditForm({
-      canal_venta: huesped.canal_venta,
-      tipo_comprobante: huesped.tipo_comprobante,
-      nombres_apellidos: huesped.nombres_apellidos,
-      tipo_documento: huesped.tipo_documento,
-      numero_documento: huesped.numero_documento,
+      canal_venta: huesped.canal_venta || "RECEPCION",
+      tipo_comprobante: huesped.tipo_comprobante || "BOLETA",
+      numero_boleta: huesped.numero_boleta || "",
+      numero_factura: huesped.numero_factura || "",
+      nombres_apellidos: huesped.nombres_apellidos || "",
+      tipo_documento: huesped.tipo_documento || "DNI",
+      numero_documento: huesped.numero_documento || "",
       numero_ruc: huesped.numero_ruc || "",
       nombre_o_razon_social: huesped.nombre_o_razon_social || "",
       estado: huesped.estado || "",
       condicion: huesped.condicion || "",
       direccion_completa: huesped.direccion_completa || "",
-      fecha_nacimiento: huesped.fecha_nacimiento,
-      nacionalidad: huesped.nacionalidad,
-      procedencia: huesped.procedencia,
+      fecha_nacimiento: huesped.fecha_nacimiento || "",
+      nacionalidad: huesped.nacionalidad || "Peruana",
+      procedencia: huesped.procedencia || "",
       celular: huesped.celular || "",
-      check_in: huesped.check_in,
+      check_in: huesped.check_in || "",
       hora_entrada: huesped.hora_entrada || "",
-      check_out: huesped.check_out,
+      check_out: huesped.check_out || "",
       hora_salida: huesped.hora_salida || "",
-      tipo_habitacion: huesped.tipo_habitacion,
-      numero_habitacion: huesped.numero_habitacion,
-      tarifa_noche: huesped.tarifa_noche,
-      adultos: huesped.adultos,
-      ninos: huesped.ninos,
-      metodo_pago: huesped.metodo_pago,
+      tipo_habitacion: huesped.tipo_habitacion || "SIMPLE",
+      numero_habitacion: huesped.numero_habitacion || "111",
+      tarifa_noche: huesped.tarifa_noche || "",
+      adultos: huesped.adultos || 1,
+      ninos: huesped.ninos || 0,
+      metodo_pago: huesped.metodo_pago || "EFECTIVO",
       tipo_desayuno: huesped.tipo_desayuno || "NINGUNO",
       observacion: huesped.observacion || "",
       acompanantes: huesped.acompanantes || [],
+      habitaciones_adicionales: huesped.habitaciones_adicionales || [],
     });
     openEditModal();
   };
@@ -501,6 +634,32 @@ export default function HuespedesTable({ onCountChange }) {
     try {
       setError("");
       setEditingHuespedLoading(true);
+
+      const nombre = (editForm.nombres_apellidos || '').trim();
+      const documento = (editForm.numero_documento || '').trim();
+      const tipoComprobante = editForm.tipo_comprobante;
+      const numBoleta = (editForm.numero_boleta || '').trim();
+      const numFactura = (editForm.numero_factura || '').trim();
+
+      const faltantes = [];
+      if (!nombre) faltantes.push('Nombres y Apellidos');
+      if (!documento) faltantes.push('Número de Documento');
+
+      if (tipoComprobante === 'BOLETA' && !numBoleta) {
+        faltantes.push('N° de Boleta');
+      }
+      if (tipoComprobante === 'FACTURA' && !numFactura) {
+        faltantes.push('N° de Factura');
+      }
+
+      if (faltantes.length) {
+        toast.warn(`Complete campos faltantes: ${faltantes.join(', ')}`, {
+          position: "bottom-right",
+          autoClose: 3500
+        });
+        setEditingHuespedLoading(false);
+        return;
+      }
 
       const res = await updateHuesped(editingHuesped.id, sanitizePayload(editForm));
 
@@ -516,7 +675,35 @@ export default function HuespedesTable({ onCountChange }) {
       }
     } catch (e) {
       console.error(e);
-      const errorMessage = e.response?.data?.errors || e.message || "No se pudo crear el registro actualizado";
+      // Manejar errores que pueden venir como objeto
+      let errorMessage = "No se pudo actualizar el huésped";
+      if (e.response?.data) {
+        const data = e.response.data;
+        if (typeof data === 'string') {
+          errorMessage = data;
+        } else if (data.error) {
+          errorMessage = data.error;
+        } else if (data.errors) {
+          // Si errors es un objeto, convertirlo a string
+          if (typeof data.errors === 'object') {
+            const errorParts = [];
+            for (const [field, messages] of Object.entries(data.errors)) {
+              if (Array.isArray(messages)) {
+                errorParts.push(`${field}: ${messages.join(', ')}`);
+              } else if (typeof messages === 'string') {
+                errorParts.push(`${field}: ${messages}`);
+              }
+            }
+            errorMessage = errorParts.join(' | ') || "Error de validación";
+          } else {
+            errorMessage = String(data.errors);
+          }
+        } else if (data.detail) {
+          errorMessage = data.detail;
+        }
+      } else if (e.message) {
+        errorMessage = e.message;
+      }
       setError(errorMessage);
       toast.error(errorMessage, {
         position: "bottom-right",
@@ -614,7 +801,7 @@ export default function HuespedesTable({ onCountChange }) {
               <h4 className="text-lg font-semibold text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-700 pb-2">
                 Información de Venta
               </h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <Label htmlFor="canal_venta">Canal de Venta</Label>
                   <select
@@ -641,6 +828,28 @@ export default function HuespedesTable({ onCountChange }) {
                     <option value="FACTURA">Factura</option>
                   </select>
                 </div>
+                {createForm.tipo_comprobante === "BOLETA" && (
+                  <div>
+                    <Label htmlFor="numero_boleta">N° de Boleta</Label>
+                    <Input
+                      id="numero_boleta"
+                      placeholder="Ej: B001-00001"
+                      value={createForm.numero_boleta}
+                      onChange={(e) => setCreateForm({ ...createForm, numero_boleta: e.target.value })}
+                    />
+                  </div>
+                )}
+                {createForm.tipo_comprobante === "FACTURA" && (
+                  <div>
+                    <Label htmlFor="numero_factura">N° de Factura</Label>
+                    <Input
+                      id="numero_factura"
+                      placeholder="Ej: F001-00001"
+                      value={createForm.numero_factura}
+                      onChange={(e) => setCreateForm({ ...createForm, numero_factura: e.target.value })}
+                    />
+                  </div>
+                )}
               </div>
             </div>
 
@@ -662,6 +871,7 @@ export default function HuespedesTable({ onCountChange }) {
                       <option value="DNI">DNI</option>
                       <option value="CE">CE</option>
                       <option value="PASAPORTE">Pasaporte</option>
+                      <option value="CIP">CIP</option>
                     </select>
                   </div>
                   <div>
@@ -793,10 +1003,10 @@ export default function HuespedesTable({ onCountChange }) {
                   />
                 </div>
               </div>
-            </div>
+            </div >
 
             {/* Información de Hospedaje */}
-            <div className="space-y-4">
+            < div className="space-y-4" >
               <h4 className="text-lg font-semibold text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-700 pb-2">
                 Información de Hospedaje
               </h4>
@@ -1076,10 +1286,10 @@ export default function HuespedesTable({ onCountChange }) {
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 dark:bg-gray-800 dark:text-white"
                 />
               </div>
-            </div>
+            </div >
 
             {/* Acompañantes */}
-            <div className="space-y-4">
+            < div className="space-y-4" >
               <div className="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 pb-2">
                 <h4 className="text-lg font-semibold text-gray-900 dark:text-white">
                   Acompañantes
@@ -1099,6 +1309,7 @@ export default function HuespedesTable({ onCountChange }) {
                           fecha_nacimiento: "",
                           nacionalidad: "Peruana",
                           procedencia: "",
+                          tipo_desayuno: "NINGUNO",
                         },
                       ],
                     });
@@ -1110,134 +1321,514 @@ export default function HuespedesTable({ onCountChange }) {
                 </Button>
               </div>
 
-              {createForm.acompanantes.length === 0 ? (
-                <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4 border border-dashed border-gray-300 dark:border-gray-600 rounded-lg">
-                  No hay acompañantes registrados. Haga clic en "Agregar Persona" para añadir.
-                </p>
-              ) : (
-                <div className="space-y-4">
-                  {createForm.acompanantes.map((acompanante, index) => (
-                    <div
-                      key={index}
-                      className="relative p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-900"
-                    >
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const newAcompanantes = createForm.acompanantes.filter((_, i) => i !== index);
-                          setCreateForm({ ...createForm, acompanantes: newAcompanantes });
-                        }}
-                        className="absolute top-2 right-2 p-1 text-red-500 hover:text-red-700 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-full transition-colors"
-                        title="Eliminar acompañante"
+              {
+                createForm.acompanantes.length === 0 ? (
+                  <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4 border border-dashed border-gray-300 dark:border-gray-600 rounded-lg">
+                    No hay acompañantes registrados. Haga clic en "Agregar Persona" para añadir.
+                  </p>
+                ) : (
+                  <div className="space-y-4">
+                    {createForm.acompanantes.map((acompanante, index) => (
+                      <div
+                        key={index}
+                        className="relative p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-900"
                       >
-                        <CloseIcon className="w-5 h-5" />
-                      </button>
-
-                      <p className="text-sm font-medium text-orange-600 dark:text-orange-400 mb-3">
-                        Acompañante #{index + 1}
-                      </p>
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <Label>Tipo de Documento</Label>
-                          <select
-                            value={acompanante.tipo_documento}
-                            onChange={(e) => {
-                              const newAcompanantes = [...createForm.acompanantes];
-                              newAcompanantes[index].tipo_documento = e.target.value;
-                              setCreateForm({ ...createForm, acompanantes: newAcompanantes });
-                            }}
-                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 dark:bg-gray-800 dark:text-white"
-                          >
-                            <option value="DNI">DNI</option>
-                            <option value="CE">CE</option>
-                            <option value="PASAPORTE">Pasaporte</option>
-                          </select>
-                        </div>
-                        <div>
-                          <Label>Número de Documento</Label>
-                          <Input
-                            value={acompanante.numero_documento}
-                            onChange={(e) => {
-                              const newAcompanantes = [...createForm.acompanantes];
-                              newAcompanantes[index].numero_documento = e.target.value;
-                              setCreateForm({ ...createForm, acompanantes: newAcompanantes });
-                            }}
-                            onBlur={() => handleLookupAcompananteCreate(index)}
-                            placeholder="Ingrese y presione Tab para autocompletar"
-                          />
-                        </div>
-                      </div>
-
-                      <div className="mt-3">
-                        <Label>Nombres y Apellidos Completos</Label>
-                        <Input
-                          value={acompanante.nombres_apellidos}
-                          onChange={(e) => {
-                            const newAcompanantes = [...createForm.acompanantes];
-                            newAcompanantes[index].nombres_apellidos = e.target.value;
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newAcompanantes = createForm.acompanantes.filter((_, i) => i !== index);
                             setCreateForm({ ...createForm, acompanantes: newAcompanantes });
                           }}
-                        />
-                      </div>
+                          className="absolute top-2 right-2 p-1 text-red-500 hover:text-red-700 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-full transition-colors"
+                          title="Eliminar acompañante"
+                        >
+                          <CloseIcon className="w-5 h-5" />
+                        </button>
 
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-3">
-                        <div>
-                          <Label>Fecha de Nacimiento</Label>
-                          <DatePicker
-                            selected={acompanante.fecha_nacimiento ? new Date(acompanante.fecha_nacimiento + 'T00:00:00') : null}
-                            onChange={(date) => {
-                              const newAcompanantes = [...createForm.acompanantes];
-                              if (date) {
-                                const formatted = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-                                newAcompanantes[index].fecha_nacimiento = formatted;
-                              } else {
-                                newAcompanantes[index].fecha_nacimiento = '';
-                              }
-                              setCreateForm({ ...createForm, acompanantes: newAcompanantes });
-                            }}
-                            locale="es"
-                            showYearDropdown
-                            showMonthDropdown
-                            dropdownMode="select"
-                            yearDropdownItemNumber={100}
-                            scrollableYearDropdown
-                            maxDate={new Date()}
-                            dateFormat="dd/MM/yyyy"
-                            placeholderText="Seleccionar fecha"
-                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 dark:bg-gray-800 dark:text-white"
-                            calendarClassName="dark:bg-gray-800"
-                          />
+                        <p className="text-sm font-medium text-orange-600 dark:text-orange-400 mb-3">
+                          Acompañante #{index + 1}
+                        </p>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <Label>Tipo de Documento</Label>
+                            <select
+                              value={acompanante.tipo_documento}
+                              onChange={(e) => {
+                                const newAcompanantes = [...createForm.acompanantes];
+                                newAcompanantes[index].tipo_documento = e.target.value;
+                                setCreateForm({ ...createForm, acompanantes: newAcompanantes });
+                              }}
+                              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 dark:bg-gray-800 dark:text-white"
+                            >
+                              <option value="DNI">DNI</option>
+                              <option value="CE">CE</option>
+                              <option value="PASAPORTE">Pasaporte</option>
+                              <option value="CIP">CIP</option>
+                            </select>
+                          </div>
+                          <div>
+                            <Label>Número de Documento</Label>
+                            <Input
+                              value={acompanante.numero_documento}
+                              onChange={(e) => {
+                                const newAcompanantes = [...createForm.acompanantes];
+                                newAcompanantes[index].numero_documento = e.target.value;
+                                setCreateForm({ ...createForm, acompanantes: newAcompanantes });
+                              }}
+                              onBlur={() => handleLookupAcompananteCreate(index)}
+                              placeholder="Ingrese y presione Tab para autocompletar"
+                            />
+                          </div>
                         </div>
-                        <div>
-                          <Label>Nacionalidad</Label>
+
+                        <div className="mt-3">
+                          <Label>Nombres y Apellidos Completos</Label>
                           <Input
-                            value={acompanante.nacionalidad}
+                            value={acompanante.nombres_apellidos}
                             onChange={(e) => {
                               const newAcompanantes = [...createForm.acompanantes];
-                              newAcompanantes[index].nacionalidad = e.target.value;
+                              newAcompanantes[index].nombres_apellidos = e.target.value;
                               setCreateForm({ ...createForm, acompanantes: newAcompanantes });
                             }}
                           />
                         </div>
-                        <div>
-                          <Label>Procedencia</Label>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
+                          <div>
+                            <Label>Fecha de Nacimiento</Label>
+                            <DatePicker
+                              selected={acompanante.fecha_nacimiento ? new Date(acompanante.fecha_nacimiento + 'T00:00:00') : null}
+                              onChange={(date) => {
+                                const newAcompanantes = [...createForm.acompanantes];
+                                if (date) {
+                                  const formatted = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+                                  newAcompanantes[index].fecha_nacimiento = formatted;
+                                } else {
+                                  newAcompanantes[index].fecha_nacimiento = '';
+                                }
+                                setCreateForm({ ...createForm, acompanantes: newAcompanantes });
+                              }}
+                              locale="es"
+                              showYearDropdown
+                              showMonthDropdown
+                              dropdownMode="select"
+                              yearDropdownItemNumber={100}
+                              scrollableYearDropdown
+                              maxDate={new Date()}
+                              dateFormat="dd/MM/yyyy"
+                              placeholderText="Seleccionar fecha"
+                              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 dark:bg-gray-800 dark:text-white"
+                              calendarClassName="dark:bg-gray-800"
+                            />
+                          </div>
+                          <div>
+                            <Label>Nacionalidad</Label>
+                            <Input
+                              value={acompanante.nacionalidad}
+                              onChange={(e) => {
+                                const newAcompanantes = [...createForm.acompanantes];
+                                newAcompanantes[index].nacionalidad = e.target.value;
+                                setCreateForm({ ...createForm, acompanantes: newAcompanantes });
+                              }}
+                            />
+                          </div>
+                          <div>
+                            <Label>Procedencia</Label>
+                            <Input
+                              value={acompanante.procedencia}
+                              onChange={(e) => {
+                                const newAcompanantes = [...createForm.acompanantes];
+                                newAcompanantes[index].procedencia = e.target.value;
+                                setCreateForm({ ...createForm, acompanantes: newAcompanantes });
+                              }}
+                            />
+                          </div>
+                          <div>
+                            <Label>Tipo de Desayuno</Label>
+                            <select
+                              value={acompanante.tipo_desayuno || "NINGUNO"}
+                              onChange={(e) => {
+                                const newAcompanantes = [...createForm.acompanantes];
+                                newAcompanantes[index].tipo_desayuno = e.target.value;
+                                setCreateForm({ ...createForm, acompanantes: newAcompanantes });
+                              }}
+                              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 dark:bg-gray-800 dark:text-white"
+                            >
+                              <option value="NINGUNO">Ninguno</option>
+                              <option value="CONTINENTAL">Continental</option>
+                              <option value="AMERICANO">Americano</option>
+                            </select>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )
+              }
+            </div >
+
+            {/* Habitaciones Adicionales */}
+            < div className="space-y-4" >
+              <div className="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 pb-2">
+                <h4 className="text-lg font-semibold text-gray-900 dark:text-white">
+                  Habitaciones Adicionales
+                </h4>
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={() => {
+                    const now = new Date();
+                    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+                    setCreateForm({
+                      ...createForm,
+                      habitaciones_adicionales: [
+                        ...createForm.habitaciones_adicionales,
+                        {
+                          numero_habitacion: "111",
+                          tipo_habitacion: "SIMPLE",
+                          tipo_documento: "DNI",
+                          numero_documento: "",
+                          nombres_apellidos: "",
+                          check_in: today,
+                          hora_entrada: "",
+                          check_out: "",
+                          hora_salida: "",
+                          tarifa: "",
+                        },
+                      ],
+                    });
+                  }}
+                  className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-1"
+                >
+                  <PlusIcon className="w-4 h-4 fill-current" />
+                  Agregar Habitación
+                </Button>
+              </div>
+
+              {
+                createForm.habitaciones_adicionales.length === 0 ? (
+                  <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4 border border-dashed border-gray-300 dark:border-gray-600 rounded-lg">
+                    No hay habitaciones adicionales. Haga clic en "Agregar Habitación" para añadir.
+                  </p>
+                ) : (
+                  <div className="space-y-4">
+                    {createForm.habitaciones_adicionales.map((habitacion, index) => (
+                      <div
+                        key={index}
+                        className="relative p-4 border border-blue-200 dark:border-blue-700 rounded-lg bg-blue-50 dark:bg-blue-900/20"
+                      >
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newHabitaciones = createForm.habitaciones_adicionales.filter((_, i) => i !== index);
+                            setCreateForm({ ...createForm, habitaciones_adicionales: newHabitaciones });
+                          }}
+                          className="absolute top-2 right-2 p-1 text-red-500 hover:text-red-700 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-full transition-colors"
+                          title="Eliminar habitación"
+                        >
+                          <CloseIcon className="w-5 h-5" />
+                        </button>
+
+                        <p className="text-sm font-medium text-blue-600 dark:text-blue-400 mb-3">
+                          Habitación Adicional #{index + 1}
+                        </p>
+
+                        {/* Fila 1: Número y Tipo de Habitación */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <Label>Número de Habitación</Label>
+                            <select
+                              value={habitacion.numero_habitacion}
+                              onChange={(e) => {
+                                const newHabitaciones = [...createForm.habitaciones_adicionales];
+                                newHabitaciones[index].numero_habitacion = e.target.value;
+                                setCreateForm({ ...createForm, habitaciones_adicionales: newHabitaciones });
+                              }}
+                              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white"
+                            >
+                              {['111', '112', '113', '210', '211', '212', '213', '214', '215', '310', '311', '312', '313', '314', '315'].map(num => (
+                                <option key={num} value={num}>{num}</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div>
+                            <Label>Tipo de Habitación</Label>
+                            <select
+                              value={habitacion.tipo_habitacion}
+                              onChange={(e) => {
+                                const newHabitaciones = [...createForm.habitaciones_adicionales];
+                                newHabitaciones[index].tipo_habitacion = e.target.value;
+                                setCreateForm({ ...createForm, habitaciones_adicionales: newHabitaciones });
+                              }}
+                              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white"
+                            >
+                              <option value="SIMPLE">Simple</option>
+                              <option value="DOBLE">Doble</option>
+                              <option value="MATRIMONIAL">Matrimonial</option>
+                              <option value="TRIPLE">Triple</option>
+                            </select>
+                          </div>
+                        </div>
+
+                        {/* Fila 2: Documento del ocupante */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
+                          <div>
+                            <Label>Tipo de Documento</Label>
+                            <select
+                              value={habitacion.tipo_documento}
+                              onChange={(e) => {
+                                const newHabitaciones = [...createForm.habitaciones_adicionales];
+                                newHabitaciones[index].tipo_documento = e.target.value;
+                                setCreateForm({ ...createForm, habitaciones_adicionales: newHabitaciones });
+                              }}
+                              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white"
+                            >
+                              <option value="DNI">DNI</option>
+                              <option value="CE">CE</option>
+                              <option value="PASAPORTE">Pasaporte</option>
+                              <option value="CIP">CIP</option>
+                            </select>
+                          </div>
+                          <div>
+                            <Label>Número de Documento</Label>
+                            <Input
+                              value={habitacion.numero_documento || ''}
+                              onChange={(e) => {
+                                const newHabitaciones = [...createForm.habitaciones_adicionales];
+                                newHabitaciones[index].numero_documento = e.target.value;
+                                setCreateForm({ ...createForm, habitaciones_adicionales: newHabitaciones });
+                              }}
+                              onBlur={() => handleLookupHabitacionCreate(index)}
+                              placeholder="Ingrese y presione Tab para autocompletar"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Fila 3: Nombres */}
+                        <div className="mt-3">
+                          <Label>Nombres y Apellidos Completos</Label>
                           <Input
-                            value={acompanante.procedencia}
+                            value={habitacion.nombres_apellidos || ''}
                             onChange={(e) => {
-                              const newAcompanantes = [...createForm.acompanantes];
-                              newAcompanantes[index].procedencia = e.target.value;
-                              setCreateForm({ ...createForm, acompanantes: newAcompanantes });
+                              const newHabitaciones = [...createForm.habitaciones_adicionales];
+                              newHabitaciones[index].nombres_apellidos = e.target.value;
+                              setCreateForm({ ...createForm, habitaciones_adicionales: newHabitaciones });
                             }}
+                          />
+                        </div>
+
+                        {/* Fila 4: Fechas */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
+                          <div>
+                            <Label>Fecha de Arribo</Label>
+                            <DatePicker
+                              selected={habitacion.check_in ? new Date(habitacion.check_in + 'T00:00:00') : null}
+                              onChange={(date) => {
+                                const newHabitaciones = [...createForm.habitaciones_adicionales];
+                                if (date) {
+                                  const formatted = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+                                  newHabitaciones[index].check_in = formatted;
+                                } else {
+                                  newHabitaciones[index].check_in = '';
+                                }
+                                setCreateForm({ ...createForm, habitaciones_adicionales: newHabitaciones });
+                              }}
+                              locale="es"
+                              showMonthDropdown
+                              showYearDropdown
+                              dropdownMode="select"
+                              dateFormat="dd/MM/yyyy"
+                              placeholderText="Seleccionar fecha"
+                              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white"
+                              calendarClassName="dark:bg-gray-800"
+                            />
+                            <div className="mt-2">
+                              <Label>Hora de Llegada</Label>
+                              <div className="flex gap-2 items-center">
+                                <select
+                                  value={parseTime12h(habitacion.hora_entrada).hour}
+                                  onChange={(e) => {
+                                    const parsed = parseTime12h(habitacion.hora_entrada);
+                                    const newHabitaciones = [...createForm.habitaciones_adicionales];
+                                    newHabitaciones[index].hora_entrada = buildTime24h(e.target.value, parsed.minute, parsed.ampm);
+                                    setCreateForm({ ...createForm, habitaciones_adicionales: newHabitaciones });
+                                  }}
+                                  className="w-20 px-2 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white"
+                                >
+                                  {['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'].map(h => (
+                                    <option key={h} value={h}>{h}</option>
+                                  ))}
+                                </select>
+                                <span className="text-gray-500 dark:text-gray-400 font-bold">:</span>
+                                <input
+                                  type="text"
+                                  maxLength="2"
+                                  defaultValue={parseTime12h(habitacion.hora_entrada).minute}
+                                  key={`hab-min-entrada-${index}-${habitacion.hora_entrada}`}
+                                  onBlur={(e) => {
+                                    let val = e.target.value.replace(/\D/g, '').slice(0, 2);
+                                    if (!val) val = '00';
+                                    if (parseInt(val) > 59) val = '59';
+                                    val = val.padStart(2, '0');
+                                    e.target.value = val;
+                                    const parsed = parseTime12h(habitacion.hora_entrada);
+                                    const newHabitaciones = [...createForm.habitaciones_adicionales];
+                                    newHabitaciones[index].hora_entrada = buildTime24h(parsed.hour, val, parsed.ampm);
+                                    setCreateForm({ ...createForm, habitaciones_adicionales: newHabitaciones });
+                                  }}
+                                  className="w-14 px-2 py-2 text-center border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white"
+                                  placeholder="00"
+                                />
+                                <select
+                                  value={parseTime12h(habitacion.hora_entrada).ampm}
+                                  onChange={(e) => {
+                                    const parsed = parseTime12h(habitacion.hora_entrada);
+                                    const newHabitaciones = [...createForm.habitaciones_adicionales];
+                                    newHabitaciones[index].hora_entrada = buildTime24h(parsed.hour, parsed.minute, e.target.value);
+                                    setCreateForm({ ...createForm, habitaciones_adicionales: newHabitaciones });
+                                  }}
+                                  className="w-20 px-2 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white font-medium"
+                                >
+                                  <option value="AM">AM</option>
+                                  <option value="PM">PM</option>
+                                </select>
+                              </div>
+                            </div>
+                          </div>
+                          <div>
+                            <div className="flex items-center justify-between mb-1">
+                              <Label>Fecha de Salida</Label>
+                              <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={habitacion.check_in && habitacion.check_in === habitacion.check_out}
+                                  onChange={(e) => {
+                                    const newHabitaciones = [...createForm.habitaciones_adicionales];
+                                    if (e.target.checked) {
+                                      const now = new Date();
+                                      const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+                                      newHabitaciones[index].check_in = today;
+                                      newHabitaciones[index].check_out = today;
+                                    } else {
+                                      newHabitaciones[index].check_out = '';
+                                    }
+                                    setCreateForm({ ...createForm, habitaciones_adicionales: newHabitaciones });
+                                  }}
+                                  className="w-4 h-4 rounded border-gray-300 text-blue-500 focus:ring-blue-500"
+                                />
+                                <span className="text-xs font-medium text-blue-600 dark:text-blue-400">DAY USE</span>
+                              </label>
+                            </div>
+                            <DatePicker
+                              selected={habitacion.check_out ? new Date(habitacion.check_out + 'T00:00:00') : null}
+                              onChange={(date) => {
+                                const newHabitaciones = [...createForm.habitaciones_adicionales];
+                                if (date) {
+                                  const formatted = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+                                  newHabitaciones[index].check_out = formatted;
+                                } else {
+                                  newHabitaciones[index].check_out = '';
+                                }
+                                setCreateForm({ ...createForm, habitaciones_adicionales: newHabitaciones });
+                              }}
+                              locale="es"
+                              showMonthDropdown
+                              showYearDropdown
+                              dropdownMode="select"
+                              minDate={habitacion.check_in ? new Date(habitacion.check_in + 'T00:00:00') : null}
+                              dateFormat="dd/MM/yyyy"
+                              placeholderText="Seleccionar fecha"
+                              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white"
+                              calendarClassName="dark:bg-gray-800"
+                            />
+                            {habitacion.check_in && habitacion.check_in === habitacion.check_out && (
+                              <p className="mt-1 text-xs text-blue-600 dark:text-blue-400 flex items-center gap-1">
+                                <span className="inline-block w-2 h-2 bg-blue-500 rounded-full"></span>
+                                DAY USE - Misma fecha de entrada y salida
+                              </p>
+                            )}
+                            <div className="mt-2">
+                              <Label>Hora de Salida</Label>
+                              <div className="flex gap-2 items-center">
+                                <select
+                                  value={parseTime12h(habitacion.hora_salida).hour}
+                                  onChange={(e) => {
+                                    const parsed = parseTime12h(habitacion.hora_salida);
+                                    const newHabitaciones = [...createForm.habitaciones_adicionales];
+                                    newHabitaciones[index].hora_salida = buildTime24h(e.target.value, parsed.minute, parsed.ampm);
+                                    setCreateForm({ ...createForm, habitaciones_adicionales: newHabitaciones });
+                                  }}
+                                  className="w-20 px-2 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white"
+                                >
+                                  {['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'].map(h => (
+                                    <option key={h} value={h}>{h}</option>
+                                  ))}
+                                </select>
+                                <span className="text-gray-500 dark:text-gray-400 font-bold">:</span>
+                                <input
+                                  type="text"
+                                  maxLength="2"
+                                  defaultValue={parseTime12h(habitacion.hora_salida).minute}
+                                  key={`hab-min-salida-${index}-${habitacion.hora_salida}`}
+                                  onBlur={(e) => {
+                                    let val = e.target.value.replace(/\D/g, '').slice(0, 2);
+                                    if (!val) val = '00';
+                                    if (parseInt(val) > 59) val = '59';
+                                    val = val.padStart(2, '0');
+                                    e.target.value = val;
+                                    const parsed = parseTime12h(habitacion.hora_salida);
+                                    const newHabitaciones = [...createForm.habitaciones_adicionales];
+                                    newHabitaciones[index].hora_salida = buildTime24h(parsed.hour, val, parsed.ampm);
+                                    setCreateForm({ ...createForm, habitaciones_adicionales: newHabitaciones });
+                                  }}
+                                  className="w-14 px-2 py-2 text-center border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white"
+                                  placeholder="00"
+                                />
+                                <select
+                                  value={parseTime12h(habitacion.hora_salida).ampm}
+                                  onChange={(e) => {
+                                    const parsed = parseTime12h(habitacion.hora_salida);
+                                    const newHabitaciones = [...createForm.habitaciones_adicionales];
+                                    newHabitaciones[index].hora_salida = buildTime24h(parsed.hour, parsed.minute, e.target.value);
+                                    setCreateForm({ ...createForm, habitaciones_adicionales: newHabitaciones });
+                                  }}
+                                  className="w-20 px-2 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white font-medium"
+                                >
+                                  <option value="AM">AM</option>
+                                  <option value="PM">PM</option>
+                                </select>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Fila 5: Tarifa */}
+                        <div className="mt-3">
+                          <Label>
+                            {habitacion.check_in && habitacion.check_in === habitacion.check_out
+                              ? 'Tarifa DAY USE (S/.)'
+                              : 'Tarifa (S/.)'}
+                          </Label>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            value={habitacion.tarifa || ''}
+                            onChange={(e) => {
+                              const newHabitaciones = [...createForm.habitaciones_adicionales];
+                              newHabitaciones[index].tarifa = e.target.value;
+                              setCreateForm({ ...createForm, habitaciones_adicionales: newHabitaciones });
+                            }}
+                            placeholder="Ingrese la tarifa"
                           />
                         </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
+                    ))}
+                  </div>
+                )
+              }
+            </div >
+          </div >
 
           <div className="flex items-center gap-3 justify-end mt-6">
             <Button
@@ -1258,11 +1849,11 @@ export default function HuespedesTable({ onCountChange }) {
               {creatingHuesped ? "Registrando..." : "Registrar Pasajero"}
             </Button>
           </div>
-        </div>
-      </Modal>
+        </div >
+      </Modal >
 
       {/* Modal de Edición */}
-      <Modal isOpen={isEditModalOpen} onClose={closeEditModal} className="max-w-[800px] m-4">
+      < Modal isOpen={isEditModalOpen} onClose={closeEditModal} className="max-w-[800px] m-4" >
         <div className="no-scrollbar relative w-full max-w-[800px] max-h-[90vh] overflow-y-auto rounded-3xl bg-white dark:bg-black dark:border dark:border-orange-500/30 p-6 lg:p-8">
           <div className="mb-6">
             <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
@@ -1280,7 +1871,7 @@ export default function HuespedesTable({ onCountChange }) {
                 <h4 className="text-lg font-semibold text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-700 pb-2">
                   Información de Venta
                 </h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
                     <Label htmlFor="edit_canal_venta">Canal de Venta</Label>
                     <select
@@ -1307,6 +1898,28 @@ export default function HuespedesTable({ onCountChange }) {
                       <option value="FACTURA">Factura</option>
                     </select>
                   </div>
+                  {editForm.tipo_comprobante === "BOLETA" && (
+                    <div>
+                      <Label htmlFor="edit_numero_boleta">N° de Boleta</Label>
+                      <Input
+                        id="edit_numero_boleta"
+                        placeholder="Ej: B001-00001"
+                        value={editForm.numero_boleta}
+                        onChange={(e) => setEditForm({ ...editForm, numero_boleta: e.target.value })}
+                      />
+                    </div>
+                  )}
+                  {editForm.tipo_comprobante === "FACTURA" && (
+                    <div>
+                      <Label htmlFor="edit_numero_factura">N° de Factura</Label>
+                      <Input
+                        id="edit_numero_factura"
+                        placeholder="Ej: F001-00001"
+                        value={editForm.numero_factura}
+                        onChange={(e) => setEditForm({ ...editForm, numero_factura: e.target.value })}
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -1329,6 +1942,7 @@ export default function HuespedesTable({ onCountChange }) {
                           <option value="DNI">DNI</option>
                           <option value="CE">CE</option>
                           <option value="PASAPORTE">Pasaporte</option>
+                          <option value="CIP">CIP</option>
                         </select>
                       </div>
                       <div>
@@ -1767,6 +2381,7 @@ export default function HuespedesTable({ onCountChange }) {
                             fecha_nacimiento: "",
                             nacionalidad: "Peruana",
                             procedencia: "",
+                            tipo_desayuno: "NINGUNO",
                           },
                         ],
                       });
@@ -1820,6 +2435,7 @@ export default function HuespedesTable({ onCountChange }) {
                               <option value="DNI">DNI</option>
                               <option value="CE">CE</option>
                               <option value="PASAPORTE">Pasaporte</option>
+                              <option value="CIP">CIP</option>
                             </select>
                           </div>
                           <div>
@@ -1849,7 +2465,7 @@ export default function HuespedesTable({ onCountChange }) {
                           />
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-3">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
                           <div>
                             <Label>Fecha de Nacimiento</Label>
                             <DatePicker
@@ -1899,6 +2515,381 @@ export default function HuespedesTable({ onCountChange }) {
                               }}
                             />
                           </div>
+                          <div>
+                            <Label>Tipo de Desayuno</Label>
+                            <select
+                              value={acompanante.tipo_desayuno || "NINGUNO"}
+                              onChange={(e) => {
+                                const newAcompanantes = [...editForm.acompanantes];
+                                newAcompanantes[index].tipo_desayuno = e.target.value;
+                                setEditForm({ ...editForm, acompanantes: newAcompanantes });
+                              }}
+                              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 dark:bg-gray-800 dark:text-white"
+                            >
+                              <option value="NINGUNO">Ninguno</option>
+                              <option value="CONTINENTAL">Continental</option>
+                              <option value="AMERICANO">Americano</option>
+                            </select>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Habitaciones Adicionales (Edición) */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 pb-2">
+                  <h4 className="text-lg font-semibold text-gray-900 dark:text-white">
+                    Habitaciones Adicionales
+                  </h4>
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={() => {
+                      const now = new Date();
+                      const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+                      setEditForm({
+                        ...editForm,
+                        habitaciones_adicionales: [
+                          ...(editForm.habitaciones_adicionales || []),
+                          {
+                            numero_habitacion: "111",
+                            tipo_habitacion: "SIMPLE",
+                            tipo_documento: "DNI",
+                            numero_documento: "",
+                            nombres_apellidos: "",
+                            check_in: today,
+                            hora_entrada: "",
+                            check_out: "",
+                            hora_salida: "",
+                            tarifa: "",
+                          },
+                        ],
+                      });
+                    }}
+                    className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-1"
+                  >
+                    <PlusIcon className="w-4 h-4 fill-current" />
+                    Agregar Habitación
+                  </Button>
+                </div>
+
+                {(!editForm.habitaciones_adicionales || editForm.habitaciones_adicionales.length === 0) ? (
+                  <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4 border border-dashed border-gray-300 dark:border-gray-600 rounded-lg">
+                    No hay habitaciones adicionales. Haga clic en "Agregar Habitación" para añadir.
+                  </p>
+                ) : (
+                  <div className="space-y-4">
+                    {editForm.habitaciones_adicionales.map((habitacion, index) => (
+                      <div
+                        key={index}
+                        className="relative p-4 border border-blue-200 dark:border-blue-700 rounded-lg bg-blue-50 dark:bg-blue-900/20"
+                      >
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newHabitaciones = editForm.habitaciones_adicionales.filter((_, i) => i !== index);
+                            setEditForm({ ...editForm, habitaciones_adicionales: newHabitaciones });
+                          }}
+                          className="absolute top-2 right-2 p-1 text-red-500 hover:text-red-700 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-full transition-colors"
+                          title="Eliminar habitación"
+                        >
+                          <CloseIcon className="w-5 h-5" />
+                        </button>
+
+                        <p className="text-sm font-medium text-blue-600 dark:text-blue-400 mb-3">
+                          Habitación Adicional #{index + 1}
+                        </p>
+
+                        {/* Fila 1: Número y Tipo de Habitación */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <Label>Número de Habitación</Label>
+                            <select
+                              value={habitacion.numero_habitacion}
+                              onChange={(e) => {
+                                const newHabitaciones = [...editForm.habitaciones_adicionales];
+                                newHabitaciones[index].numero_habitacion = e.target.value;
+                                setEditForm({ ...editForm, habitaciones_adicionales: newHabitaciones });
+                              }}
+                              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white"
+                            >
+                              {['111', '112', '113', '210', '211', '212', '213', '214', '215', '310', '311', '312', '313', '314', '315'].map(num => (
+                                <option key={num} value={num}>{num}</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div>
+                            <Label>Tipo de Habitación</Label>
+                            <select
+                              value={habitacion.tipo_habitacion}
+                              onChange={(e) => {
+                                const newHabitaciones = [...editForm.habitaciones_adicionales];
+                                newHabitaciones[index].tipo_habitacion = e.target.value;
+                                setEditForm({ ...editForm, habitaciones_adicionales: newHabitaciones });
+                              }}
+                              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white"
+                            >
+                              <option value="SIMPLE">Simple</option>
+                              <option value="DOBLE">Doble</option>
+                              <option value="MATRIMONIAL">Matrimonial</option>
+                              <option value="TRIPLE">Triple</option>
+                            </select>
+                          </div>
+                        </div>
+
+                        {/* Fila 2: Documento del ocupante */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
+                          <div>
+                            <Label>Tipo de Documento</Label>
+                            <select
+                              value={habitacion.tipo_documento}
+                              onChange={(e) => {
+                                const newHabitaciones = [...editForm.habitaciones_adicionales];
+                                newHabitaciones[index].tipo_documento = e.target.value;
+                                setEditForm({ ...editForm, habitaciones_adicionales: newHabitaciones });
+                              }}
+                              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white"
+                            >
+                              <option value="DNI">DNI</option>
+                              <option value="CE">CE</option>
+                              <option value="PASAPORTE">Pasaporte</option>
+                              <option value="CIP">CIP</option>
+                            </select>
+                          </div>
+                          <div>
+                            <Label>Número de Documento</Label>
+                            <Input
+                              value={habitacion.numero_documento || ''}
+                              onChange={(e) => {
+                                const newHabitaciones = [...editForm.habitaciones_adicionales];
+                                newHabitaciones[index].numero_documento = e.target.value;
+                                setEditForm({ ...editForm, habitaciones_adicionales: newHabitaciones });
+                              }}
+                              onBlur={() => handleLookupHabitacionEdit(index)}
+                              placeholder="Ingrese y presione Tab para autocompletar"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Fila 3: Nombres */}
+                        <div className="mt-3">
+                          <Label>Nombres y Apellidos Completos</Label>
+                          <Input
+                            value={habitacion.nombres_apellidos || ''}
+                            onChange={(e) => {
+                              const newHabitaciones = [...editForm.habitaciones_adicionales];
+                              newHabitaciones[index].nombres_apellidos = e.target.value;
+                              setEditForm({ ...editForm, habitaciones_adicionales: newHabitaciones });
+                            }}
+                          />
+                        </div>
+
+                        {/* Fila 4: Fechas */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
+                          <div>
+                            <Label>Fecha de Arribo</Label>
+                            <DatePicker
+                              selected={habitacion.check_in ? new Date(habitacion.check_in + 'T00:00:00') : null}
+                              onChange={(date) => {
+                                const newHabitaciones = [...editForm.habitaciones_adicionales];
+                                if (date) {
+                                  const formatted = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+                                  newHabitaciones[index].check_in = formatted;
+                                } else {
+                                  newHabitaciones[index].check_in = '';
+                                }
+                                setEditForm({ ...editForm, habitaciones_adicionales: newHabitaciones });
+                              }}
+                              locale="es"
+                              showMonthDropdown
+                              showYearDropdown
+                              dropdownMode="select"
+                              dateFormat="dd/MM/yyyy"
+                              placeholderText="Seleccionar fecha"
+                              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white"
+                              calendarClassName="dark:bg-gray-800"
+                            />
+                            <div className="mt-2">
+                              <Label>Hora de Llegada</Label>
+                              <div className="flex gap-2 items-center">
+                                <select
+                                  value={parseTime12h(habitacion.hora_entrada || '').hour}
+                                  onChange={(e) => {
+                                    const parsed = parseTime12h(habitacion.hora_entrada || '');
+                                    const newHabitaciones = [...editForm.habitaciones_adicionales];
+                                    newHabitaciones[index].hora_entrada = buildTime24h(e.target.value, parsed.minute, parsed.ampm);
+                                    setEditForm({ ...editForm, habitaciones_adicionales: newHabitaciones });
+                                  }}
+                                  className="w-20 px-2 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white"
+                                >
+                                  {['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'].map(h => (
+                                    <option key={h} value={h}>{h}</option>
+                                  ))}
+                                </select>
+                                <span className="text-gray-500 dark:text-gray-400 font-bold">:</span>
+                                <input
+                                  type="text"
+                                  maxLength="2"
+                                  defaultValue={parseTime12h(habitacion.hora_entrada || '').minute}
+                                  key={`edit-hab-min-entrada-${index}-${habitacion.hora_entrada}`}
+                                  onBlur={(e) => {
+                                    let val = e.target.value.replace(/\D/g, '').slice(0, 2);
+                                    if (!val) val = '00';
+                                    if (parseInt(val) > 59) val = '59';
+                                    val = val.padStart(2, '0');
+                                    e.target.value = val;
+                                    const parsed = parseTime12h(habitacion.hora_entrada || '');
+                                    const newHabitaciones = [...editForm.habitaciones_adicionales];
+                                    newHabitaciones[index].hora_entrada = buildTime24h(parsed.hour, val, parsed.ampm);
+                                    setEditForm({ ...editForm, habitaciones_adicionales: newHabitaciones });
+                                  }}
+                                  className="w-14 px-2 py-2 text-center border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white"
+                                  placeholder="00"
+                                />
+                                <select
+                                  value={parseTime12h(habitacion.hora_entrada || '').ampm}
+                                  onChange={(e) => {
+                                    const parsed = parseTime12h(habitacion.hora_entrada || '');
+                                    const newHabitaciones = [...editForm.habitaciones_adicionales];
+                                    newHabitaciones[index].hora_entrada = buildTime24h(parsed.hour, parsed.minute, e.target.value);
+                                    setEditForm({ ...editForm, habitaciones_adicionales: newHabitaciones });
+                                  }}
+                                  className="w-20 px-2 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white font-medium"
+                                >
+                                  <option value="AM">AM</option>
+                                  <option value="PM">PM</option>
+                                </select>
+                              </div>
+                            </div>
+                          </div>
+                          <div>
+                            <div className="flex items-center justify-between mb-1">
+                              <Label>Fecha de Salida</Label>
+                              <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={habitacion.check_in && habitacion.check_in === habitacion.check_out}
+                                  onChange={(e) => {
+                                    const newHabitaciones = [...editForm.habitaciones_adicionales];
+                                    if (e.target.checked) {
+                                      const now = new Date();
+                                      const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+                                      newHabitaciones[index].check_in = today;
+                                      newHabitaciones[index].check_out = today;
+                                    } else {
+                                      newHabitaciones[index].check_out = '';
+                                    }
+                                    setEditForm({ ...editForm, habitaciones_adicionales: newHabitaciones });
+                                  }}
+                                  className="w-4 h-4 rounded border-gray-300 text-blue-500 focus:ring-blue-500"
+                                />
+                                <span className="text-xs font-medium text-blue-600 dark:text-blue-400">DAY USE</span>
+                              </label>
+                            </div>
+                            <DatePicker
+                              selected={habitacion.check_out ? new Date(habitacion.check_out + 'T00:00:00') : null}
+                              onChange={(date) => {
+                                const newHabitaciones = [...editForm.habitaciones_adicionales];
+                                if (date) {
+                                  const formatted = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+                                  newHabitaciones[index].check_out = formatted;
+                                } else {
+                                  newHabitaciones[index].check_out = '';
+                                }
+                                setEditForm({ ...editForm, habitaciones_adicionales: newHabitaciones });
+                              }}
+                              locale="es"
+                              showMonthDropdown
+                              showYearDropdown
+                              dropdownMode="select"
+                              minDate={habitacion.check_in ? new Date(habitacion.check_in + 'T00:00:00') : null}
+                              dateFormat="dd/MM/yyyy"
+                              placeholderText="Seleccionar fecha"
+                              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white"
+                              calendarClassName="dark:bg-gray-800"
+                            />
+                            {habitacion.check_in && habitacion.check_in === habitacion.check_out && (
+                              <p className="mt-1 text-xs text-blue-600 dark:text-blue-400 flex items-center gap-1">
+                                <span className="inline-block w-2 h-2 bg-blue-500 rounded-full"></span>
+                                DAY USE - Misma fecha de entrada y salida
+                              </p>
+                            )}
+                            <div className="mt-2">
+                              <Label>Hora de Salida</Label>
+                              <div className="flex gap-2 items-center">
+                                <select
+                                  value={parseTime12h(habitacion.hora_salida || '').hour}
+                                  onChange={(e) => {
+                                    const parsed = parseTime12h(habitacion.hora_salida || '');
+                                    const newHabitaciones = [...editForm.habitaciones_adicionales];
+                                    newHabitaciones[index].hora_salida = buildTime24h(e.target.value, parsed.minute, parsed.ampm);
+                                    setEditForm({ ...editForm, habitaciones_adicionales: newHabitaciones });
+                                  }}
+                                  className="w-20 px-2 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white"
+                                >
+                                  {['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'].map(h => (
+                                    <option key={h} value={h}>{h}</option>
+                                  ))}
+                                </select>
+                                <span className="text-gray-500 dark:text-gray-400 font-bold">:</span>
+                                <input
+                                  type="text"
+                                  maxLength="2"
+                                  defaultValue={parseTime12h(habitacion.hora_salida || '').minute}
+                                  key={`edit-hab-min-salida-${index}-${habitacion.hora_salida}`}
+                                  onBlur={(e) => {
+                                    let val = e.target.value.replace(/\D/g, '').slice(0, 2);
+                                    if (!val) val = '00';
+                                    if (parseInt(val) > 59) val = '59';
+                                    val = val.padStart(2, '0');
+                                    e.target.value = val;
+                                    const parsed = parseTime12h(habitacion.hora_salida || '');
+                                    const newHabitaciones = [...editForm.habitaciones_adicionales];
+                                    newHabitaciones[index].hora_salida = buildTime24h(parsed.hour, val, parsed.ampm);
+                                    setEditForm({ ...editForm, habitaciones_adicionales: newHabitaciones });
+                                  }}
+                                  className="w-14 px-2 py-2 text-center border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white"
+                                  placeholder="00"
+                                />
+                                <select
+                                  value={parseTime12h(habitacion.hora_salida || '').ampm}
+                                  onChange={(e) => {
+                                    const parsed = parseTime12h(habitacion.hora_salida || '');
+                                    const newHabitaciones = [...editForm.habitaciones_adicionales];
+                                    newHabitaciones[index].hora_salida = buildTime24h(parsed.hour, parsed.minute, e.target.value);
+                                    setEditForm({ ...editForm, habitaciones_adicionales: newHabitaciones });
+                                  }}
+                                  className="w-20 px-2 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white font-medium"
+                                >
+                                  <option value="AM">AM</option>
+                                  <option value="PM">PM</option>
+                                </select>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Fila 5: Tarifa */}
+                        <div className="mt-3">
+                          <Label>
+                            {habitacion.check_in && habitacion.check_in === habitacion.check_out
+                              ? 'Tarifa DAY USE (S/.)'
+                              : 'Tarifa (S/.)'}
+                          </Label>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            value={habitacion.tarifa || ''}
+                            onChange={(e) => {
+                              const newHabitaciones = [...editForm.habitaciones_adicionales];
+                              newHabitaciones[index].tarifa = e.target.value;
+                              setEditForm({ ...editForm, habitaciones_adicionales: newHabitaciones });
+                            }}
+                            placeholder="Ingrese la tarifa"
+                          />
                         </div>
                       </div>
                     ))}
@@ -1928,10 +2919,10 @@ export default function HuespedesTable({ onCountChange }) {
             </Button>
           </div>
         </div>
-      </Modal>
+      </Modal >
 
       {/* Modal de Visualización */}
-      <Modal isOpen={isViewModalOpen} onClose={closeViewModal} className="max-w-[700px] m-4">
+      < Modal isOpen={isViewModalOpen} onClose={closeViewModal} className="max-w-[700px] m-4" >
         <div className="no-scrollbar relative w-full max-w-[700px] max-h-[85vh] overflow-y-auto rounded-3xl bg-white dark:bg-black dark:border dark:border-orange-500/30 p-6 lg:p-8">
           <div className="mb-6">
             <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
@@ -1953,6 +2944,16 @@ export default function HuespedesTable({ onCountChange }) {
                   <div>
                     <span className="text-gray-600 dark:text-gray-400">Tipo de Comprobante:</span>
                     <p className="font-medium text-gray-900 dark:text-white">{viewingHuesped.tipo_comprobante || '-'}</p>
+                  </div>
+                  <div>
+                    <span className="text-gray-600 dark:text-gray-400">
+                      {viewingHuesped.tipo_comprobante === 'FACTURA' ? 'N° de Factura:' : 'N° de Boleta:'}
+                    </span>
+                    <p className="font-medium text-gray-900 dark:text-white">
+                      {viewingHuesped.tipo_comprobante === 'FACTURA'
+                        ? (viewingHuesped.numero_factura || '-')
+                        : (viewingHuesped.numero_boleta || '-')}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -2159,6 +3160,88 @@ export default function HuespedesTable({ onCountChange }) {
                               {acompanante.procedencia || 'N/A'}
                             </span>
                           </div>
+                          <div className="col-span-2">
+                            <span className="text-gray-500 dark:text-gray-400">Tipo de Desayuno:</span>
+                            <span className="ml-1 font-medium text-gray-900 dark:text-white">
+                              {acompanante.tipo_desayuno || 'NINGUNO'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Habitaciones Adicionales (Vista) */}
+              {viewingHuesped.habitaciones_adicionales && viewingHuesped.habitaciones_adicionales.length > 0 && (
+                <div className="space-y-3">
+                  <h4 className="text-lg font-semibold text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-700 pb-2">
+                    Habitaciones Adicionales ({viewingHuesped.habitaciones_adicionales.length})
+                  </h4>
+                  <div className="space-y-3">
+                    {viewingHuesped.habitaciones_adicionales.map((habitacion, index) => (
+                      <div
+                        key={index}
+                        className="p-3 border border-blue-200 dark:border-blue-700 rounded-lg bg-blue-50 dark:bg-blue-900/20"
+                      >
+                        <p className="text-sm font-medium text-blue-600 dark:text-blue-400 mb-2">
+                          Habitación Adicional #{index + 1}
+                        </p>
+                        <div className="grid grid-cols-2 gap-2 text-sm">
+                          <div>
+                            <span className="text-gray-500 dark:text-gray-400">Habitación:</span>
+                            <span className="ml-1 font-medium text-gray-900 dark:text-white">
+                              {habitacion.numero_habitacion} - {habitacion.tipo_habitacion}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-gray-500 dark:text-gray-400">Tarifa:</span>
+                            <span className="ml-1 font-medium text-gray-900 dark:text-white">
+                              {habitacion.tarifa ? `S/. ${parseFloat(habitacion.tarifa).toFixed(2)}` : 'N/A'}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-gray-500 dark:text-gray-400">Documento:</span>
+                            <span className="ml-1 font-medium text-gray-900 dark:text-white">
+                              {habitacion.tipo_documento}: {habitacion.numero_documento || 'N/A'}
+                            </span>
+                          </div>
+                          <div className="col-span-2">
+                            <span className="text-gray-500 dark:text-gray-400">Ocupante:</span>
+                            <span className="ml-1 font-medium text-gray-900 dark:text-white">
+                              {habitacion.nombres_apellidos || 'N/A'}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-gray-500 dark:text-gray-400">Check-in:</span>
+                            <span className="ml-1 font-medium text-gray-900 dark:text-white">
+                              {formatDateLocal(habitacion.check_in) || 'N/A'}
+                              {habitacion.hora_entrada && (
+                                <span className="ml-1 text-blue-600 dark:text-blue-400">
+                                  {formatTimeAMPM(habitacion.hora_entrada)}
+                                </span>
+                              )}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-gray-500 dark:text-gray-400">Check-out:</span>
+                            <span className="ml-1 font-medium text-gray-900 dark:text-white">
+                              {formatDateLocal(habitacion.check_out) || 'Por confirmar'}
+                              {habitacion.hora_salida && (
+                                <span className="ml-1 text-blue-600 dark:text-blue-400">
+                                  {formatTimeAMPM(habitacion.hora_salida)}
+                                </span>
+                              )}
+                            </span>
+                          </div>
+                          {habitacion.is_day_use && (
+                            <div className="col-span-2">
+                              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+                                DAY USE
+                              </span>
+                            </div>
+                          )}
                         </div>
                       </div>
                     ))}
@@ -2234,7 +3317,7 @@ export default function HuespedesTable({ onCountChange }) {
       </Modal >
 
       {/* Tabla */}
-      <div className="w-full min-w-0 max-w-full overflow-x-auto rounded-xl border border-gray-200 bg-white dark:border-white/5 dark:bg-white/3" >
+      < div className="w-full min-w-0 max-w-full overflow-x-auto rounded-xl border border-gray-200 bg-white dark:border-white/5 dark:bg-white/3" >
         <Table>
           <TableHeader className="border-b border-gray-100 dark:border-white/5">
             <TableRow>
@@ -2245,7 +3328,7 @@ export default function HuespedesTable({ onCountChange }) {
                 Documento
               </TableCell>
               <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-center text-theme-xs dark:text-gray-400">
-                Celular
+                Comprobante
               </TableCell>
               <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-center text-theme-xs dark:text-gray-400">
                 Canal de Venta
@@ -2327,13 +3410,66 @@ export default function HuespedesTable({ onCountChange }) {
               paginatedData.map((huesped) => (
                 <TableRow key={huesped.id}>
                   <TableCell className="px-5 py-4 sm:px-6 text-start">
-                    <div>
-                      <span className="block font-medium text-gray-800 text-theme-sm dark:text-white/90">
-                        {huesped.nombres_apellidos || '-'}
-                      </span>
+                    <div className="flex flex-col relative">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-gray-800 text-theme-sm dark:text-white/90">
+                          {huesped.nombres_apellidos || '-'}
+                        </span>
+                        {huesped.acompanantes && huesped.acompanantes.length > 0 && (
+                          <button
+                            id={`badge-acomp-${huesped.id}`}
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setAcompanantesPopover(acompanantesPopover === huesped.id ? null : huesped.id);
+                            }}
+                            className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-semibold bg-green-50 text-green-700 border border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800 hover:bg-green-100 dark:hover:bg-green-800/40 cursor-pointer transition-colors"
+                            title="Clic para ver acompañantes"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-0.5" viewBox="0 0 20 20" fill="currentColor">
+                              <path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z" />
+                            </svg>
+                            +{huesped.acompanantes.length}
+                          </button>
+                        )}
+                      </div>
                       <span className="text-xs text-gray-500 dark:text-gray-400">
                         {huesped.nacionalidad || '-'}
                       </span>
+
+                      {/* Popover de acompañantes */}
+                      {acompanantesPopover === huesped.id && huesped.acompanantes && huesped.acompanantes.length > 0 && (
+                        <div id={`popover-acomp-${huesped.id}`} className="absolute z-50 top-full left-0 mt-2 w-56 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-3">
+                          <div className="flex justify-between items-center mb-2 pb-2 border-b border-gray-100 dark:border-gray-700">
+                            <span className="text-sm font-semibold text-gray-900 dark:text-white">
+                              Acompañantes
+                            </span>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setAcompanantesPopover(null);
+                              }}
+                              className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                            >
+                              <CloseIcon className="w-4 h-4" />
+                            </button>
+                          </div>
+                          <div className="space-y-2">
+                            {huesped.acompanantes.map((acomp, idx) => (
+                              <div key={idx} className="text-sm">
+                                <span className="font-medium text-green-600 dark:text-green-400">
+                                  {acomp.nombres_apellidos || 'Sin nombre'}
+                                </span>
+                                {acomp.numero_documento && (
+                                  <span className="text-xs text-gray-500 dark:text-gray-400 block">
+                                    {acomp.tipo_documento}: {acomp.numero_documento}
+                                  </span>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </TableCell>
                   <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
@@ -2342,7 +3478,16 @@ export default function HuespedesTable({ onCountChange }) {
                       : '-'}
                   </TableCell>
                   <TableCell className="px-4 py-3 text-gray-500 text-center text-theme-sm dark:text-gray-400">
-                    {huesped.celular || '-'}
+                    <div>
+                      <span className="block font-medium text-gray-800 text-theme-sm dark:text-white/90">
+                        {huesped.tipo_comprobante || '-'}
+                      </span>
+                      <span className="text-xs text-gray-500 dark:text-gray-400">
+                        {huesped.tipo_comprobante === 'FACTURA'
+                          ? (huesped.numero_factura || '-')
+                          : (huesped.numero_boleta || '-')}
+                      </span>
+                    </div>
                   </TableCell>
                   <TableCell className="px-4 py-3 text-gray-500 text-center text-theme-sm dark:text-gray-400">
                     {huesped.canal_venta || '-'}
@@ -2385,13 +3530,61 @@ export default function HuespedesTable({ onCountChange }) {
                     </div>
                   </TableCell>
                   <TableCell className="px-4 py-3 text-center">
-                    <div>
-                      <span className="block font-medium text-gray-900 dark:text-white">
-                        {huesped.numero_habitacion || '-'}
-                      </span>
+                    <div className="relative">
+                      <div className="flex items-center justify-center gap-1">
+                        <span className="block font-medium text-gray-900 dark:text-white">
+                          {huesped.numero_habitacion || '-'}
+                        </span>
+                        {huesped.habitaciones_adicionales && huesped.habitaciones_adicionales.length > 0 && (
+                          <button
+                            id={`badge-hab-${huesped.id}`}
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setHabitacionesPopover(habitacionesPopover === huesped.id ? null : huesped.id);
+                            }}
+                            className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-semibold bg-blue-100 text-blue-700 border border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800 hover:bg-blue-200 dark:hover:bg-blue-800/50 cursor-pointer transition-colors"
+                            title="Clic para ver habitaciones adicionales"
+                          >
+                            +{huesped.habitaciones_adicionales.length}
+                          </button>
+                        )}
+                      </div>
                       <span className="text-xs text-gray-500 dark:text-gray-400">
                         {huesped.tipo_habitacion || '-'}
                       </span>
+
+                      {/* Popover de habitaciones adicionales */}
+                      {habitacionesPopover === huesped.id && huesped.habitaciones_adicionales && huesped.habitaciones_adicionales.length > 0 && (
+                        <div id={`popover-hab-${huesped.id}`} className="absolute z-50 top-full left-1/2 transform -translate-x-1/2 mt-2 w-48 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-3">
+                          <div className="flex justify-between items-center mb-2 pb-2 border-b border-gray-100 dark:border-gray-700">
+                            <span className="text-sm font-semibold text-gray-900 dark:text-white">
+                              Habitaciones Extras
+                            </span>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setHabitacionesPopover(null);
+                              }}
+                              className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                            >
+                              <CloseIcon className="w-4 h-4" />
+                            </button>
+                          </div>
+                          <div className="space-y-1">
+                            {huesped.habitaciones_adicionales.map((hab, idx) => (
+                              <div key={idx} className="flex items-center justify-between text-sm">
+                                <span className="font-medium text-blue-600 dark:text-blue-400">
+                                  Hab. {hab.numero_habitacion}
+                                </span>
+                                <span className="text-xs text-gray-500 dark:text-gray-400">
+                                  {hab.tipo_habitacion}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </TableCell>
                   <TableCell className="px-4 py-3 text-center text-theme-sm text-gray-500 dark:text-gray-400">
@@ -2456,7 +3649,7 @@ export default function HuespedesTable({ onCountChange }) {
           </TableBody>
         </Table>
 
-      </div>
+      </div >
 
       {/* Paginación */}
       {
