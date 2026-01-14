@@ -96,6 +96,7 @@ export default function HuespedesTable({ onCountChange }) {
   const [_lookupLoading, setLookupLoading] = useState(false);
   const [habitacionesPopover, setHabitacionesPopover] = useState(null); // ID del huésped con popover abierto
   const [acompanantesPopover, setAcompanantesPopover] = useState(null); // ID del huésped con popover de acompañantes abierto
+  const [popoverPosition, setPopoverPosition] = useState({ top: 0, left: 0 }); // Posición del popover activo
 
   const [createForm, setCreateForm] = useState({
     canal_venta: "RECEPCION",
@@ -3421,7 +3422,14 @@ export default function HuespedesTable({ onCountChange }) {
                             type="button"
                             onClick={(e) => {
                               e.stopPropagation();
-                              setAcompanantesPopover(acompanantesPopover === huesped.id ? null : huesped.id);
+                              if (acompanantesPopover === huesped.id) {
+                                setAcompanantesPopover(null);
+                              } else {
+                                const rect = e.currentTarget.getBoundingClientRect();
+                                setPopoverPosition({ top: rect.bottom + 8, left: rect.left });
+                                setAcompanantesPopover(huesped.id);
+                                setHabitacionesPopover(null);
+                              }
                             }}
                             className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-semibold bg-green-50 text-green-700 border border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800 hover:bg-green-100 dark:hover:bg-green-800/40 cursor-pointer transition-colors"
                             title="Clic para ver acompañantes"
@@ -3439,7 +3447,11 @@ export default function HuespedesTable({ onCountChange }) {
 
                       {/* Popover de acompañantes */}
                       {acompanantesPopover === huesped.id && huesped.acompanantes && huesped.acompanantes.length > 0 && (
-                        <div id={`popover-acomp-${huesped.id}`} className="absolute z-50 top-full left-0 mt-2 w-56 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-3">
+                        <div
+                          id={`popover-acomp-${huesped.id}`}
+                          className="fixed z-[9999] w-56 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl p-3"
+                          style={{ top: popoverPosition.top, left: popoverPosition.left }}
+                        >
                           <div className="flex justify-between items-center mb-2 pb-2 border-b border-gray-100 dark:border-gray-700">
                             <span className="text-sm font-semibold text-gray-900 dark:text-white">
                               Acompañantes
@@ -3541,7 +3553,14 @@ export default function HuespedesTable({ onCountChange }) {
                             type="button"
                             onClick={(e) => {
                               e.stopPropagation();
-                              setHabitacionesPopover(habitacionesPopover === huesped.id ? null : huesped.id);
+                              if (habitacionesPopover === huesped.id) {
+                                setHabitacionesPopover(null);
+                              } else {
+                                const rect = e.currentTarget.getBoundingClientRect();
+                                setPopoverPosition({ top: rect.bottom + 8, left: rect.left - 60 });
+                                setHabitacionesPopover(huesped.id);
+                                setAcompanantesPopover(null);
+                              }
                             }}
                             className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-semibold bg-blue-100 text-blue-700 border border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800 hover:bg-blue-200 dark:hover:bg-blue-800/50 cursor-pointer transition-colors"
                             title="Clic para ver habitaciones adicionales"
@@ -3556,7 +3575,11 @@ export default function HuespedesTable({ onCountChange }) {
 
                       {/* Popover de habitaciones adicionales */}
                       {habitacionesPopover === huesped.id && huesped.habitaciones_adicionales && huesped.habitaciones_adicionales.length > 0 && (
-                        <div id={`popover-hab-${huesped.id}`} className="absolute z-50 top-full left-1/2 transform -translate-x-1/2 mt-2 w-48 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-3">
+                        <div
+                          id={`popover-hab-${huesped.id}`}
+                          className="fixed z-[9999] w-48 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl p-3"
+                          style={{ top: popoverPosition.top, left: popoverPosition.left }}
+                        >
                           <div className="flex justify-between items-center mb-2 pb-2 border-b border-gray-100 dark:border-gray-700">
                             <span className="text-sm font-semibold text-gray-900 dark:text-white">
                               Habitaciones Extras
