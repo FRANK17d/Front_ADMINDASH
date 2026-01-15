@@ -507,9 +507,6 @@ export default function HuespedesTable({ onCountChange }) {
       const fechaNacimiento = (createForm.fecha_nacimiento || '').trim();
       const checkIn = (createForm.check_in || '').trim();
       const tarifa = createForm.tarifa_noche;
-      const tipoComprobante = createForm.tipo_comprobante;
-      const numBoleta = (createForm.numero_boleta || '').trim();
-      const numFactura = (createForm.numero_factura || '').trim();
 
       const faltantes = [];
       if (!documento) faltantes.push('Número de Documento');
@@ -517,13 +514,6 @@ export default function HuespedesTable({ onCountChange }) {
       if (!fechaNacimiento) faltantes.push('Fecha de Nacimiento');
       if (!checkIn) faltantes.push('Fecha de Arribo (Check-in)');
       if (!tarifa || tarifa === '' || tarifa === null) faltantes.push('Tarifa por Noche');
-
-      if (tipoComprobante === 'BOLETA' && !numBoleta) {
-        faltantes.push('N° de Boleta');
-      }
-      if (tipoComprobante === 'FACTURA' && !numFactura) {
-        faltantes.push('N° de Factura');
-      }
 
       if (faltantes.length) {
         const msg = `Complete los campos: ${faltantes.join(', ')}`;
@@ -638,20 +628,9 @@ export default function HuespedesTable({ onCountChange }) {
 
       const nombre = (editForm.nombres_apellidos || '').trim();
       const documento = (editForm.numero_documento || '').trim();
-      const tipoComprobante = editForm.tipo_comprobante;
-      const numBoleta = (editForm.numero_boleta || '').trim();
-      const numFactura = (editForm.numero_factura || '').trim();
-
       const faltantes = [];
       if (!nombre) faltantes.push('Nombres y Apellidos');
       if (!documento) faltantes.push('Número de Documento');
-
-      if (tipoComprobante === 'BOLETA' && !numBoleta) {
-        faltantes.push('N° de Boleta');
-      }
-      if (tipoComprobante === 'FACTURA' && !numFactura) {
-        faltantes.push('N° de Factura');
-      }
 
       if (faltantes.length) {
         toast.warn(`Complete campos faltantes: ${faltantes.join(', ')}`, {
