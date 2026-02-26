@@ -1239,6 +1239,7 @@ export default function HuespedesTable({ onCountChange }) {
                   >
                     <option value="EFECTIVO">Efectivo</option>
                     <option value="YAPE">Yape</option>
+                    <option value="PLIN">Plin</option>
                     <option value="TARJETA">Tarjeta Débito/Crédito</option>
                   </select>
                 </div>
@@ -2311,6 +2312,7 @@ export default function HuespedesTable({ onCountChange }) {
                     >
                       <option value="EFECTIVO">Efectivo</option>
                       <option value="YAPE">Yape</option>
+                      <option value="PLIN">Plin</option>
                       <option value="TARJETA">Tarjeta Débito/Crédito</option>
                     </select>
                   </div>
